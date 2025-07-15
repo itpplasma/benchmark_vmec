@@ -33,7 +33,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        sudo apt-get install -y cmake git lcov
+        sudo apt-get install -y cmake git gcovr
         # Install fpm binary distribution
         wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12 -O fpm
         chmod +x fpm
@@ -52,24 +52,21 @@ jobs:
         # Find all gcda files
         find build -name "*.gcda" -o -name "*.gcno" | head -20
         
-        # Generate coverage info
-        lcov --capture --directory build --output-file coverage.info \
-             --gcov-tool gcov-${GCC_VERSION} --ignore-errors gcov
-        
-        # Remove system files and test files from coverage
-        lcov --remove coverage.info '/usr/*' --output-file coverage.info --ignore-errors unused
-        lcov --remove coverage.info '*/test/*' --output-file coverage.info --ignore-errors unused
-        
-        # Generate HTML report
-        genhtml coverage.info --output-directory coverage_html
-        
-        # Display coverage summary
-        lcov --list coverage.info
+        # Generate coverage reports with gcovr
+        gcovr --gcov-executable gcov-${GCC_VERSION} \
+              --root . \
+              --exclude '.*/test/.*' \
+              --exclude '.*/build/dependencies/.*' \
+              --xml coverage.xml \
+              --html coverage.html \
+              --html-details \
+              --output coverage_html/index.html \
+              --print-summary
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        file: ./coverage.info
+        file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
