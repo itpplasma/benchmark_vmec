@@ -36,8 +36,9 @@ contains
         
         write(output_unit, '(A)') "Building jVMEC with Maven"
         
-        ! Build with Maven
-        cmd = "cd " // trim(this%path) // " && mvn clean compile package -DskipTests"
+        ! Build with Maven (skip problematic plugins that require SCM setup)
+        cmd = "cd " // trim(this%path) // " && mvn clean compile package -DskipTests " // &
+              "-Dbuildnumber.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true"
         call execute_command_line(trim(cmd), exitstat=stat)
         
         if (stat /= 0) then

@@ -25,6 +25,7 @@ program vmec_benchmark
         '   setup       Clone and setup VMEC repositories                       ', &
         '   run         Run benchmarks on VMEC implementations                  ', &
         '   update      Update all cloned repositories                          ', &
+        '   hard-reset  Force delete and reclone all repositories               ', &
         '   list-repos  List available repositories and their status            ', &
         '   list-cases  List available test cases                               ', &
         '                                                                        ', &
@@ -40,6 +41,7 @@ program vmec_benchmark
         'EXAMPLES                                                                ', &
         '   vmec-benchmark setup                                                 ', &
         '   vmec-benchmark run --limit 5                                         ', &
+        '   vmec-benchmark hard-reset                                            ', &
         '   vmec-benchmark list-cases                                            ', &
         '']
 
@@ -90,6 +92,8 @@ program vmec_benchmark
         call cmd_run(base_dir, output_dir, timeout, limit)
     case ('update')
         call cmd_update(base_dir)
+    case ('hard-reset')
+        call cmd_hard_reset(base_dir)
     case ('list-repos')
         call cmd_list_repos(base_dir)
     case ('list-cases')
@@ -239,6 +243,40 @@ contains
         call runner%finalize()
         call repo_manager%finalize()
     end subroutine cmd_list_cases
+
+    subroutine cmd_hard_reset(base_dir)
+        character(len=*), intent(in) :: base_dir
+        character(len=:), allocatable :: cmd
+        integer :: stat
+        logical :: exists
+        
+        write(output_unit, '(A)') 'WARNING: Hard reset will delete ALL repositories and data!'
+        write(output_unit, '(A)') 'This includes:'
+        write(output_unit, '(A)') '  - All cloned VMEC repositories'
+        write(output_unit, '(A)') '  - Any manually added implementations (like jVMEC)'
+        write(output_unit, '(A)') '  - Build outputs and intermediate files'
+        write(output_unit, '(A)') ''
+        write(output_unit, '(A)') 'Proceeding with hard reset...'
+        
+        ! Check if directory exists
+        inquire(file=trim(base_dir), exist=exists)
+        if (exists) then
+            write(output_unit, '(A)') 'Removing directory: ' // trim(base_dir)
+            cmd = "rm -rf " // trim(base_dir)
+            call execute_command_line(trim(cmd), exitstat=stat)
+            
+            if (stat /= 0) then
+                write(error_unit, '(A)') 'Failed to remove directory'
+                return
+            end if
+        else
+            write(output_unit, '(A)') 'Directory does not exist: ' // trim(base_dir)
+        end if
+        
+        write(output_unit, '(A)') 'Hard reset complete'
+        write(output_unit, '(A)') 'Run "vmec-benchmark setup" to reinitialize repositories'
+        
+    end subroutine cmd_hard_reset
 
     function extract_repo_name(url) result(name)
         character(len=*), intent(in) :: url
