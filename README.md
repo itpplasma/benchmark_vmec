@@ -1,5 +1,8 @@
 # VMEC Implementation Benchmark Suite
 
+[![CI](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml/badge.svg)](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/itpplasma/benchmark_vmec/branch/main/graph/badge.svg)](https://codecov.io/gh/itpplasma/benchmark_vmec)
+
 Automated comparison system for multiple VMEC implementations.
 
 ## Overview

@@ -4,18 +4,36 @@ target/
 dist/
 *.egg-info/
 
+# Fortran build artifacts
+*.o
+*.mod
+*.smod
+*.gcda
+*.gcno
+*.gcov
+
+# Coverage reports
+coverage.info
+coverage_html/
+*.lcov
+lcov-report/
+gcov-report/
+
 # VMEC implementation repositories (cloned automatically)
 vmecpp/
 educational_VMEC/
 VMEC2000/
 jVMEC/
+vmec_repos/
 
 # Benchmark results
 *_results/
+benchmark_results/
 *.log
 *.nc
 *.json
-!compare_vmec_implementations.py
+!fpm.toml
+!*.f90
 
 # Python
 __pycache__/

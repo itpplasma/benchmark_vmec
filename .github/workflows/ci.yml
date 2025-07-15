@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        gcc_version: [11]
+    
+    env:
+      FC: gfortran-${{ matrix.gcc_version }}
+      CC: gcc-${{ matrix.gcc_version }}
+      GCC_VERSION: ${{ matrix.gcc_version }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install GFortran
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gfortran-${GCC_VERSION} gcc-${GCC_VERSION} g++-${GCC_VERSION}
+        sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-${GCC_VERSION} 100
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 100
+        sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-${GCC_VERSION} 100
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get install -y cmake git lcov
+        # Install fpm
+        git clone https://github.com/fortran-lang/fpm.git
+        cd fpm
+        ./install.sh --prefix=$HOME/.local
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        cd ..
+    
+    - name: Build and test
+      run: |
+        export PATH=$HOME/.local/bin:$PATH
+        fpm build --profile debug
+        fpm test --profile test
+    
+    - name: Generate coverage report
+      run: |
+        # Find all gcda files
+        find build -name "*.gcda" -o -name "*.gcno" | head -20
+        
+        # Generate coverage info
+        lcov --capture --directory build --output-file coverage.info \
+             --gcov-tool gcov-${GCC_VERSION} --ignore-errors gcov
+        
+        # Remove system files and test files from coverage
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info
+        lcov --remove coverage.info '*/test/*' --output-file coverage.info
+        
+        # Generate HTML report
+        genhtml coverage.info --output-directory coverage_html
+        
+        # Display coverage summary
+        lcov --list coverage.info
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        verbose: true
+    
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: coverage_html/
+        retention-days: 30

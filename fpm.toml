@@ -1,0 +1,42 @@
+name = "vmec-benchmark"
+version = "0.1.0"
+author = "VMEC Benchmark Contributors"
+maintainer = "maintainer@example.com"
+copyright = "2024 VMEC Benchmark Contributors"
+license = "MIT"
+
+[build]
+auto-executables = true
+auto-tests = true
+auto-examples = false
+module-naming = false
+
+[install]
+library = true
+
+[fortran]
+implicit-typing = false
+implicit-external = false
+source-form = "free"
+
+[[executable]]
+name = "vmec-benchmark"
+source-dir = "app"
+main = "main.f90"
+
+[dependencies]
+json-fortran = { git = "https://github.com/jacobwilliams/json-fortran.git" }
+M_CLI2 = { git = "https://github.com/urbanjost/M_CLI2.git" }
+
+[[test]]
+name = "test_vmec_types"
+source-dir = "test"
+main = "test_vmec_types.f90"
+
+[[test]]
+name = "test_repository_manager"
+source-dir = "test"
+main = "test_repository_manager.f90"
+
+[dev-dependencies]
+fortran_test_helper = { git = "https://github.com/jchristopherson/fortran_test_helper.git" }
