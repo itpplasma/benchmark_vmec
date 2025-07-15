@@ -12,7 +12,7 @@ jobs:
     
     strategy:
       matrix:
-        gcc_version: [11]
+        gcc_version: [12]
     
     env:
       FC: gfortran-${{ matrix.gcc_version }}
@@ -34,12 +34,12 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get install -y cmake git lcov
-        # Install fpm
-        git clone https://github.com/fortran-lang/fpm.git
-        cd fpm
-        ./install.sh --prefix=$HOME/.local
+        # Install fpm binary distribution
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12 -O fpm
+        chmod +x fpm
+        mkdir -p $HOME/.local/bin
+        mv fpm $HOME/.local/bin/
         echo "$HOME/.local/bin" >> $GITHUB_PATH
-        cd ..
     
     - name: Build and test
       run: |
