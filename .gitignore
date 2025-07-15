@@ -1,0 +1,36 @@
+# Build outputs
+build/
+target/
+dist/
+*.egg-info/
+
+# VMEC implementation repositories (cloned automatically)
+vmecpp/
+educational_VMEC/
+VMEC2000/
+jVMEC/
+
+# Benchmark results
+*_results/
+*.log
+*.nc
+*.json
+!compare_vmec_implementations.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/
+
+# System
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
