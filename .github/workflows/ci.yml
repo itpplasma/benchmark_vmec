@@ -7,67 +7,47 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  test:
+  test-coverage:
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        gcc_version: [12]
-    
-    env:
-      FC: gfortran-${{ matrix.gcc_version }}
-      CC: gcc-${{ matrix.gcc_version }}
-      GCC_VERSION: ${{ matrix.gcc_version }}
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Install GFortran
+    - name: Setup Fortran Package Manager
       run: |
-        sudo apt-get update
-        sudo apt-get install -y gfortran-${GCC_VERSION} gcc-${GCC_VERSION} g++-${GCC_VERSION}
-        sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-${GCC_VERSION} 100
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} 100
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 100
-        sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-${GCC_VERSION} 100
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
+        chmod +x fpm-0.12.0-linux-x86_64-gcc-12
+        sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
     
     - name: Install dependencies
       run: |
-        sudo apt-get install -y cmake git gcovr
-        # Install fpm binary distribution
-        wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12 -O fpm
-        chmod +x fpm
-        mkdir -p $HOME/.local/bin
-        mv fpm $HOME/.local/bin/
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        sudo apt-get update
+        sudo apt-get install -y gfortran gcovr cmake git
     
-    - name: Build and test
+    - name: Set compiler
       run: |
-        export PATH=$HOME/.local/bin:$PATH
-        fpm build --profile debug --compiler gfortran
-        fpm test --compiler gfortran --flag "--coverage -g -O0"
+        echo "FC=gfortran" >> $GITHUB_ENV
+        echo "FPM_FC=gfortran" >> $GITHUB_ENV
+    
+    - name: Build with coverage flags
+      run: |
+        fpm build --flag '-fprofile-arcs -ftest-coverage'
+    
+    - name: Run tests with coverage
+      run: |
+        fpm test --flag '-fprofile-arcs -ftest-coverage'
     
     - name: Generate coverage report
+      if: always()
       run: |
-        # Find all gcda files
-        find build -name "*.gcda" -o -name "*.gcno" | head -20
-        
-        # Generate coverage reports with gcovr
-        gcovr --gcov-executable gcov-${GCC_VERSION} \
-              --root . \
-              --exclude '.*/test/.*' \
-              --exclude '.*/build/dependencies/.*' \
-              --xml-pretty \
-              --output coverage.xml \
-              --print-summary
+        gcovr --root . --exclude 'test/*' --exclude 'build/*' --xml -o coverage.xml --print-summary
     
     - name: Upload coverage to Codecov
+      if: always()
       uses: codecov/codecov-action@v4
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
-        verbose: true
-        token: ${{ secrets.CODECOV_TOKEN }}
-    
