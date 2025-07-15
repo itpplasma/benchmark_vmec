@@ -53,14 +53,15 @@ jobs:
         find build -name "*.gcda" -o -name "*.gcno" | head -20
         
         # Generate coverage reports with gcovr
+        mkdir -p coverage_html
         gcovr --gcov-executable gcov-${GCC_VERSION} \
               --root . \
               --exclude '.*/test/.*' \
               --exclude '.*/build/dependencies/.*' \
-              --xml coverage.xml \
-              --html coverage.html \
+              --xml-pretty \
+              --output coverage.xml \
               --html-details \
-              --output coverage_html/index.html \
+              --html-directory coverage_html \
               --print-summary
     
     - name: Upload coverage to Codecov
