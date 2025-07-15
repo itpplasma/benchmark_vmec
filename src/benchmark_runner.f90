@@ -3,6 +3,7 @@ module benchmark_runner
     use vmec_benchmark_types, only: vmec_result_t, string_t
     use vmec_implementation_base, only: vmec_implementation_t
     use educational_vmec_implementation, only: educational_vmec_t
+    use jvmec_implementation, only: jvmec_t
     use repository_manager, only: repository_manager_t
     implicit none
     private
@@ -51,12 +52,13 @@ contains
         class(benchmark_runner_t), intent(inout) :: this
         character(len=:), allocatable :: repo_path
         type(educational_vmec_t), allocatable :: edu_vmec
-        logical :: is_cloned, build_success
+        type(jvmec_t), allocatable :: jvmec
+        logical :: is_cloned, build_success, exists
         
         write(output_unit, '(A)') "Setting up VMEC implementations..."
         
         ! Allocate space for implementations
-        allocate(this%implementations(3))
+        allocate(this%implementations(5))
         this%n_implementations = 0
         
         ! Educational VMEC
@@ -77,7 +79,25 @@ contains
             end if
         end if
         
-        ! TODO: Add other implementations (VMEC2000, VMEC++, jVMEC)
+        ! jVMEC (check for directory presence)
+        repo_path = trim(this%repo_manager%base_path) // "/jvmec"
+        inquire(file=trim(repo_path), exist=exists)
+        if (exists) then
+            allocate(jvmec)
+            call jvmec%initialize("jVMEC", repo_path)
+            
+            if (jvmec%build()) then
+                this%n_implementations = this%n_implementations + 1
+                this%implementations(this%n_implementations)%key = "jvmec"
+                call move_alloc(jvmec, this%implementations(this%n_implementations)%impl)
+                write(output_unit, '(A)') "✓ jVMEC is ready"
+            else
+                write(error_unit, '(A)') "✗ jVMEC setup failed"
+                deallocate(jvmec)
+            end if
+        end if
+        
+        ! TODO: Add other implementations (VMEC2000, VMEC++)
     end subroutine benchmark_runner_setup_implementations
 
     subroutine benchmark_runner_discover_test_cases(this, limit)

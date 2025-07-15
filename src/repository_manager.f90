@@ -39,7 +39,7 @@ contains
         call repos(2)%initialize( &
             name="VMEC2000", &
             url="https://github.com/hiddenSymmetries/VMEC2000.git", &
-            branch="main", &
+            branch="master", &
             build_command="pip", &
             test_data_path="")
         
