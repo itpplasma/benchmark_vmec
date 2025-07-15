@@ -40,7 +40,7 @@ jobs:
     - name: Generate coverage report
       if: always()
       run: |
-        gcovr --root . --exclude 'test/*' --exclude 'build/*' --xml -o coverage.xml --print-summary
+        gcovr --root . --exclude 'build/dependencies/*' --xml -o coverage.xml --print-summary
     
     - name: Upload coverage to Codecov
       if: always()
