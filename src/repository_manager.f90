@@ -31,10 +31,10 @@ contains
         
         call repos(1)%initialize( &
             name="educational_VMEC", &
-            url="https://github.com/hiddenSymmetries/educational_VMEC.git", &
-            branch="main", &
+            url="https://github.com/jonathanschilling/educational_VMEC.git", &
+            branch="master", &
             build_command="cmake", &
-            test_data_path="test/from_STELLOPT_repo")
+            test_data_path="")
         
         call repos(2)%initialize( &
             name="VMEC2000", &
@@ -146,8 +146,8 @@ contains
         write(*, '(A)') "Cloning " // trim(this%repositories(repo_index)%name) // &
             " from " // trim(this%repositories(repo_index)%url)
         
-        ! Clone the repository
-        cmd = "git clone --depth 1 -b " // trim(this%repositories(repo_index)%branch) // &
+        ! Clone the repository with submodules
+        cmd = "git clone --recursive --depth 1 -b " // trim(this%repositories(repo_index)%branch) // &
             " " // trim(this%repositories(repo_index)%url) // " " // trim(repo_path)
         
         call execute_command_line(trim(cmd), exitstat=stat)

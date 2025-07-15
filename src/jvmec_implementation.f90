@@ -36,9 +36,12 @@ contains
         
         write(output_unit, '(A)') "Building jVMEC with Maven"
         
-        ! Build with Maven (skip problematic plugins that require SCM setup)
-        cmd = "cd " // trim(this%path) // " && mvn clean compile package -DskipTests " // &
-              "-Dbuildnumber.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true"
+        ! Build jVMEC - the POM has parent dependency issues that prevent standard build
+        ! Using dependency resolution + manual compilation as workaround
+        ! This follows the same pattern as documented but bypasses the parent POM issue
+        cmd = "cd " // trim(this%path) // " && " // &
+              "mvn dependency:copy-dependencies -DoutputDirectory=target/lib -q && " // &
+              "mvn compiler:compile -Dmaven.compiler.source=11 -Dmaven.compiler.target=11"
         call execute_command_line(trim(cmd), exitstat=stat)
         
         if (stat /= 0) then
@@ -46,17 +49,19 @@ contains
             return
         end if
         
-        ! Look for the JAR file
-        jar_file = trim(this%path) // "/target/jVMEC-1.0.0.jar"
+        ! Check for compiled classes (since we're using compiler:compile)
+        jar_file = trim(this%path) // "/target/classes"
         inquire(file=trim(jar_file), exist=exists)
         
         if (exists) then
-            this%executable = "java -jar " // trim(jar_file)
+            ! Use classpath as documented in CLAUDE.md but with our build output
+            this%executable = "java -cp " // trim(this%path) // "/target/classes:" // &
+                             trim(this%path) // "/target/lib/* de.labathome.jvmec.Vmec"
             this%available = .true.
             success = .true.
-            write(output_unit, '(A)') "Successfully built jVMEC at " // trim(jar_file)
+            write(output_unit, '(A)') "Successfully built jVMEC classes at " // trim(jar_file)
         else
-            write(error_unit, '(A)') "Build completed but JAR file not found"
+            write(error_unit, '(A)') "Build completed but compiled classes not found"
         end if
     end function jvmec_build
 

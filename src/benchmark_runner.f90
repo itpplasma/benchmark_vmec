@@ -4,6 +4,8 @@ module benchmark_runner
     use vmec_implementation_base, only: vmec_implementation_t
     use educational_vmec_implementation, only: educational_vmec_t
     use jvmec_implementation, only: jvmec_t
+    use vmec2000_implementation, only: vmec2000_t
+    use vmecpp_implementation, only: vmecpp_t
     use repository_manager, only: repository_manager_t
     implicit none
     private
@@ -26,6 +28,7 @@ module benchmark_runner
         procedure :: initialize => benchmark_runner_initialize
         procedure :: setup_implementations => benchmark_runner_setup_implementations
         procedure :: discover_test_cases => benchmark_runner_discover_test_cases
+        procedure :: discover_from_all_repos => discover_from_all_repos
         procedure :: run_single_case => benchmark_runner_run_single_case
         procedure :: run_all_cases => benchmark_runner_run_all_cases
         procedure :: get_implementation_names => benchmark_runner_get_implementation_names
@@ -53,12 +56,14 @@ contains
         character(len=:), allocatable :: repo_path
         type(educational_vmec_t), allocatable :: edu_vmec
         type(jvmec_t), allocatable :: jvmec
+        type(vmec2000_t), allocatable :: vmec2000
+        type(vmecpp_t), allocatable :: vmecpp
         logical :: is_cloned, build_success, exists
         
         write(output_unit, '(A)') "Setting up VMEC implementations..."
         
         ! Allocate space for implementations
-        allocate(this%implementations(5))
+        allocate(this%implementations(10))
         this%n_implementations = 0
         
         ! Educational VMEC
@@ -97,7 +102,41 @@ contains
             end if
         end if
         
-        ! TODO: Add other implementations (VMEC2000, VMEC++)
+        ! VMEC2000
+        if (this%repo_manager%is_cloned("VMEC2000")) then
+            repo_path = this%repo_manager%get_repo_path("VMEC2000")
+            
+            allocate(vmec2000)
+            call vmec2000%initialize("VMEC2000", repo_path)
+            
+            if (vmec2000%build()) then
+                this%n_implementations = this%n_implementations + 1
+                this%implementations(this%n_implementations)%key = "vmec2000"
+                call move_alloc(vmec2000, this%implementations(this%n_implementations)%impl)
+                write(output_unit, '(A)') "✓ VMEC2000 is ready"
+            else
+                write(error_unit, '(A)') "✗ VMEC2000 setup failed"
+                deallocate(vmec2000)
+            end if
+        end if
+        
+        ! VMEC++
+        if (this%repo_manager%is_cloned("VMEC++")) then
+            repo_path = this%repo_manager%get_repo_path("VMEC++")
+            
+            allocate(vmecpp)
+            call vmecpp%initialize("VMEC++", repo_path)
+            
+            if (vmecpp%build()) then
+                this%n_implementations = this%n_implementations + 1
+                this%implementations(this%n_implementations)%key = "vmecpp"
+                call move_alloc(vmecpp, this%implementations(this%n_implementations)%impl)
+                write(output_unit, '(A)') "✓ VMEC++ is ready"
+            else
+                write(error_unit, '(A)') "✗ VMEC++ setup failed"
+                deallocate(vmecpp)
+            end if
+        end if
     end subroutine benchmark_runner_setup_implementations
 
     subroutine benchmark_runner_discover_test_cases(this, limit)
@@ -117,52 +156,41 @@ contains
         allocate(this%test_cases(max_cases))
         this%n_test_cases = 0
         
-        ! Check educational_VMEC test data
-        test_path = this%repo_manager%get_test_data_path("educational_VMEC")
-        if (len_trim(test_path) > 0) then
-            ! Find JSON files
-            cmd = "find " // trim(test_path) // " -name '*.json' 2>/dev/null"
-            call execute_command_line(trim(cmd) // " > test_files.tmp", exitstat=stat)
-            
-            if (stat == 0) then
-                open(newunit=unit, file="test_files.tmp", status="old", action="read", iostat=stat)
-                if (stat == 0) then
-                    do
-                        read(unit, '(A)', iostat=stat) line
-                        if (stat /= 0) exit
-                        if (this%n_test_cases < max_cases) then
-                            this%n_test_cases = this%n_test_cases + 1
-                            this%test_cases(this%n_test_cases)%str = trim(line)
-                        end if
-                    end do
-                    close(unit)
-                end if
-            end if
-            
-            ! Find input files
-            cmd = "find " // trim(test_path) // " -name 'input.*' 2>/dev/null"
-            call execute_command_line(trim(cmd) // " >> test_files.tmp", exitstat=stat)
-            
-            if (stat == 0) then
-                open(newunit=unit, file="test_files.tmp", status="old", action="read", iostat=stat)
-                if (stat == 0) then
-                    do
-                        read(unit, '(A)', iostat=stat) line
-                        if (stat /= 0) exit
-                        if (this%n_test_cases < max_cases) then
-                            this%n_test_cases = this%n_test_cases + 1
-                            this%test_cases(this%n_test_cases)%str = trim(line)
-                        end if
-                    end do
-                    close(unit)
-                end if
-            end if
-            
-            call execute_command_line("rm -f test_files.tmp")
-        end if
+        ! Discover test cases from all available repositories
+        call this%discover_from_all_repos(max_cases)
         
         write(output_unit, '(A,I0)') "Total test cases found: ", this%n_test_cases
     end subroutine benchmark_runner_discover_test_cases
+
+    subroutine discover_from_all_repos(this, max_cases)
+        class(benchmark_runner_t), intent(inout) :: this
+        integer, intent(in) :: max_cases
+        character(len=:), allocatable :: cmd
+        character(len=256) :: line
+        integer :: stat, unit
+        
+        ! Search for input files in all repositories
+        cmd = "find " // trim(this%repo_manager%base_path) // " -name 'input.*' -type f 2>/dev/null"
+        call execute_command_line(trim(cmd) // " > test_files.tmp", exitstat=stat)
+        
+        if (stat == 0) then
+            open(newunit=unit, file="test_files.tmp", status="old", action="read", iostat=stat)
+            if (stat == 0) then
+                do
+                    read(unit, '(A)', iostat=stat) line
+                    if (stat /= 0) exit
+                    if (this%n_test_cases < max_cases) then
+                        this%n_test_cases = this%n_test_cases + 1
+                        this%test_cases(this%n_test_cases)%str = trim(line)
+                        write(output_unit, '(A)') "  Found: " // trim(line)
+                    end if
+                end do
+                close(unit)
+            end if
+        end if
+        
+        call execute_command_line("rm -f test_files.tmp")
+    end subroutine discover_from_all_repos
 
     function benchmark_runner_run_single_case(this, test_case_idx, impl_idx, timeout) result(results)
         class(benchmark_runner_t), intent(inout) :: this
