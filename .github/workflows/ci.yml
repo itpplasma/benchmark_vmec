@@ -44,8 +44,8 @@ jobs:
     - name: Build and test
       run: |
         export PATH=$HOME/.local/bin:$PATH
-        fpm build --profile debug
-        fpm test --profile test
+        fpm build --profile debug --compiler gfortran
+        fpm test --compiler gfortran --flag "--coverage -g -O0"
     
     - name: Generate coverage report
       run: |
@@ -67,16 +67,17 @@ jobs:
         lcov --list coverage.info
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.info
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
         verbose: true
+        token: ${{ secrets.CODECOV_TOKEN }}
     
     - name: Upload coverage artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-report
         path: coverage_html/
