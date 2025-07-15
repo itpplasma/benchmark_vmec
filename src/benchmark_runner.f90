@@ -121,8 +121,8 @@ contains
         end if
         
         ! VMEC++
-        if (this%repo_manager%is_cloned("VMEC++")) then
-            repo_path = this%repo_manager%get_repo_path("VMEC++")
+        if (this%repo_manager%is_cloned("vmecpp")) then
+            repo_path = this%repo_manager%get_repo_path("vmecpp")
             
             allocate(vmecpp)
             call vmecpp%initialize("VMEC++", repo_path)

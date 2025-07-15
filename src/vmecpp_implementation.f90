@@ -33,7 +33,10 @@ contains
 
         write(output_unit, '(A)') "Building VMEC++ with pip install"
 
-        cmd = "cd " // trim(this%path) // " && pip install ."
+        ! Use the documented approach for building from local source
+        ! Based on Arch Linux instructions: pip install git+https://github.com/proximafusion/vmecpp
+        ! But since we have local repo, use pip install -e . for editable install
+        cmd = "cd " // trim(this%path) // " && pip install -e ."
         call execute_command_line(trim(cmd), exitstat=stat)
 
         if (stat /= 0) then
