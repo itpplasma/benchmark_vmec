@@ -34,6 +34,19 @@ contains
             return
         end if
         
+        ! Check if already built
+        jar_file = trim(this%path) // "/target/classes"
+        inquire(file=trim(jar_file), exist=exists)
+        if (exists) then
+            ! Already built, just set the executable
+            this%executable = "java -cp " // trim(this%path) // "/target/classes:" // &
+                             trim(this%path) // "/target/lib/* de.labathome.jvmec.Vmec"
+            this%available = .true.
+            success = .true.
+            write(output_unit, '(A)') "jVMEC already built at " // trim(jar_file)
+            return
+        end if
+        
         write(output_unit, '(A)') "Building jVMEC with Maven"
         
         ! Build jVMEC - the POM has parent dependency issues that prevent standard build

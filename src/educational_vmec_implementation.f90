@@ -22,7 +22,8 @@ contains
         class(educational_vmec_t), intent(inout) :: this
         logical :: success
         character(len=:), allocatable :: build_dir, cmd
-        integer :: stat
+        character(len=1000) :: temp_path
+        integer :: stat, i, unit
         logical :: exists
         
         success = .false.
@@ -35,6 +36,36 @@ contains
         end if
         
         build_dir = trim(this%path) // "/build"
+        
+        ! Check if already built
+        inquire(file=trim(build_dir) // "/bin/xvmec", exist=exists)
+        if (exists) then
+            ! Already built, just set the absolute executable path
+            call execute_command_line("realpath " // trim(this%path) // " > /tmp/vmec_path.tmp", exitstat=stat)
+            if (stat == 0) then
+                open(newunit=unit, file="/tmp/vmec_path.tmp", status="old", action="read")
+                read(unit, '(A)', iostat=i) temp_path
+                close(unit)
+                if (i == 0) then
+                    this%executable = trim(adjustl(temp_path)) // "/build/bin/xvmec"
+                end if
+            else
+                ! Fallback to current working directory + relative path
+                call execute_command_line("pwd > /tmp/vmec_pwd.tmp", exitstat=stat)
+                if (stat == 0) then
+                    open(newunit=unit, file="/tmp/vmec_pwd.tmp", status="old", action="read")
+                    read(unit, '(A)', iostat=i) temp_path
+                    close(unit)
+                    if (i == 0) then
+                        this%executable = trim(adjustl(temp_path)) // "/" // trim(build_dir) // "/bin/xvmec"
+                    end if
+                end if
+            end if
+            this%available = .true.
+            success = .true.
+            write(output_unit, '(A)') "Educational VMEC already built at " // trim(this%executable)
+            return
+        end if
         
         ! Create build directory
         call execute_command_line("mkdir -p " // trim(build_dir), exitstat=stat)
@@ -61,11 +92,33 @@ contains
             return
         end if
         
-        ! Check if executable exists
+        ! Check if executable exists and store absolute path
         this%executable = trim(build_dir) // "/bin/xvmec"
         inquire(file=trim(this%executable), exist=exists)
         
         if (exists) then
+            ! Set absolute path using the same method as for pre-built
+            call execute_command_line("realpath " // trim(this%path) // " > /tmp/vmec_path.tmp", exitstat=stat)
+            if (stat == 0) then
+                open(newunit=unit, file="/tmp/vmec_path.tmp", status="old", action="read")
+                read(unit, '(A)', iostat=i) temp_path
+                close(unit)
+                if (i == 0) then
+                    this%executable = trim(adjustl(temp_path)) // "/build/bin/xvmec"
+                end if
+            else
+                ! Fallback: create absolute path manually
+                call execute_command_line("pwd > /tmp/vmec_pwd.tmp", exitstat=stat)
+                if (stat == 0) then
+                    open(newunit=unit, file="/tmp/vmec_pwd.tmp", status="old", action="read")
+                    read(unit, '(A)', iostat=i) temp_path
+                    close(unit)
+                    if (i == 0) then
+                        this%executable = trim(adjustl(temp_path)) // "/" // trim(build_dir) // "/bin/xvmec"
+                    end if
+                end if
+            end if
+            
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "Successfully built Educational VMEC at " // trim(this%executable)
@@ -117,6 +170,9 @@ contains
         cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // &
               " " // trim(this%executable) // " " // get_basename(local_input) // &
               " > educational_vmec.log 2>&1"
+        
+        ! Debug: print the command being executed
+        write(output_unit, '(A)') "DEBUG: Running command: " // trim(cmd)
         
         call execute_command_line(trim(cmd), exitstat=stat)
         

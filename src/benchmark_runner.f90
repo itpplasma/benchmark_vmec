@@ -73,7 +73,13 @@ contains
             allocate(edu_vmec)
             call edu_vmec%initialize("Educational_VMEC", repo_path)
             
-            if (edu_vmec%build()) then
+            ! Check if already built, if so skip build step
+            if (edu_vmec%is_available()) then
+                this%n_implementations = this%n_implementations + 1
+                this%implementations(this%n_implementations)%key = "educational_vmec"
+                call move_alloc(edu_vmec, this%implementations(this%n_implementations)%impl)
+                write(output_unit, '(A)') "✓ Educational VMEC is ready (already built)"
+            else if (edu_vmec%build()) then
                 this%n_implementations = this%n_implementations + 1
                 this%implementations(this%n_implementations)%key = "educational_vmec"
                 call move_alloc(edu_vmec, this%implementations(this%n_implementations)%impl)
@@ -91,7 +97,13 @@ contains
             allocate(jvmec)
             call jvmec%initialize("jVMEC", repo_path)
             
-            if (jvmec%build()) then
+            ! Check if already built, if so skip build step
+            if (jvmec%is_available()) then
+                this%n_implementations = this%n_implementations + 1
+                this%implementations(this%n_implementations)%key = "jvmec"
+                call move_alloc(jvmec, this%implementations(this%n_implementations)%impl)
+                write(output_unit, '(A)') "✓ jVMEC is ready (already built)"
+            else if (jvmec%build()) then
                 this%n_implementations = this%n_implementations + 1
                 this%implementations(this%n_implementations)%key = "jvmec"
                 call move_alloc(jvmec, this%implementations(this%n_implementations)%impl)
@@ -109,7 +121,13 @@ contains
             allocate(vmec2000)
             call vmec2000%initialize("VMEC2000", repo_path)
             
-            if (vmec2000%build()) then
+            ! Check if already built, if so skip build step
+            if (vmec2000%is_available()) then
+                this%n_implementations = this%n_implementations + 1
+                this%implementations(this%n_implementations)%key = "vmec2000"
+                call move_alloc(vmec2000, this%implementations(this%n_implementations)%impl)
+                write(output_unit, '(A)') "✓ VMEC2000 is ready (already built)"
+            else if (vmec2000%build()) then
                 this%n_implementations = this%n_implementations + 1
                 this%implementations(this%n_implementations)%key = "vmec2000"
                 call move_alloc(vmec2000, this%implementations(this%n_implementations)%impl)
@@ -127,7 +145,13 @@ contains
             allocate(vmecpp)
             call vmecpp%initialize("VMEC++", repo_path)
             
-            if (vmecpp%build()) then
+            ! Check if already built, if so skip build step
+            if (vmecpp%is_available()) then
+                this%n_implementations = this%n_implementations + 1
+                this%implementations(this%n_implementations)%key = "vmecpp"
+                call move_alloc(vmecpp, this%implementations(this%n_implementations)%impl)
+                write(output_unit, '(A)') "✓ VMEC++ is ready (already built)"
+            else if (vmecpp%build()) then
                 this%n_implementations = this%n_implementations + 1
                 this%implementations(this%n_implementations)%key = "vmecpp"
                 call move_alloc(vmecpp, this%implementations(this%n_implementations)%impl)

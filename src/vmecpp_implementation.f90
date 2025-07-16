@@ -30,6 +30,18 @@ contains
             write(error_unit, '(A)') "VMEC++ path does not exist: " // trim(this%path)
             return
         end if
+        
+        ! Check if already built by testing if vmecpp module can be imported
+        cmd = 'cd ' // trim(this%path) // ' && python -c "import vmecpp; print(''VMEC++ available'')"'
+        call execute_command_line(trim(cmd), exitstat=stat)
+        if (stat == 0) then
+            ! Already built
+            this%executable = 'python -c "import vmecpp; print(''VMEC++ ready'')"'
+            this%available = .true.
+            success = .true.
+            write(output_unit, '(A)') "VMEC++ already built (Python module available)"
+            return
+        end if
 
         write(output_unit, '(A)') "Building VMEC++ with pip install"
 

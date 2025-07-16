@@ -30,6 +30,18 @@ contains
             write(error_unit, '(A)') "VMEC2000 path does not exist: " // trim(this%path)
             return
         end if
+        
+        ! Check if already built by testing if vmec module can be imported
+        cmd = 'cd ' // trim(this%path) // ' && python -c "import vmec; print(''VMEC2000 available'')"'
+        call execute_command_line(trim(cmd), exitstat=stat)
+        if (stat == 0) then
+            ! Already built
+            this%executable = 'python -c "import vmec; print(''VMEC2000 ready'')"'
+            this%available = .true.
+            success = .true.
+            write(output_unit, '(A)') "VMEC2000 already built (Python module available)"
+            return
+        end if
 
         write(output_unit, '(A)') "Building VMEC2000 with pip install"
 
