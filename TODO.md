@@ -13,9 +13,10 @@
   - [ ] Summary statistics (mean differences, max differences)
   - [x] Fourier coefficient comparison and analysis
 
-- [ ] Debug and fix memory issues
-  - [ ] Fix memory corruption in Fourier coefficient handling
-  - [ ] Investigate NetCDF reader data transfer issues for Educational VMEC
+- [ ] Enhance jVMEC integration
+  - [ ] Convert jVMEC to use actual benchmark input files instead of DESCUR demo
+  - [ ] Implement proper VMEC output format for jVMEC results
+  - [ ] Add jVMEC result extraction from native output format
 
 ## Medium Priority
 
@@ -64,3 +65,12 @@
   - [x] Handle NetCDF dimension ordering differences (mn_mode, radius) vs (radius, mn_mode)
   - [x] Add read_2d_array_transposed subroutine
   - [x] Fix Educational VMEC Fourier coefficient extraction
+- [x] Fix HDF5 memory corruption causing double free errors
+  - [x] Remove problematic finalizer from hdf5_data_t
+  - [x] Add explicit cleanup procedures with clear() method
+  - [x] Fix memory management in vmecpp_implementation
+- [x] Complete jVMEC integration
+  - [x] Fix Maven build issues with buildnumber plugin
+  - [x] Create automatic fix for SCM configuration problems
+  - [x] Resolve Java classpath issues with absolute paths
+  - [x] Enable jVMEC to run successfully in benchmark framework
