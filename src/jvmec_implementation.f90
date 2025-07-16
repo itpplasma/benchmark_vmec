@@ -14,6 +14,7 @@ module jvmec_implementation
         procedure :: run_case => jvmec_run_case
         procedure :: extract_results => jvmec_extract_results
         procedure :: convert_json_to_indata => jvmec_convert_json_to_indata
+        procedure :: clean_input_for_jvmec => jvmec_clean_input_for_jvmec
     end type jvmec_t
 
 contains
@@ -41,7 +42,7 @@ contains
         if (exists) then
             ! Already built, set executable with absolute path including dependencies
             this%executable = "java -cp /home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/jVMEC-1.0.0.jar:" // &
-                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/lib/* de.labathome.jdescur.DESCUR"
+                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/lib/* de.labathome.jvmec.VmecRunner"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "jVMEC already built at " // trim(jar_file)
@@ -54,7 +55,7 @@ contains
         if (exists) then
             ! Already built, just set the executable using classes dir with dependencies
             this%executable = "java -cp /home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/classes:" // &
-                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/lib/* de.labathome.jdescur.DESCUR"
+                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/lib/* de.labathome.jvmec.VmecRunner"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "jVMEC already built at " // trim(jar_file)
@@ -101,7 +102,7 @@ contains
             call execute_command_line(trim(cmd), exitstat=stat)
             
             this%executable = "java -cp /home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/jVMEC-1.0.0.jar:" // &
-                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/lib/* de.labathome.jdescur.DESCUR"
+                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/lib/* de.labathome.jvmec.VmecRunner"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "Successfully built jVMEC JAR at " // trim(jar_file)
@@ -129,16 +130,31 @@ contains
             return
         end if
         
-        ! jVMEC runs DESCUR demo which doesn't use our input files
-        ! This is a working solution that demonstrates jVMEC integration
-        write(output_unit, '(A)') "jVMEC currently runs DESCUR demo, not custom input files"
-        
         timeout_val = 300
         if (present(timeout)) timeout_val = timeout
         
-        ! Run DESCUR demo for now
+        ! Check if input is JSON format (VMEC++ style)
+        is_json = index(input_file, ".json") > 0
+        
+        if (is_json) then
+            ! Convert JSON to VMEC namelist format
+            indata_file = trim(output_dir) // "/input." // get_basename(input_file)
+            if (.not. this%convert_json_to_indata(input_file, indata_file)) return
+        else
+            ! Copy input file to output directory and clean it for jVMEC
+            indata_file = input_file
+        end if
+        
+        ! Create a cleaned version of the input file for jVMEC
+        local_input = trim(output_dir) // "/input_cleaned.txt"
+        if (.not. this%clean_input_for_jvmec(indata_file, local_input)) then
+            write(error_unit, '(A)') "Failed to clean input file for jVMEC"
+            return
+        end if
+        
+        ! Run jVMEC with VmecRunner using the cleaned input file
         cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // " " // &
-              trim(this%executable) // " > jvmec.log 2>&1"
+              trim(this%executable) // " " // get_basename(local_input) // " ./ > jvmec.log 2>&1"
         
         ! Debug: print the command being run
         write(output_unit, '(A)') "DEBUG: Running command: " // trim(cmd)
@@ -146,9 +162,11 @@ contains
         
         if (stat == 0) then
             success = .true.
-            write(output_unit, '(A)') "jVMEC (DESCUR) completed successfully"
+            write(output_unit, '(A)') "jVMEC completed successfully"
+        else if (stat == 124) then
+            write(error_unit, '(A)') "jVMEC timed out for " // get_basename(input_file)
         else
-            write(error_unit, '(A)') "jVMEC (DESCUR) failed with exit status: " // int_to_str(stat)
+            write(error_unit, '(A)') "jVMEC failed with exit status: " // int_to_str(stat)
         end if
     end function jvmec_run_case
 
@@ -162,22 +180,36 @@ contains
         
         call results%clear()
         
-        ! For DESCUR demo, check if log file exists and indicates success
-        log_file = trim(output_dir) // "/jvmec.log"
-        inquire(file=trim(log_file), exist=exists)
+        ! Look for VMEC output files (wout.nc or wout_*.nc)
+        call execute_command_line("find " // trim(output_dir) // " -name 'wout*.nc' -type f | head -1", &
+                                exitstat=stat, cmdmsg=log_file)
         
-        if (exists) then
-            ! Check if DESCUR converged by looking for "gradient converged" in log
-            call execute_command_line("grep -q 'gradient converged' " // trim(log_file), &
-                                    exitstat=stat)
-            if (stat == 0) then
+        if (stat == 0 .and. len_trim(log_file) > 0) then
+            ! Found wout file, check if it exists and is valid
+            inquire(file=trim(adjustl(log_file)), exist=exists)
+            if (exists) then
                 results%success = .true.
-                results%error_message = "jVMEC (DESCUR) demo completed successfully"
+                results%error_message = "jVMEC completed successfully"
             else
-                results%error_message = "jVMEC (DESCUR) did not converge"
+                results%error_message = "jVMEC wout file not found"
             end if
         else
-            results%error_message = "No jVMEC log file found"
+            ! No wout file found, check log for convergence
+            log_file = trim(output_dir) // "/jvmec.log"
+            inquire(file=trim(log_file), exist=exists)
+            if (exists) then
+                ! Check if VMEC converged by looking for convergence indicators
+                call execute_command_line("grep -q -i 'execution terminated normally\|converged\|success' " // trim(log_file), &
+                                        exitstat=stat)
+                if (stat == 0) then
+                    results%success = .true.
+                    results%error_message = "jVMEC completed but no NetCDF output found"
+                else
+                    results%error_message = "jVMEC failed - check log file"
+                end if
+            else
+                results%error_message = "No jVMEC output or log files found"
+            end if
         end if
     end subroutine jvmec_extract_results
 
@@ -302,5 +334,55 @@ contains
             write(error_unit, '(A)') "Failed to patch POM file"
         end if
     end subroutine fix_jvmec_pom_scm_issue
+
+    ! Clean input file for jVMEC by removing problematic comments and formatting
+    function jvmec_clean_input_for_jvmec(this, input_file, output_file) result(success)
+        class(jvmec_t), intent(in) :: this
+        character(len=*), intent(in) :: input_file
+        character(len=*), intent(in) :: output_file
+        logical :: success
+        character(len=1000) :: line
+        integer :: input_unit, output_unit, stat, comment_pos
+        
+        success = .false.
+        
+        ! Use system commands to avoid Fortran I/O issues
+        call execute_command_line("cp " // trim(input_file) // " " // trim(output_file), exitstat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to copy input file"
+            return
+        end if
+        
+        ! Remove comments using sed
+        call execute_command_line("sed -i 's/!.*$//' " // trim(output_file), exitstat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to remove comments"
+            return
+        end if
+        
+        ! Remove empty lines
+        call execute_command_line("sed -i '/^[[:space:]]*$/d' " // trim(output_file), exitstat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to remove empty lines"
+            return
+        end if
+        
+        ! Fix array syntax - remove (:) from variable names
+        call execute_command_line("sed -i 's/(:)//' " // trim(output_file), exitstat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to fix array syntax"
+            return
+        end if
+        
+        ! Remove trailing commas at end of lines
+        call execute_command_line("sed -i 's/,$//' " // trim(output_file), exitstat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to remove trailing commas"
+            return
+        end if
+        
+        success = .true.
+        write(*, '(A)') "Cleaned input file for jVMEC: " // trim(output_file)
+    end function jvmec_clean_input_for_jvmec
 
 end module jvmec_implementation
