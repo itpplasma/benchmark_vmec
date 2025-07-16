@@ -34,13 +34,26 @@ contains
             return
         end if
         
-        ! Check if already built
+        ! Check if already built (JAR file)
+        jar_file = trim(this%path) // "/target/jVMEC-1.0.0.jar"
+        inquire(file=trim(jar_file), exist=exists)
+        if (exists) then
+            ! Already built, just set the executable
+            this%executable = "java -cp " // trim(jar_file) // ":" // &
+                             trim(this%path) // "/target/lib/* de.labathome.jdescur.DESCUR"
+            this%available = .true.
+            success = .true.
+            write(output_unit, '(A)') "jVMEC already built at " // trim(jar_file)
+            return
+        end if
+        
+        ! Check if classes directory exists (alternative build method)
         jar_file = trim(this%path) // "/target/classes"
         inquire(file=trim(jar_file), exist=exists)
         if (exists) then
             ! Already built, just set the executable
             this%executable = "java -cp " // trim(this%path) // "/target/classes:" // &
-                             trim(this%path) // "/target/lib/* de.labathome.jvmec.Vmec"
+                             trim(this%path) // "/target/lib/* de.labathome.jdescur.DESCUR"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "jVMEC already built at " // trim(jar_file)
@@ -49,32 +62,46 @@ contains
         
         write(output_unit, '(A)') "Building jVMEC with Maven"
         
-        ! Build jVMEC - the POM has parent dependency issues that prevent standard build
-        ! Using dependency resolution + manual compilation as workaround
-        ! This follows the same pattern as documented but bypasses the parent POM issue
+        ! Build jVMEC - automatic fix for buildnumber plugin issue
+        ! The buildnumber plugin fails due to undefined SCM variables in parent POM
+        ! We need to disable SCM checks and skip javadoc to build successfully
         cmd = "cd " // trim(this%path) // " && " // &
-              "mvn dependency:copy-dependencies -DoutputDirectory=target/lib -q && " // &
-              "mvn compiler:compile -Dmaven.compiler.source=11 -Dmaven.compiler.target=11"
+              "mvn clean package -DskipTests " // &
+              "-Dmaven.buildNumber.doCheck=false " // &
+              "-Dmaven.buildNumber.doUpdate=false " // &
+              "-Dmaven.javadoc.skip=true -q"
         call execute_command_line(trim(cmd), exitstat=stat)
         
         if (stat /= 0) then
-            write(error_unit, '(A)') "Failed to build jVMEC with Maven"
-            return
+            write(error_unit, '(A)') "Failed to build jVMEC with Maven - trying fallback approach"
+            ! Fallback: try to patch POM and build again
+            call fix_jvmec_pom_scm_issue(this%path)
+            cmd = "cd " // trim(this%path) // " && " // &
+                  "mvn clean package -DskipTests " // &
+                  "-Dmaven.buildNumber.doCheck=false " // &
+                  "-Dmaven.buildNumber.doUpdate=false " // &
+                  "-Dmaven.javadoc.skip=true -q"
+            call execute_command_line(trim(cmd), exitstat=stat)
+            
+            if (stat /= 0) then
+                write(error_unit, '(A)') "Failed to build jVMEC even with POM fixes"
+                return
+            end if
         end if
         
-        ! Check for compiled classes (since we're using compiler:compile)
-        jar_file = trim(this%path) // "/target/classes"
+        ! Check for built JAR file
+        jar_file = trim(this%path) // "/target/jVMEC-1.0.0.jar"
         inquire(file=trim(jar_file), exist=exists)
         
         if (exists) then
-            ! Use test runner instead of direct Vmec class
-            this%executable = "java -cp " // trim(this%path) // "/target/classes:" // &
-                             trim(this%path) // "/target/lib/* de.labathome.jvmec.Vmec"
+            ! Use the built JAR with main class
+            this%executable = "java -cp " // trim(jar_file) // ":" // &
+                             trim(this%path) // "/target/lib/* de.labathome.jdescur.DESCUR"
             this%available = .true.
             success = .true.
-            write(output_unit, '(A)') "Successfully built jVMEC classes at " // trim(jar_file)
+            write(output_unit, '(A)') "Successfully built jVMEC JAR at " // trim(jar_file)
         else
-            write(error_unit, '(A)') "Build completed but compiled classes not found"
+            write(error_unit, '(A)') "Build completed but JAR file not found"
         end if
     end function jvmec_build
 
@@ -244,5 +271,41 @@ contains
         write(temp, '(I0)') i
         str = trim(temp)
     end function int_to_str
+
+    ! Automatically fix jVMEC POM SCM issue to enable building
+    ! 
+    ! Problem: The buildnumber-maven-plugin fails with "The scm url does not contain a valid delimiter"
+    ! Root cause: SCM URLs in POM use undefined Maven variables ${minervacentral.git.root} and ${minervacentral.git.url}
+    ! Solution: Comment out the SCM section in POM to prevent buildnumber plugin from parsing invalid URLs
+    ! This allows the build to proceed with -Dmaven.buildNumber.doCheck=false flags
+    subroutine fix_jvmec_pom_scm_issue(jvmec_path)
+        character(len=*), intent(in) :: jvmec_path
+        character(len=:), allocatable :: pom_file, cmd
+        integer :: stat
+        logical :: exists
+        
+        pom_file = trim(jvmec_path) // "/pom.xml"
+        inquire(file=trim(pom_file), exist=exists)
+        
+        if (.not. exists) then
+            write(error_unit, '(A)') "POM file not found: " // trim(pom_file)
+            return
+        end if
+        
+        write(output_unit, '(A)') "Applying automatic fix for jVMEC buildnumber plugin issue"
+        
+        ! Comment out problematic SCM section in POM
+        ! This fixes the undefined SCM variables that cause buildnumber plugin to fail
+        cmd = "cd " // trim(jvmec_path) // " && " // &
+              "sed -i 's|<scm>|<!-- <scm>|g' pom.xml && " // &
+              "sed -i 's|</scm>|</scm> -->|g' pom.xml"
+        call execute_command_line(trim(cmd), exitstat=stat)
+        
+        if (stat == 0) then
+            write(output_unit, '(A)') "Successfully patched POM to disable SCM section"
+        else
+            write(error_unit, '(A)') "Failed to patch POM file"
+        end if
+    end subroutine fix_jvmec_pom_scm_issue
 
 end module jvmec_implementation
