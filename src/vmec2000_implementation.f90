@@ -45,14 +45,24 @@ contains
 
         write(output_unit, '(A)') "Building VMEC2000 with pip install"
 
-        ! Update cmake config file for Arch Linux paths
+        ! Install dependencies first
+        cmd = "pip install numpy mpi4py"
+        call execute_command_line(trim(cmd), exitstat=stat)
+        
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to install VMEC2000 dependencies"
+            return
+        end if
+
+        ! Update cmake config file for Arch Linux paths if needed
         cmd = "cd " // trim(this%path) // " && " // &
+              "if [ -f cmake_config_file.json ]; then " // &
               "cp cmake_config_file.json cmake_config_file.json.bak && " // &
               "sed -i 's|/usr/lib64/openmpi/bin/mpicc|/usr/bin/mpicc|g' cmake_config_file.json && " // &
               "sed -i 's|/usr/lib64/openmpi/bin/mpifort|/usr/bin/mpifort|g' cmake_config_file.json && " // &
               "sed -i 's|/usr/include/openmpi-x86_64|/usr/include|g' cmake_config_file.json && " // &
-              "sed -i 's|/usr/lib64/openmpi/lib|/usr/lib|g' cmake_config_file.json && " // &
-              "pip install numpy && pip install ."
+              "sed -i 's|/usr/lib64/openmpi/lib|/usr/lib|g' cmake_config_file.json; fi && " // &
+              "pip install ."
         call execute_command_line(trim(cmd), exitstat=stat)
 
         if (stat /= 0) then
@@ -101,7 +111,12 @@ contains
         write(unit, '(A)') "import sys"
         write(unit, '(A)') "import os"
         write(unit, '(A)') "import numpy as np"
-        write(unit, '(A)') "from mpi4py import MPI"
+        write(unit, '(A)') "try:"
+        write(unit, '(A)') "    from mpi4py import MPI"
+        write(unit, '(A)') "    fcomm = MPI.COMM_WORLD.py2f()"
+        write(unit, '(A)') "except ImportError:"
+        write(unit, '(A)') "    # Fallback for systems without MPI"
+        write(unit, '(A)') "    fcomm = -1"
         write(unit, '(A)') "try:"
         write(unit, '(A)') "    import vmec"
         write(unit, '(A)') "    os.chdir('" // trim(output_dir) // "')"
@@ -109,7 +124,6 @@ contains
         write(unit, '(A)') "    ictrl = np.zeros(5, dtype=np.int32)"
         write(unit, '(A)') "    verbose = True"
         write(unit, '(A)') "    reset_file = ''"
-        write(unit, '(A)') "    fcomm = MPI.COMM_WORLD.py2f()"
         write(unit, '(A)') "    # Run VMEC: readin + timestep + output + cleanup"
         write(unit, '(A)') "    ictrl[0] = 2 + 4 + 8 + 16"
         write(unit, '(A)') "    vmec.runvmec(ictrl, '" // get_basename(local_input) // "', verbose, fcomm, reset_file)"

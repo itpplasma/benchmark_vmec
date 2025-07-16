@@ -141,7 +141,61 @@ contains
             if (verbose) write(output_unit, '(A)') "jVMEC not found"
         end if
         
-        ! TODO: Add VMEC2000 and VMEC++ builds
+        ! VMEC2000
+        if (repo_manager%is_cloned("VMEC2000")) then
+            n_total = n_total + 1
+            repo_path = repo_manager%get_repo_path("VMEC2000")
+            
+            if (verbose) write(output_unit, '(A)') "Found VMEC2000 at: " // repo_path
+            
+            ! Use VMEC2000 implementation
+            block
+                use vmec2000_implementation, only: vmec2000_t
+                type(vmec2000_t), allocatable :: vmec2000
+                allocate(vmec2000)
+                call vmec2000%initialize("VMEC2000", repo_path)
+                
+                write(output_unit, '(A)', advance='no') "Building VMEC2000... "
+                if (vmec2000%build()) then
+                    write(output_unit, '(A)') "✓ SUCCESS"
+                    n_built = n_built + 1
+                else
+                    write(output_unit, '(A)') "✗ FAILED"
+                    exit_code = 1
+                end if
+                deallocate(vmec2000)
+            end block
+        else
+            if (verbose) write(output_unit, '(A)') "VMEC2000 not found"
+        end if
+        
+        ! VMEC++
+        if (repo_manager%is_cloned("vmecpp")) then
+            n_total = n_total + 1
+            repo_path = repo_manager%get_repo_path("vmecpp")
+            
+            if (verbose) write(output_unit, '(A)') "Found VMEC++ at: " // repo_path
+            
+            ! Use VMEC++ implementation
+            block
+                use vmecpp_implementation, only: vmecpp_t
+                type(vmecpp_t), allocatable :: vmecpp
+                allocate(vmecpp)
+                call vmecpp%initialize("VMEC++", repo_path)
+                
+                write(output_unit, '(A)', advance='no') "Building VMEC++... "
+                if (vmecpp%build()) then
+                    write(output_unit, '(A)') "✓ SUCCESS"
+                    n_built = n_built + 1
+                else
+                    write(output_unit, '(A)') "✗ FAILED"
+                    exit_code = 1
+                end if
+                deallocate(vmecpp)
+            end block
+        else
+            if (verbose) write(output_unit, '(A)') "VMEC++ not found"
+        end if
         
         write(output_unit, '(A)') ""
         write(output_unit, '(A,I0,A,I0,A)') "Built ", n_built, " out of ", n_total, " implementations"

@@ -19,8 +19,9 @@ contains
     function vmecpp_build(this) result(success)
         class(vmecpp_t), intent(inout) :: this
         logical :: success
-        character(len=:), allocatable :: cmd
-        integer :: stat
+        character(len=:), allocatable :: cmd, build_dir
+        character(len=1000) :: temp_path
+        integer :: stat, i, unit
         logical :: exists
 
         success = .false.
@@ -31,35 +32,74 @@ contains
             return
         end if
         
-        ! Check if already built by testing if vmecpp module can be imported
-        cmd = 'cd ' // trim(this%path) // ' && python -c "import vmecpp; print(''VMEC++ available'')"'
-        call execute_command_line(trim(cmd), exitstat=stat)
+        build_dir = trim(this%path) // "/build"
+        
+        ! Store absolute path
+        call execute_command_line("realpath " // trim(build_dir) // " > /tmp/vmecpp_build_path.tmp", exitstat=stat)
         if (stat == 0) then
-            ! Already built
-            this%executable = 'python -c "import vmecpp; print(''VMEC++ ready'')"'
+            open(newunit=unit, file="/tmp/vmecpp_build_path.tmp", status="old", action="read")
+            read(unit, '(A)', iostat=i) temp_path
+            close(unit)
+            if (i == 0) then
+                this%executable = trim(adjustl(temp_path)) // "/vmec_standalone"
+            else
+                this%executable = trim(build_dir) // "/vmec_standalone"
+            end if
+        else
+            this%executable = trim(build_dir) // "/vmec_standalone"
+        end if
+        
+        ! Check if already built
+        inquire(file=trim(this%executable), exist=exists)
+        if (exists) then
             this%available = .true.
             success = .true.
-            write(output_unit, '(A)') "VMEC++ already built (Python module available)"
+            write(output_unit, '(A)') "VMEC++ already built at " // trim(this%executable)
             return
         end if
 
-        write(output_unit, '(A)') "Building VMEC++ with pip install"
+        write(output_unit, '(A)') "Building VMEC++ standalone executable with CMake"
 
-        ! Use the documented approach for building from local source
-        ! Based on Arch Linux instructions: pip install git+https://github.com/proximafusion/vmecpp
-        ! But since we have local repo, use pip install -e . for editable install
-        cmd = "cd " // trim(this%path) // " && pip install -e ."
+        ! Create build directory
+        call execute_command_line("mkdir -p " // trim(build_dir), exitstat=stat)
+        
+        ! Configure with CMake
+        cmd = "cd " // trim(build_dir) // " && cmake .."
+        call execute_command_line(trim(cmd), exitstat=stat)
+        
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to configure VMEC++ with CMake"
+            return
+        end if
+        
+        ! Build the standalone executable
+        cmd = "cd " // trim(build_dir) // " && make -j vmec_standalone"
         call execute_command_line(trim(cmd), exitstat=stat)
 
         if (stat /= 0) then
-            write(error_unit, '(A)') "Failed to build VMEC++ with pip"
+            write(error_unit, '(A)') "Failed to build VMEC++ standalone executable"
             return
         end if
-
-        this%executable = 'python -c "import vmecpp; print(''VMEC++ ready'')"'
-        this%available = .true.
-        success = .true.
-        write(output_unit, '(A)') "Successfully built VMEC++ Python package"
+        
+        ! Check if executable exists and get absolute path
+        inquire(file=trim(this%executable), exist=exists)
+        if (exists) then
+            ! Get absolute path again to make sure it's correct
+            call execute_command_line("realpath " // trim(this%executable) // " > /tmp/vmecpp_exec_path.tmp", exitstat=stat)
+            if (stat == 0) then
+                open(newunit=unit, file="/tmp/vmecpp_exec_path.tmp", status="old", action="read")
+                read(unit, '(A)', iostat=i) temp_path
+                close(unit)
+                if (i == 0) then
+                    this%executable = trim(adjustl(temp_path))
+                end if
+            end if
+            this%available = .true.
+            success = .true.
+            write(output_unit, '(A)') "Successfully built VMEC++ standalone at " // trim(this%executable)
+        else
+            write(error_unit, '(A)') "Build completed but executable not found"
+        end if
     end function vmecpp_build
 
     function vmecpp_run_case(this, input_file, output_dir, timeout) result(success)
@@ -68,8 +108,9 @@ contains
         character(len=*), intent(in) :: output_dir
         integer, intent(in), optional :: timeout
         logical :: success
-        character(len=:), allocatable :: local_input, cmd, python_script, wout_name
-        integer :: stat, timeout_val, unit
+        character(len=:), allocatable :: local_input, cmd
+        integer :: stat, timeout_val
+        logical :: exists
 
         success = .false.
 
@@ -83,36 +124,34 @@ contains
         timeout_val = 300
         if (present(timeout)) timeout_val = timeout
 
-        local_input = trim(output_dir) // "/" // get_basename(input_file)
-        cmd = "cp " // trim(input_file) // " " // trim(local_input)
-        call execute_command_line(trim(cmd), exitstat=stat)
-
-        wout_name = "wout_" // get_case_name(input_file) // ".nc"
-
-        python_script = trim(output_dir) // "/run_vmecpp.py"
-        open(newunit=unit, file=python_script, status='replace', action='write', iostat=stat)
-        if (stat /= 0) then
-            write(error_unit, '(A)') "Failed to create Python script"
-            return
+        ! Look for corresponding JSON file first
+        if (index(input_file, ".json") > 0) then
+            ! Already a JSON file
+            local_input = trim(output_dir) // "/" // get_basename(input_file)
+            cmd = "cp " // trim(input_file) // " " // trim(local_input)
+            call execute_command_line(trim(cmd), exitstat=stat)
+        else
+            ! Try to find corresponding JSON file
+            local_input = get_json_filename(input_file)
+            inquire(file=local_input, exist=exists)
+            if (exists) then
+                ! Copy the JSON file instead
+                local_input = trim(output_dir) // "/" // get_basename(local_input)
+                cmd = "cp " // get_json_filename(input_file) // " " // trim(local_input)
+                call execute_command_line(trim(cmd), exitstat=stat)
+            else
+                write(error_unit, '(A)') "No JSON file found for VMEC++ input: " // trim(input_file)
+                return
+            end if
         end if
 
-        write(unit, '(A)') "import sys"
-        write(unit, '(A)') "import os"
-        write(unit, '(A)') "try:"
-        write(unit, '(A)') "    import vmecpp"
-        write(unit, '(A)') "    os.chdir('" // trim(output_dir) // "')"
-        write(unit, '(A)') "    vmec_input = vmecpp.VmecInput.from_file('" // get_basename(local_input) // "')"
-        write(unit, '(A)') "    vmec_output = vmecpp.run(vmec_input)"
-        write(unit, '(A)') "    vmec_output.wout.save('" // trim(wout_name) // "')"
-        write(unit, '(A)') "    print('VMEC++ run completed successfully')"
-        write(unit, '(A)') "except Exception as e:"
-        write(unit, '(A)') "    print(f'VMEC++ failed: {e}')"
-        write(unit, '(A)') "    sys.exit(1)"
-        close(unit)
-
+        ! Run VMEC++ standalone executable
         cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // &
-              " python " // trim(python_script) // " > vmecpp.log 2>&1"
+              " " // trim(this%executable) // " " // get_basename(local_input) // &
+              " > vmecpp.log 2>&1"
 
+        write(output_unit, '(A)') "DEBUG: Running command: " // trim(cmd)
+        
         call execute_command_line(trim(cmd), exitstat=stat)
 
         if (stat == 0) then
@@ -192,5 +231,30 @@ contains
         write(temp, '(I0)') i
         str = trim(temp)
     end function int_to_str
+
+    function get_json_filename(input_file) result(json_file)
+        character(len=*), intent(in) :: input_file
+        character(len=:), allocatable :: json_file
+        integer :: last_slash, last_dot
+        character(len=:), allocatable :: base_name, dir_name
+        
+        ! Get directory part
+        last_slash = index(input_file, '/', back=.true.)
+        if (last_slash > 0) then
+            dir_name = input_file(1:last_slash-1)
+            base_name = input_file(last_slash+1:)
+        else
+            dir_name = "."
+            base_name = input_file
+        end if
+        
+        ! Remove input. prefix if present
+        if (index(base_name, "input.") == 1) then
+            base_name = base_name(7:)
+        end if
+        
+        ! Construct JSON filename
+        json_file = trim(dir_name) // "/" // trim(base_name) // ".json"
+    end function get_json_filename
 
 end module vmecpp_implementation
