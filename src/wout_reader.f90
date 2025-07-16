@@ -86,7 +86,7 @@ contains
         call read_scalar(ncid, "betator", data%betator)
         call read_scalar(ncid, "betaxis", data%betaxis)
         call read_scalar(ncid, "aspect", data%aspect)
-        call read_scalar(ncid, "raxis_cc", data%raxis_cc)
+        call read_array_first(ncid, "raxis_cc", data%raxis_cc)
         call read_scalar(ncid, "rmin_surf", data%rmin_surf)
         call read_scalar(ncid, "rmajor_p", data%rmajor_p)
         call read_scalar(ncid, "volume_p", data%volume_p)
@@ -94,8 +94,8 @@ contains
         call read_scalar(ncid, "aminor_p", data%aminor_p)
         call read_scalar(ncid, "b0", data%b0)
         
-        ! Read ns dimension
-        call read_dimension(ncid, "ns", data%ns)
+        ! Read radius dimension for iotaf array
+        call read_dimension(ncid, "radius", data%ns)
         
         ! Read iotaf array and get edge value
         if (data%ns > 0) then
@@ -153,5 +153,26 @@ contains
             dimsize = 0
         end if
     end subroutine read_dimension
+    
+    subroutine read_array_first(ncid, varname, value)
+        integer, intent(in) :: ncid
+        character(len=*), intent(in) :: varname
+        real(real64), intent(out) :: value
+        
+        integer :: varid, status
+        real(real64) :: temp_array(1)
+        
+        status = nf90_inq_varid(ncid, varname, varid)
+        if (status == NF90_NOERR) then
+            status = nf90_get_var(ncid, varid, temp_array, start=(/1/), count=(/1/))
+            if (status == NF90_NOERR) then
+                value = temp_array(1)
+            else
+                value = 0.0_real64
+            end if
+        else
+            value = 0.0_real64
+        end if
+    end subroutine read_array_first
 
 end module wout_reader

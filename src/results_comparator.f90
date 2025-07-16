@@ -67,8 +67,8 @@ contains
             this%n_cases = this%n_cases + 1
             i = this%n_cases
             this%case_results(i)%case_name = trim(case_name)
-            allocate(character(len=64) :: this%case_results(i)%impl_names(10))
-            allocate(this%case_results(i)%results(10))
+            allocate(character(len=64) :: this%case_results(i)%impl_names(20))
+            allocate(this%case_results(i)%results(20))
             this%case_results(i)%n_impls = 0
         end if
         

@@ -2,6 +2,12 @@
 
 ## High Priority
 
+- [ ] Debug data extraction pipeline
+  - [ ] Fix NetCDF reading to populate results correctly
+  - [ ] Fix HDF5 reading to populate results correctly
+  - [ ] Ensure results are passed correctly to comparator
+  - [ ] Debug why "Failed" appears in all report cells
+
 - [ ] Implement physics comparison functionality
   - [ ] Compare magnetic field strength profiles
   - [ ] Compare pressure profiles
@@ -43,3 +49,6 @@
 - [x] Add HDF5 metapackage support with --link-flag for Arch Linux
 - [x] Fix VMEC2000 to handle non-convergent cases gracefully
 - [x] Test all implementations with multiple test cases
+- [x] Fix array bounds issue in results comparator
+- [x] Support NetCDF arrays (raxis_cc, iotaf) in wout reader
+- [x] Run benchmark framework with 5 test cases successfully
