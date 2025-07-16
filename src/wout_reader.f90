@@ -1,5 +1,5 @@
 module wout_reader
-    use iso_fortran_env, only: int32, real64, error_unit
+    use iso_fortran_env, only: int32, real64, error_unit, output_unit
     use netcdf
     implicit none
     private
@@ -25,6 +25,18 @@ module wout_reader
         
         ! Profile arrays (simplified - just store edge values for now)
         integer :: ns               ! Number of flux surfaces
+        
+        ! Fourier coefficients
+        real(real64), allocatable :: rmnc(:,:)  ! R cosine coefficients
+        real(real64), allocatable :: rmns(:,:)  ! R sine coefficients
+        real(real64), allocatable :: zmnc(:,:)  ! Z cosine coefficients
+        real(real64), allocatable :: zmns(:,:)  ! Z sine coefficients
+        real(real64), allocatable :: lmnc(:,:)  ! Lambda cosine coefficients
+        real(real64), allocatable :: lmns(:,:)  ! Lambda sine coefficients
+        real(real64), allocatable :: xm(:)      ! Poloidal mode numbers
+        real(real64), allocatable :: xn(:)      ! Toroidal mode numbers
+        integer :: mnmax                         ! Number of modes
+        
         logical :: valid = .false.
     contains
         procedure :: clear => wout_data_clear
@@ -37,6 +49,15 @@ contains
         
         this%wb = 0.0_real64
         this%betatotal = 0.0_real64
+        
+        if (allocated(this%rmnc)) deallocate(this%rmnc)
+        if (allocated(this%rmns)) deallocate(this%rmns)
+        if (allocated(this%zmnc)) deallocate(this%zmnc)
+        if (allocated(this%zmns)) deallocate(this%zmns)
+        if (allocated(this%lmnc)) deallocate(this%lmnc)
+        if (allocated(this%lmns)) deallocate(this%lmns)
+        if (allocated(this%xm)) deallocate(this%xm)
+        if (allocated(this%xn)) deallocate(this%xn)
         this%betapol = 0.0_real64
         this%betator = 0.0_real64
         this%betaxis = 0.0_real64
@@ -110,11 +131,15 @@ contains
             deallocate(iotaf)
         end if
         
+        ! Read Fourier coefficients
+        call read_fourier_coefficients(ncid, data)
+        
         ! Close file
         status = nf90_close(ncid)
         
         data%valid = .true.
         success = .true.
+        
         
     end function read_wout_file
     
@@ -174,5 +199,91 @@ contains
             value = 0.0_real64
         end if
     end subroutine read_array_first
+
+    subroutine read_fourier_coefficients(ncid, data)
+        integer, intent(in) :: ncid
+        type(wout_data_t), intent(inout) :: data
+        
+        integer :: status, varid
+        integer :: ns, mnmax
+        
+        ! Read dimensions
+        call read_dimension(ncid, "radius", ns)
+        call read_dimension(ncid, "mn_mode", mnmax)
+        
+        if (ns > 0 .and. mnmax > 0) then
+            data%mnmax = mnmax
+            
+            ! Allocate arrays
+            allocate(data%rmnc(ns, mnmax))
+            allocate(data%zmns(ns, mnmax))
+            allocate(data%lmns(ns, mnmax))
+            allocate(data%xm(mnmax))
+            allocate(data%xn(mnmax))
+            
+            ! Read main Fourier coefficients
+            call read_2d_array(ncid, "rmnc", data%rmnc, ns, mnmax)
+            call read_2d_array(ncid, "zmns", data%zmns, ns, mnmax)
+            call read_2d_array(ncid, "lmns", data%lmns, ns, mnmax)
+            
+            ! Read mode numbers
+            call read_1d_array(ncid, "xm", data%xm, mnmax)
+            call read_1d_array(ncid, "xn", data%xn, mnmax)
+            
+            ! For stellarator symmetry, rmns and zmnc should be zero
+            ! Only read if they exist
+            status = nf90_inq_varid(ncid, "rmns", varid)
+            if (status == NF90_NOERR) then
+                allocate(data%rmns(ns, mnmax))
+                call read_2d_array(ncid, "rmns", data%rmns, ns, mnmax)
+            end if
+            
+            status = nf90_inq_varid(ncid, "zmnc", varid)
+            if (status == NF90_NOERR) then
+                allocate(data%zmnc(ns, mnmax))
+                call read_2d_array(ncid, "zmnc", data%zmnc, ns, mnmax)
+            end if
+            
+            status = nf90_inq_varid(ncid, "lmnc", varid)
+            if (status == NF90_NOERR) then
+                allocate(data%lmnc(ns, mnmax))
+                call read_2d_array(ncid, "lmnc", data%lmnc, ns, mnmax)
+            end if
+        end if
+    end subroutine read_fourier_coefficients
+    
+    subroutine read_2d_array(ncid, var_name, array, dim1, dim2)
+        integer, intent(in) :: ncid, dim1, dim2
+        character(len=*), intent(in) :: var_name
+        real(real64), intent(out) :: array(dim1, dim2)
+        
+        integer :: status, varid
+        
+        status = nf90_inq_varid(ncid, var_name, varid)
+        if (status == NF90_NOERR) then
+            status = nf90_get_var(ncid, varid, array)
+        end if
+        
+        if (status /= NF90_NOERR) then
+            array = 0.0_real64
+        end if
+    end subroutine read_2d_array
+    
+    subroutine read_1d_array(ncid, var_name, array, dim1)
+        integer, intent(in) :: ncid, dim1
+        character(len=*), intent(in) :: var_name
+        real(real64), intent(out) :: array(dim1)
+        
+        integer :: status, varid
+        
+        status = nf90_inq_varid(ncid, var_name, varid)
+        if (status == NF90_NOERR) then
+            status = nf90_get_var(ncid, varid, array)
+        end if
+        
+        if (status /= NF90_NOERR) then
+            array = 0.0_real64
+        end if
+    end subroutine read_1d_array
 
 end module wout_reader

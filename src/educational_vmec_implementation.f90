@@ -203,25 +203,33 @@ contains
         type(vmec_result_t), intent(out) :: results
         character(len=256) :: wout_file
         type(wout_data_t) :: wout_data
-        integer :: stat
+        integer :: stat, unit
         logical :: exists, read_success
         
         call results%clear()
         
         ! Look for wout file - use the most recently modified one
-        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1", &
-                                exitstat=stat, cmdmsg=wout_file)
-        if (stat /= 0) then
+        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1 > /tmp/wout_file.tmp", &
+                                exitstat=stat)
+        if (stat == 0) then
+            open(newunit=unit, file="/tmp/wout_file.tmp", status="old", action="read")
+            read(unit, '(A)') wout_file
+            close(unit)
+        else
             wout_file = ""
         end if
         
-        if (stat == 0 .and. len_trim(wout_file) > 0) then
+        
+        if (len_trim(wout_file) > 0) then
             wout_file = trim(adjustl(wout_file))
             inquire(file=wout_file, exist=exists)
             
             if (exists) then
+                write(output_unit, '(A)') "DEBUG: File exists, calling read_wout_file"
                 ! Read the NetCDF file
                 read_success = read_wout_file(wout_file, wout_data)
+                write(output_unit, '(A,L1)') "DEBUG: read_success = ", read_success
+                write(output_unit, '(A,L1)') "DEBUG: wout_data%valid = ", wout_data%valid
                 
                 if (read_success .and. wout_data%valid) then
                     results%success = .true.
@@ -239,6 +247,41 @@ contains
                     results%b0 = wout_data%b0
                     results%rmajor_p = wout_data%rmajor_p
                     results%aminor_p = wout_data%aminor_p
+                    
+                    ! Copy Fourier coefficients if available
+                    if (allocated(wout_data%rmnc)) then
+                        allocate(results%rmnc(size(wout_data%rmnc,1), size(wout_data%rmnc,2)))
+                        results%rmnc = wout_data%rmnc
+                    end if
+                    if (allocated(wout_data%rmns)) then
+                        allocate(results%rmns(size(wout_data%rmns,1), size(wout_data%rmns,2)))
+                        results%rmns = wout_data%rmns
+                    end if
+                    if (allocated(wout_data%zmnc)) then
+                        allocate(results%zmnc(size(wout_data%zmnc,1), size(wout_data%zmnc,2)))
+                        results%zmnc = wout_data%zmnc
+                    end if
+                    if (allocated(wout_data%zmns)) then
+                        allocate(results%zmns(size(wout_data%zmns,1), size(wout_data%zmns,2)))
+                        results%zmns = wout_data%zmns
+                    end if
+                    if (allocated(wout_data%lmnc)) then
+                        allocate(results%lmnc(size(wout_data%lmnc,1), size(wout_data%lmnc,2)))
+                        results%lmnc = wout_data%lmnc
+                    end if
+                    if (allocated(wout_data%lmns)) then
+                        allocate(results%lmns(size(wout_data%lmns,1), size(wout_data%lmns,2)))
+                        results%lmns = wout_data%lmns
+                    end if
+                    if (allocated(wout_data%xm)) then
+                        allocate(results%xm(size(wout_data%xm)))
+                        results%xm = wout_data%xm
+                    end if
+                    if (allocated(wout_data%xn)) then
+                        allocate(results%xn(size(wout_data%xn)))
+                        results%xn = wout_data%xn
+                    end if
+                    
                 else
                     results%error_message = "Failed to read wout file: " // trim(wout_file)
                 end if

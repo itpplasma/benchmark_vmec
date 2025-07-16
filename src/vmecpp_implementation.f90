@@ -170,15 +170,19 @@ contains
         type(vmec_result_t), intent(out) :: results
         character(len=256) :: hdf5_file
         type(hdf5_data_t) :: hdf5_data
-        integer :: stat
+        integer :: stat, unit
         logical :: exists, read_success
 
         call results%clear()
 
         ! Look for HDF5 file - use the most recently modified one
-        call execute_command_line("ls -t " // trim(output_dir) // "/*.out.h5 2>/dev/null | head -1", &
-                                exitstat=stat, cmdmsg=hdf5_file)
-        if (stat /= 0) then
+        call execute_command_line("ls -t " // trim(output_dir) // "/*.out.h5 2>/dev/null | head -1 > /tmp/hdf5_file_vmecpp.tmp", &
+                                exitstat=stat)
+        if (stat == 0) then
+            open(newunit=unit, file="/tmp/hdf5_file_vmecpp.tmp", status="old", action="read")
+            read(unit, '(A)') hdf5_file
+            close(unit)
+        else
             hdf5_file = ""
         end if
 
@@ -206,6 +210,41 @@ contains
                     results%b0 = hdf5_data%b0
                     results%rmajor_p = hdf5_data%rmajor_p
                     results%aminor_p = hdf5_data%aminor_p
+                    
+                    ! Copy Fourier coefficients if available
+                    if (allocated(hdf5_data%rmnc)) then
+                        allocate(results%rmnc(size(hdf5_data%rmnc,1), size(hdf5_data%rmnc,2)))
+                        results%rmnc = hdf5_data%rmnc
+                    end if
+                    if (allocated(hdf5_data%rmns)) then
+                        allocate(results%rmns(size(hdf5_data%rmns,1), size(hdf5_data%rmns,2)))
+                        results%rmns = hdf5_data%rmns
+                    end if
+                    if (allocated(hdf5_data%zmnc)) then
+                        allocate(results%zmnc(size(hdf5_data%zmnc,1), size(hdf5_data%zmnc,2)))
+                        results%zmnc = hdf5_data%zmnc
+                    end if
+                    if (allocated(hdf5_data%zmns)) then
+                        allocate(results%zmns(size(hdf5_data%zmns,1), size(hdf5_data%zmns,2)))
+                        results%zmns = hdf5_data%zmns
+                    end if
+                    if (allocated(hdf5_data%lmnc)) then
+                        allocate(results%lmnc(size(hdf5_data%lmnc,1), size(hdf5_data%lmnc,2)))
+                        results%lmnc = hdf5_data%lmnc
+                    end if
+                    if (allocated(hdf5_data%lmns)) then
+                        allocate(results%lmns(size(hdf5_data%lmns,1), size(hdf5_data%lmns,2)))
+                        results%lmns = hdf5_data%lmns
+                    end if
+                    if (allocated(hdf5_data%xm)) then
+                        allocate(results%xm(size(hdf5_data%xm)))
+                        results%xm = hdf5_data%xm
+                    end if
+                    if (allocated(hdf5_data%xn)) then
+                        allocate(results%xn(size(hdf5_data%xn)))
+                        results%xn = hdf5_data%xn
+                    end if
+                    
                 else
                     results%error_message = "Failed to read HDF5 file: " // trim(hdf5_file)
                 end if

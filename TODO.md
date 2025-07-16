@@ -2,12 +2,6 @@
 
 ## High Priority
 
-- [ ] Debug data extraction pipeline
-  - [ ] Fix NetCDF reading to populate results correctly
-  - [ ] Fix HDF5 reading to populate results correctly
-  - [ ] Ensure results are passed correctly to comparator
-  - [ ] Debug why "Failed" appears in all report cells
-
 - [ ] Implement physics comparison functionality
   - [ ] Compare magnetic field strength profiles
   - [ ] Compare pressure profiles
@@ -17,6 +11,11 @@
 - [ ] Generate meaningful comparison reports
   - [ ] Plots of profile comparisons (if plotting library available)
   - [ ] Summary statistics (mean differences, max differences)
+  - [ ] Fourier coefficient comparison and analysis
+
+- [ ] Debug and fix memory issues
+  - [ ] Fix memory corruption in Fourier coefficient handling
+  - [ ] Investigate NetCDF reader data transfer issues
 
 ## Medium Priority
 
@@ -52,3 +51,12 @@
 - [x] Fix array bounds issue in results comparator
 - [x] Support NetCDF arrays (raxis_cc, iotaf) in wout reader
 - [x] Run benchmark framework with 5 test cases successfully
+- [x] Implement Fourier coefficient extraction
+  - [x] Add Fourier coefficient data structures (rmnc, rmns, zmnc, zmns, lmnc, lmns)
+  - [x] Update NetCDF reader to extract Fourier coefficients
+  - [x] Update HDF5 reader to extract Fourier coefficients
+  - [x] Add Fourier coefficient summary to comparison reports
+- [x] Debug and fix HDF5 reading issues
+  - [x] Fix HDF5 dimension checking logic
+  - [x] Correct field name mappings (betatot vs betatotal, raxis_c vs raxis_cc)
+  - [x] Implement proper error handling for missing datasets

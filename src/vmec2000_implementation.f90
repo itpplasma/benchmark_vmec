@@ -156,15 +156,22 @@ contains
         type(vmec_result_t), intent(out) :: results
         character(len=256) :: wout_file
         type(wout_data_t) :: wout_data
-        integer :: stat
+        integer :: stat, unit
         logical :: exists, read_success
 
         call results%clear()
 
         ! Look for wout file - use the most recently modified one
-        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1", &
-                                exitstat=stat, cmdmsg=wout_file)
-        if (stat /= 0) then
+        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1 > /tmp/wout_file_vmec2000.tmp", &
+                                exitstat=stat)
+        if (stat == 0) then
+            open(newunit=unit, file="/tmp/wout_file_vmec2000.tmp", status="old", action="read")
+            read(unit, '(A)', iostat=stat) wout_file
+            close(unit)
+            if (stat /= 0) then
+                wout_file = ""
+            end if
+        else
             wout_file = ""
         end if
 

@@ -32,6 +32,7 @@ module results_comparator
         procedure :: get_convergence_summary => results_comparator_get_convergence_summary
         procedure :: generate_report => results_comparator_generate_report
         procedure :: export_to_csv => results_comparator_export_to_csv
+        procedure :: write_fourier_summary => write_fourier_summary
         procedure :: finalize => results_comparator_finalize
     end type results_comparator_t
 
@@ -271,6 +272,9 @@ contains
                 this%case_results(1)%impl_names(1), unit)
         end if
         
+        ! Fourier coefficient summary
+        call this%write_fourier_summary(unit)
+        
         close(unit)
         
         write(output_unit, '(A)') "Report saved to " // trim(output_file)
@@ -313,6 +317,75 @@ contains
             write(output_unit, '(A)') "CSV files exported to " // trim(output_dir)
         end if
     end subroutine results_comparator_export_to_csv
+
+    subroutine write_fourier_summary(this, unit)
+        class(results_comparator_t), intent(in) :: this
+        integer, intent(in) :: unit
+        integer :: i, j
+        
+        write(unit, '(A)') ""
+        write(unit, '(A)') "## Fourier Coefficients Summary"
+        write(unit, '(A)') ""
+        
+        do i = 1, this%n_cases
+            write(unit, '(A)') "### " // this%case_results(i)%case_name
+            write(unit, '(A)') ""
+            
+            write(unit, '(A)') "| Implementation | ns | mnmax | rmnc(1,1) | zmns(1,1) | lmns(1,1) |"
+            write(unit, '(A)') "|---|---|---|---|---|---|"
+            
+            do j = 1, this%case_results(i)%n_impls
+                if (this%case_results(i)%results(j)%success) then
+                    call write_fourier_row(unit, this%case_results(i)%impl_names(j), &
+                                           this%case_results(i)%results(j))
+                else
+                    write(unit, '(A,A,A)') "| ", trim(this%case_results(i)%impl_names(j)), &
+                                           " | Failed | Failed | Failed | Failed | Failed |"
+                end if
+            end do
+            write(unit, '(A)') ""
+        end do
+    end subroutine write_fourier_summary
+    
+    subroutine write_fourier_row(unit, impl_name, result)
+        integer, intent(in) :: unit
+        character(len=*), intent(in) :: impl_name
+        type(vmec_result_t), intent(in) :: result
+        
+        integer :: ns, mnmax
+        real(real64) :: rmnc_11, zmns_11, lmns_11
+        
+        ns = 0
+        mnmax = 0
+        rmnc_11 = 0.0_real64
+        zmns_11 = 0.0_real64
+        lmns_11 = 0.0_real64
+        
+        ! Get dimensions and first mode values
+        if (allocated(result%rmnc)) then
+            ns = size(result%rmnc, 1)
+            mnmax = size(result%rmnc, 2)
+            if (ns > 0 .and. mnmax > 0) then
+                rmnc_11 = result%rmnc(1, 1)
+            end if
+        end if
+        
+        if (allocated(result%zmns)) then
+            if (size(result%zmns, 1) > 0 .and. size(result%zmns, 2) > 0) then
+                zmns_11 = result%zmns(1, 1)
+            end if
+        end if
+        
+        if (allocated(result%lmns)) then
+            if (size(result%lmns, 1) > 0 .and. size(result%lmns, 2) > 0) then
+                lmns_11 = result%lmns(1, 1)
+            end if
+        end if
+        
+        write(unit, '(A,A,A,I0,A,I0,A,ES12.5,A,ES12.5,A,ES12.5,A)') &
+            "| ", trim(impl_name), " | ", ns, " | ", mnmax, " | ", &
+            rmnc_11, " | ", zmns_11, " | ", lmns_11, " |"
+    end subroutine write_fourier_row
 
     subroutine results_comparator_finalize(this)
         class(results_comparator_t), intent(inout) :: this

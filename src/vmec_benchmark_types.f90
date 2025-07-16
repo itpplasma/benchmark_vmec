@@ -35,7 +35,11 @@ module vmec_benchmark_types
         real(real64) :: rmajor_p = 0.0_real64
         real(real64) :: aminor_p = 0.0_real64
         real(real64), allocatable :: rmnc(:,:)
+        real(real64), allocatable :: rmns(:,:)
+        real(real64), allocatable :: zmnc(:,:)
         real(real64), allocatable :: zmns(:,:)
+        real(real64), allocatable :: lmnc(:,:)
+        real(real64), allocatable :: lmns(:,:)
         real(real64), allocatable :: xm(:)
         real(real64), allocatable :: xn(:)
         real(real64), allocatable :: phi(:)
@@ -94,7 +98,11 @@ contains
         this%aminor_p = 0.0_real64
         
         if (allocated(this%rmnc)) deallocate(this%rmnc)
+        if (allocated(this%rmns)) deallocate(this%rmns)
+        if (allocated(this%zmnc)) deallocate(this%zmnc)
         if (allocated(this%zmns)) deallocate(this%zmns)
+        if (allocated(this%lmnc)) deallocate(this%lmnc)
+        if (allocated(this%lmns)) deallocate(this%lmns)
         if (allocated(this%xm)) deallocate(this%xm)
         if (allocated(this%xn)) deallocate(this%xn)
         if (allocated(this%phi)) deallocate(this%phi)
