@@ -28,9 +28,10 @@ VMEC2000/
 jVMEC/
 vmec_repos/
 
-# Benchmark results
+# Benchmark results and test data
 *_results/
 benchmark_results/
+test_vmec/
 *.log
 *.nc
 *.json
