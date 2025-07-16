@@ -31,6 +31,12 @@ fpm run vmec-benchmark
 # Run with limited test cases
 fpm run vmec-benchmark -- run --limit 5
 
+# List available test cases
+fpm run vmec-benchmark -- list-cases
+
+# Include jVMEC test cases (excluded by default)
+BENCHMARK_INCLUDE_JVMEC=1 fpm run vmec-benchmark -- run
+
 # Show help
 fpm run vmec-benchmark -- --help
 ```
@@ -82,7 +88,9 @@ Each VMEC implementation has unique build/run requirements:
 
 **jVMEC**:
 - Java implementation built with Maven
-- Expects INDATA format input files
+- Test framework designed for regression testing, not a standalone executable
+- Cannot process arbitrary input files like other implementations
+- Test cases from jVMEC are excluded by default to reduce noise
 - Private repository, manual setup required
 
 ### Input Format Handling

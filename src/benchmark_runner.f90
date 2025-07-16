@@ -190,11 +190,22 @@ contains
         class(benchmark_runner_t), intent(inout) :: this
         integer, intent(in) :: max_cases
         character(len=:), allocatable :: cmd
-        character(len=256) :: line
-        integer :: stat, unit
+        character(len=256) :: line, env_value
+        integer :: stat, unit, env_stat
+        logical :: include_jvmec
+        
+        ! Check if jVMEC tests should be included
+        call get_environment_variable("BENCHMARK_INCLUDE_JVMEC", env_value, status=env_stat)
+        include_jvmec = (env_stat == 0 .and. trim(env_value) == "1")
         
         ! Search for input files in all repositories
-        cmd = "find " // trim(this%repo_manager%base_path) // " -name 'input.*' -type f 2>/dev/null"
+        if (include_jvmec) then
+            cmd = "find " // trim(this%repo_manager%base_path) // " -name 'input.*' -type f 2>/dev/null"
+            write(output_unit, '(A)') "  (Including jVMEC test cases)"
+        else
+            cmd = "find " // trim(this%repo_manager%base_path) // " -path '*/jvmec' -prune -o -name 'input.*' -type f -print 2>/dev/null"
+            write(output_unit, '(A)') "  (Excluding jVMEC test cases - set BENCHMARK_INCLUDE_JVMEC=1 to include)"
+        end if
         call execute_command_line(trim(cmd) // " > test_files.tmp", exitstat=stat)
         
         if (stat == 0) then
