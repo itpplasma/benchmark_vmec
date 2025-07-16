@@ -11,11 +11,11 @@
 - [ ] Generate meaningful comparison reports
   - [ ] Plots of profile comparisons (if plotting library available)
   - [ ] Summary statistics (mean differences, max differences)
-  - [ ] Fourier coefficient comparison and analysis
+  - [x] Fourier coefficient comparison and analysis
 
 - [ ] Debug and fix memory issues
   - [ ] Fix memory corruption in Fourier coefficient handling
-  - [ ] Investigate NetCDF reader data transfer issues
+  - [ ] Investigate NetCDF reader data transfer issues for Educational VMEC
 
 ## Medium Priority
 
@@ -60,3 +60,7 @@
   - [x] Fix HDF5 dimension checking logic
   - [x] Correct field name mappings (betatot vs betatotal, raxis_c vs raxis_cc)
   - [x] Implement proper error handling for missing datasets
+- [x] Implement NetCDF transposed reading for Fourier coefficients
+  - [x] Handle NetCDF dimension ordering differences (mn_mode, radius) vs (radius, mn_mode)
+  - [x] Add read_2d_array_transposed subroutine
+  - [x] Fix Educational VMEC Fourier coefficient extraction

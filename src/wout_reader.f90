@@ -222,9 +222,9 @@ contains
             allocate(data%xn(mnmax))
             
             ! Read main Fourier coefficients
-            call read_2d_array(ncid, "rmnc", data%rmnc, ns, mnmax)
-            call read_2d_array(ncid, "zmns", data%zmns, ns, mnmax)
-            call read_2d_array(ncid, "lmns", data%lmns, ns, mnmax)
+            call read_2d_array_transposed(ncid, "rmnc", data%rmnc, ns, mnmax)
+            call read_2d_array_transposed(ncid, "zmns", data%zmns, ns, mnmax)
+            call read_2d_array_transposed(ncid, "lmns", data%lmns, ns, mnmax)
             
             ! Read mode numbers
             call read_1d_array(ncid, "xm", data%xm, mnmax)
@@ -258,16 +258,48 @@ contains
         real(real64), intent(out) :: array(dim1, dim2)
         
         integer :: status, varid
+        integer :: start(2), count(2)
         
         status = nf90_inq_varid(ncid, var_name, varid)
         if (status == NF90_NOERR) then
-            status = nf90_get_var(ncid, varid, array)
-        end if
-        
-        if (status /= NF90_NOERR) then
+            ! Set start and count explicitly
+            start = [1, 1]
+            count = [dim1, dim2]
+            status = nf90_get_var(ncid, varid, array, start=start, count=count)
+            if (status /= NF90_NOERR) then
+                array = 0.0_real64
+            end if
+        else
             array = 0.0_real64
         end if
     end subroutine read_2d_array
+    
+    subroutine read_2d_array_transposed(ncid, var_name, array, dim1, dim2)
+        integer, intent(in) :: ncid, dim1, dim2
+        character(len=*), intent(in) :: var_name
+        real(real64), intent(out) :: array(dim1, dim2)
+        
+        integer :: status, varid
+        integer :: start(2), count(2)
+        real(real64), allocatable :: temp_array(:,:)
+        
+        status = nf90_inq_varid(ncid, var_name, varid)
+        if (status == NF90_NOERR) then
+            ! NetCDF stores as (mn_mode, radius) but we want (radius, mn_mode)
+            allocate(temp_array(dim2, dim1))
+            start = [1, 1]
+            count = [dim2, dim1]
+            status = nf90_get_var(ncid, varid, temp_array, start=start, count=count)
+            if (status == NF90_NOERR) then
+                array = transpose(temp_array)
+            else
+                array = 0.0_real64
+            end if
+            deallocate(temp_array)
+        else
+            array = 0.0_real64
+        end if
+    end subroutine read_2d_array_transposed
     
     subroutine read_1d_array(ncid, var_name, array, dim1)
         integer, intent(in) :: ncid, dim1

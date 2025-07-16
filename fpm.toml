@@ -30,6 +30,7 @@ name = "vmec-build"
 source-dir = "app"
 main = "vmec-build.f90"
 
+
 [dependencies]
 json-fortran = { git = "https://github.com/jacobwilliams/json-fortran.git" }
 M_CLI2 = { git = "https://github.com/urbanjost/M_CLI2.git" }
