@@ -161,18 +161,12 @@ contains
 
         call results%clear()
 
-        ! Look for wout file - try to find the specific one first
-        wout_file = trim(output_dir) // "/wout_cth_like_fixed_bdy.nc"
-        inquire(file=wout_file, exist=exists)
-        if (.not. exists) then
-            ! Fall back to any wout file
-            call execute_command_line("ls " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1", &
-                                    exitstat=stat, cmdmsg=wout_file)
-            if (stat /= 0) then
-                wout_file = ""
-            end if
+        ! Look for wout file - use the most recently modified one
+        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1", &
+                                exitstat=stat, cmdmsg=wout_file)
+        if (stat /= 0) then
+            wout_file = ""
         end if
-        stat = 0  ! Reset stat since we found the file
 
         if (stat == 0 .and. len_trim(wout_file) > 0) then
             wout_file = trim(adjustl(wout_file))
@@ -205,7 +199,7 @@ contains
                 results%error_message = "Wout file not found: " // trim(wout_file)
             end if
         else
-            results%error_message = "No wout file found"
+            results%error_message = "No wout file found (likely failed to converge)"
         end if
     end subroutine vmec2000_extract_results
 

@@ -34,6 +34,7 @@ main = "vmec-build.f90"
 json-fortran = { git = "https://github.com/jacobwilliams/json-fortran.git" }
 M_CLI2 = { git = "https://github.com/urbanjost/M_CLI2.git" }
 netcdf = "*"
+hdf5 = "*"
 
 [[test]]
 name = "test_vmec_types"

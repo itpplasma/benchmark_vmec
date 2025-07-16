@@ -2,6 +2,7 @@ module vmecpp_implementation
     use iso_fortran_env, only: int32, real64, error_unit, output_unit
     use vmec_implementation_base, only: vmec_implementation_t
     use vmec_benchmark_types, only: vmec_result_t
+    use hdf5_reader, only: hdf5_data_t, read_hdf5_file
     implicit none
     private
 
@@ -167,24 +168,52 @@ contains
         class(vmecpp_t), intent(in) :: this
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
-        character(len=256) :: wout_file
+        character(len=256) :: hdf5_file
+        type(hdf5_data_t) :: hdf5_data
         integer :: stat
-        logical :: exists
+        logical :: exists, read_success
 
         call results%clear()
 
-        call execute_command_line("ls " // trim(output_dir) // "/wout_*.nc 2>/dev/null", &
-                                exitstat=stat, cmdmsg=wout_file)
+        ! Look for HDF5 file - use the most recently modified one
+        call execute_command_line("ls -t " // trim(output_dir) // "/*.out.h5 2>/dev/null | head -1", &
+                                exitstat=stat, cmdmsg=hdf5_file)
+        if (stat /= 0) then
+            hdf5_file = ""
+        end if
 
-        if (stat == 0 .and. len_trim(wout_file) > 0) then
-            inquire(file=trim(adjustl(wout_file)), exist=exists)
+        if (stat == 0 .and. len_trim(hdf5_file) > 0) then
+            hdf5_file = trim(adjustl(hdf5_file))
+            inquire(file=hdf5_file, exist=exists)
+            
             if (exists) then
-                results%success = .true.
+                ! Read the HDF5 file
+                read_success = read_hdf5_file(hdf5_file, hdf5_data)
+                
+                if (read_success .and. hdf5_data%valid) then
+                    results%success = .true.
+                    
+                    ! Copy physics quantities to results
+                    results%wb = hdf5_data%wb
+                    results%betatotal = hdf5_data%betatotal
+                    results%betapol = hdf5_data%betapol
+                    results%betator = hdf5_data%betator
+                    results%aspect = hdf5_data%aspect
+                    results%raxis_cc = hdf5_data%raxis_cc
+                    results%volume_p = hdf5_data%volume_p
+                    results%iotaf_edge = hdf5_data%iotaf_edge
+                    results%itor = hdf5_data%itor
+                    results%b0 = hdf5_data%b0
+                    results%rmajor_p = hdf5_data%rmajor_p
+                    results%aminor_p = hdf5_data%aminor_p
+                else
+                    results%error_message = "Failed to read HDF5 file: " // trim(hdf5_file)
+                end if
             else
-                results%error_message = "No wout file found"
+                results%error_message = "HDF5 file not found: " // trim(hdf5_file)
             end if
         else
-            results%error_message = "No wout file found"
+            results%error_message = "No HDF5 file found"
         end if
     end subroutine vmecpp_extract_results
 
