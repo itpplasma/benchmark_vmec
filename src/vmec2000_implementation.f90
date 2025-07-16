@@ -161,8 +161,18 @@ contains
 
         call results%clear()
 
-        call execute_command_line("ls " // trim(output_dir) // "/wout_*.nc 2>/dev/null", &
-                                exitstat=stat, cmdmsg=wout_file)
+        ! Look for wout file - try to find the specific one first
+        wout_file = trim(output_dir) // "/wout_cth_like_fixed_bdy.nc"
+        inquire(file=wout_file, exist=exists)
+        if (.not. exists) then
+            ! Fall back to any wout file
+            call execute_command_line("ls " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1", &
+                                    exitstat=stat, cmdmsg=wout_file)
+            if (stat /= 0) then
+                wout_file = ""
+            end if
+        end if
+        stat = 0  ! Reset stat since we found the file
 
         if (stat == 0 .and. len_trim(wout_file) > 0) then
             wout_file = trim(adjustl(wout_file))
