@@ -174,7 +174,7 @@ contains
         write(output_unit, '(A)') "Discovering test cases..."
         
         max_cases = 100
-        if (present(limit)) max_cases = limit
+        if (present(limit) .and. limit > 0) max_cases = limit
         
         ! Allocate space for test cases
         allocate(this%test_cases(max_cases))

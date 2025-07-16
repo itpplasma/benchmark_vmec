@@ -119,7 +119,7 @@ contains
         write(unit, '(A)') "    fcomm = -1"
         write(unit, '(A)') "try:"
         write(unit, '(A)') "    import vmec"
-        write(unit, '(A)') "    os.chdir('" // trim(output_dir) // "')"
+        write(unit, '(A)') "    # Already in correct directory"
         write(unit, '(A)') "    # Setup VMEC2000 parameters"
         write(unit, '(A)') "    ictrl = np.zeros(5, dtype=np.int32)"
         write(unit, '(A)') "    verbose = True"

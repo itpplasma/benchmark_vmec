@@ -40,7 +40,7 @@ contains
         if (exists) then
             ! Already built, just set the executable
             this%executable = "java -cp " // trim(this%path) // "/target/classes:" // &
-                             trim(this%path) // "/target/lib/* de.labathome.test.RunAllVmecTests"
+                             trim(this%path) // "/target/lib/* de.labathome.jvmec.Vmec"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "jVMEC already built at " // trim(jar_file)
@@ -69,7 +69,7 @@ contains
         if (exists) then
             ! Use test runner instead of direct Vmec class
             this%executable = "java -cp " // trim(this%path) // "/target/classes:" // &
-                             trim(this%path) // "/target/lib/* de.labathome.test.RunAllVmecTests"
+                             trim(this%path) // "/target/lib/* de.labathome.jvmec.Vmec"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "Successfully built jVMEC classes at " // trim(jar_file)
