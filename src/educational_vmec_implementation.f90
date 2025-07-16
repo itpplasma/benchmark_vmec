@@ -70,6 +70,17 @@ contains
         ! Create build directory
         call execute_command_line("mkdir -p " // trim(build_dir), exitstat=stat)
         
+        write(output_unit, '(A)') "Initializing Educational VMEC submodules"
+        
+        ! Initialize only the working submodules (skip vac2/vac3)
+        cmd = "cd " // trim(this%path) // " && git submodule update --init json-fortran abscab-fortran"
+        call execute_command_line(trim(cmd), exitstat=stat)
+        
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to initialize submodules"
+            return
+        end if
+        
         write(output_unit, '(A)') "Configuring Educational VMEC with CMake"
         
         ! Configure with CMake

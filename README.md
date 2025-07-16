@@ -3,7 +3,7 @@
 [![CI](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml/badge.svg)](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/itpplasma/benchmark_vmec/branch/main/graph/badge.svg)](https://codecov.io/gh/itpplasma/benchmark_vmec)
 
-Automated comparison system for multiple VMEC implementations.
+A Fortran package built with fpm for automated comparison of multiple VMEC implementations.
 
 ## Overview
 
@@ -17,65 +17,85 @@ This benchmark suite automatically clones, builds, and compares multiple VMEC im
 ## Quick Start
 
 ```bash
-# Basic run with auto-cloning
-python3 compare_vmec_implementations.py
+# Build the package
+fpm build
 
-# Custom paths
-python3 compare_vmec_implementations.py \
-    --vmecpp-path ./my_vmecpp \
-    --educational-path ./my_educational_vmec \
-    --vmec2000-path ./my_vmec2000 \
-    --output-path ./benchmark_results
+# Run benchmarks
+fpm run vmec-benchmark
+
+# Build VMEC repositories
+fpm run vmec-build
+
+# Run tests
+fpm test
 ```
 
 ## Features
 
-- **Automatic Setup**: Auto-clones and builds missing repositories
-- **Cross-Platform**: Works on Linux/macOS with standard build tools
+- **Modern Fortran**: Built with modern Fortran standards and fpm
+- **Automatic Setup**: Auto-clones and builds missing VMEC repositories
+- **Cross-Platform**: Works on Linux/macOS with standard Fortran build tools
 - **Comprehensive Testing**: Runs all available test cases from implementations
 - **Detailed Analysis**: Compares global quantities, force calculations, and convergence
-- **Professional Output**: Markdown reports, CSV data, visualization plots
+- **Structured Output**: JSON results, comparison reports, and analysis data
+- **Type Safety**: Strongly typed Fortran implementation with proper error handling
 
 ## Requirements
 
 ### System Dependencies
-- Python 3.8+
+- Modern Fortran compiler (GFortran 9+, Intel Fortran, etc.)
+- Fortran Package Manager (fpm) - https://fpm.fortran-lang.org/
 - Git
-- CMake (for educational_VMEC)
-- Make/GCC (for educational_VMEC)
+- CMake (for building VMEC implementations)
+- Make/GCC (for building VMEC implementations)
 - Maven + Java 8+ (for jVMEC, optional)
 
-### Python Dependencies
+### Installation
 ```bash
-pip install numpy matplotlib pandas netcdf4
+# Install fpm (if not already installed)
+# See https://fpm.fortran-lang.org/install/index.html
+
+# Build the benchmark suite
+fpm build
 ```
 
 ## Usage Examples
 
-### Default behavior (auto-clone everything):
+### Build and run benchmarks:
 ```bash
-python3 compare_vmec_implementations.py
+# Build the package
+fpm build
+
+# Run the benchmark suite
+fpm run vmec-benchmark
+
+# Build VMEC repositories
+fpm run vmec-build
 ```
 
-### Disable auto-cloning:
+### Run tests:
 ```bash
-python3 compare_vmec_implementations.py --no-auto-clone
+# Run all tests
+fpm test
+
+# Run specific test
+fpm test test_vmec_types
+fpm test test_repository_manager
 ```
 
-### Custom repository locations:
+### Development workflow:
 ```bash
-python3 compare_vmec_implementations.py \
-    --vmecpp-path /path/to/vmecpp \
-    --educational-path /path/to/educational_VMEC \
-    --vmec2000-path /path/to/VMEC2000 \
-    --jvmec-path /path/to/jVMEC \
-    --output-path ./results
+# Build in debug mode
+fpm build --profile debug
+
+# Run with custom arguments (if supported)
+fpm run vmec-benchmark -- --help
 ```
 
 ## Output Structure
 
 ```
-vmec_comparison_results/
+benchmark_results/
 ├── comparison_report.md           # Main summary report
 ├── comparison_table.csv           # Numerical comparison data
 ├── raw_results.json              # Complete raw results
@@ -83,7 +103,7 @@ vmec_comparison_results/
     ├── vmecpp/
     │   ├── vmecpp_results.json
     │   └── vmecpp.log
-    ├── educational/
+    ├── educational_vmec/
     │   ├── wout_*.nc
     │   ├── jxbout_*.nc
     │   └── educational_vmec.log
@@ -93,6 +113,8 @@ vmec_comparison_results/
     └── jvmec/
         └── jvmec.log
 ```
+
+Output files are generated in structured formats compatible with the Fortran benchmark suite.
 
 ## What Gets Compared
 
@@ -116,26 +138,32 @@ vmec_comparison_results/
 
 ## Implementation Details
 
-### Auto-cloning Strategy
-The system checks for repository existence and auto-clones if enabled:
+### Repository Management
+The Fortran benchmark suite includes a repository manager that handles:
 
 - **VMEC++**: `git clone https://github.com/itpplasma/vmecpp.git`
 - **Educational VMEC**: `git clone https://github.com/hiddenSymmetries/educational_VMEC.git`
 - **VMEC2000**: `git clone https://github.com/hiddenSymmetries/VMEC2000.git`
-- **jVMEC**: No auto-clone (not public), must exist locally
+- **jVMEC**: Manual setup required (private repository)
+
+Repository management is handled through the `repository_manager` module with proper error handling and status reporting.
 
 ### Build Process
-- **VMEC++**: `pip install -e .` (builds C++ automatically)
-- **Educational VMEC**: CMake + Make
-- **VMEC2000**: `pip install -e .` (installs Fortran VMEC)
-- **jVMEC**: Maven compile
+The Fortran benchmark suite automatically manages the build process for different VMEC implementations:
+- **VMEC++**: Python package with C++ backend
+- **Educational VMEC**: CMake + Make (Fortran)
+- **VMEC2000**: Python package with Fortran backend
+- **jVMEC**: Maven compile (Java)
+
+Use `fpm run vmec-build` to automatically clone and build all available implementations.
 
 ### Input Format Handling
-The system automatically converts VMEC++ JSON inputs to INDATA format for Fortran-based implementations, handling:
-- Basic parameters (LASYM, NFP, MPOL, NTOR)
-- Arrays (NS_ARRAY, FTOL_ARRAY, NITER_ARRAY)
-- Profiles (pressure, current, iota)
-- Boundary coefficients (RBC, ZBS, RBS, ZBC)
+The Fortran benchmark suite handles input format conversion between different VMEC implementations:
+- JSON format (VMEC++)
+- INDATA format (Educational VMEC, VMEC2000)
+- Input parameter conversion and validation
+- Boundary coefficient handling (RBC, ZBS, RBS, ZBC)
+- Profile data management (pressure, current, iota)
 
 ## Error Handling
 
@@ -176,15 +204,45 @@ The system generates tables like:
 
 And detailed analysis of relative differences, convergence properties, and error conditions.
 
-## Contributing
+## Development
 
-To add support for new VMEC implementations:
+### Package Structure
+```
+app/              # Executable sources
+├── main.f90      # Main benchmark application
+└── vmec-build.f90 # VMEC repository builder
 
-1. Create a new class inheriting from `VMECImplementation`
-2. Implement `build()`, `run_case()`, and `extract_results()` methods
-3. Add to the `implementations` dictionary in `VMECComparator`
-4. Test with existing test cases
+src/              # Library sources
+├── vmec_benchmark_types.f90       # Core data types
+├── vmec_implementation_base.f90   # Base class for implementations
+├── educational_vmec_implementation.f90
+├── vmec2000_implementation.f90
+├── vmecpp_implementation.f90
+├── jvmec_implementation.f90
+├── repository_manager.f90         # Repository management
+├── benchmark_runner.f90           # Benchmark execution
+└── results_comparator.f90         # Result analysis
+
+test/             # Test sources
+├── test_vmec_types.f90
+└── test_repository_manager.f90
+```
+
+### Adding New VMEC Implementations
+
+1. Create a new implementation module inheriting from `vmec_implementation_base`
+2. Implement required procedures: `build()`, `run_case()`, `extract_results()`
+3. Add to the benchmark runner configuration
+4. Write unit tests for the new implementation
+5. Update documentation
+
+## Dependencies
+
+This package uses the following Fortran dependencies managed by fpm:
+- `json-fortran`: JSON parsing and generation
+- `M_CLI2`: Command-line interface
+- `fortran_test_helper`: Testing framework (dev dependency)
 
 ## License
 
-This benchmark suite is provided under the same license terms as the individual VMEC implementations being compared.
+MIT License - This benchmark suite is provided under the MIT license. Individual VMEC implementations may have different licenses.
