@@ -7,6 +7,7 @@ module benchmark_runner
     use vmec2000_implementation, only: vmec2000_t
     use vmecpp_implementation, only: vmecpp_t
     use repository_manager, only: repository_manager_t
+    use results_comparator, only: results_comparator_t
     implicit none
     private
 
@@ -269,18 +270,25 @@ contains
         end if
     end function benchmark_runner_run_single_case
 
-    subroutine benchmark_runner_run_all_cases(this, timeout)
+    subroutine benchmark_runner_run_all_cases(this, comparator, timeout)
         class(benchmark_runner_t), intent(inout) :: this
+        class(results_comparator_t), intent(inout) :: comparator
         integer, intent(in), optional :: timeout
         type(vmec_result_t) :: results
+        character(len=:), allocatable :: case_name
         integer :: i, j
         
         do i = 1, this%n_test_cases
-            write(output_unit, '(/,A)') "Running test case: " // &
-                                       trim(get_case_name(this%test_cases(i)%str))
+            case_name = get_case_name(this%test_cases(i)%str)
+            write(output_unit, '(/,A)') "Running test case: " // trim(case_name)
             
             do j = 1, this%n_implementations
                 results = this%run_single_case(i, j, timeout)
+                
+                ! Add results to comparator
+                call comparator%add_result(case_name, &
+                                         this%implementations(j)%key, &
+                                         results)
             end do
         end do
         

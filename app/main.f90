@@ -158,13 +158,14 @@ contains
         
         write(output_unit, '(A,I0,A)') 'Found ', runner%n_test_cases, ' test cases'
         
+        ! Initialize comparator before running benchmarks
+        call comparator%initialize(100)
+        
         ! Run benchmarks
-        call runner%run_all_cases(timeout)
+        call runner%run_all_cases(comparator, timeout)
         
         ! Generate comparison report
         report_file = trim(output_dir) // '/comparison_report.md'
-        call comparator%initialize(100)
-        ! Note: In a real implementation, we would populate the comparator with results
         call comparator%generate_report(report_file)
         call comparator%export_to_csv(output_dir)
         

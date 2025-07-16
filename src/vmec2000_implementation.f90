@@ -2,6 +2,7 @@ module vmec2000_implementation
     use iso_fortran_env, only: int32, real64, error_unit, output_unit
     use vmec_implementation_base, only: vmec_implementation_t
     use vmec_benchmark_types, only: vmec_result_t
+    use wout_reader, only: wout_data_t, read_wout_file
     implicit none
     private
 
@@ -154,8 +155,9 @@ contains
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
         character(len=256) :: wout_file
+        type(wout_data_t) :: wout_data
         integer :: stat
-        logical :: exists
+        logical :: exists, read_success
 
         call results%clear()
 
@@ -163,11 +165,34 @@ contains
                                 exitstat=stat, cmdmsg=wout_file)
 
         if (stat == 0 .and. len_trim(wout_file) > 0) then
-            inquire(file=trim(adjustl(wout_file)), exist=exists)
+            wout_file = trim(adjustl(wout_file))
+            inquire(file=wout_file, exist=exists)
+            
             if (exists) then
-                results%success = .true.
+                ! Read the NetCDF file
+                read_success = read_wout_file(wout_file, wout_data)
+                
+                if (read_success .and. wout_data%valid) then
+                    results%success = .true.
+                    
+                    ! Copy physics quantities to results
+                    results%wb = wout_data%wb
+                    results%betatotal = wout_data%betatotal
+                    results%betapol = wout_data%betapol
+                    results%betator = wout_data%betator
+                    results%aspect = wout_data%aspect
+                    results%raxis_cc = wout_data%raxis_cc
+                    results%volume_p = wout_data%volume_p
+                    results%iotaf_edge = wout_data%iotaf_edge
+                    results%itor = wout_data%itor
+                    results%b0 = wout_data%b0
+                    results%rmajor_p = wout_data%rmajor_p
+                    results%aminor_p = wout_data%aminor_p
+                else
+                    results%error_message = "Failed to read wout file: " // trim(wout_file)
+                end if
             else
-                results%error_message = "No wout file found"
+                results%error_message = "Wout file not found: " // trim(wout_file)
             end if
         else
             results%error_message = "No wout file found"

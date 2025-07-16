@@ -24,10 +24,16 @@ module vmec_benchmark_types
         character(len=:), allocatable :: error_message
         real(real64) :: wb = 0.0_real64
         real(real64) :: betatotal = 0.0_real64
+        real(real64) :: betapol = 0.0_real64
+        real(real64) :: betator = 0.0_real64
         real(real64) :: aspect = 0.0_real64
         real(real64) :: raxis_cc = 0.0_real64
         real(real64) :: volume_p = 0.0_real64
         real(real64) :: iotaf_edge = 0.0_real64
+        real(real64) :: itor = 0.0_real64
+        real(real64) :: b0 = 0.0_real64
+        real(real64) :: rmajor_p = 0.0_real64
+        real(real64) :: aminor_p = 0.0_real64
         real(real64), allocatable :: rmnc(:,:)
         real(real64), allocatable :: zmns(:,:)
         real(real64), allocatable :: xm(:)
@@ -76,10 +82,16 @@ contains
         if (allocated(this%error_message)) deallocate(this%error_message)
         this%wb = 0.0_real64
         this%betatotal = 0.0_real64
+        this%betapol = 0.0_real64
+        this%betator = 0.0_real64
         this%aspect = 0.0_real64
         this%raxis_cc = 0.0_real64
         this%volume_p = 0.0_real64
         this%iotaf_edge = 0.0_real64
+        this%itor = 0.0_real64
+        this%b0 = 0.0_real64
+        this%rmajor_p = 0.0_real64
+        this%aminor_p = 0.0_real64
         
         if (allocated(this%rmnc)) deallocate(this%rmnc)
         if (allocated(this%zmns)) deallocate(this%zmns)
