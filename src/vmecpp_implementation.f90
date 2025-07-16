@@ -254,6 +254,9 @@ contains
         else
             results%error_message = "No HDF5 file found"
         end if
+        
+        ! Clean up HDF5 data
+        call hdf5_data%clear()
     end subroutine vmecpp_extract_results
 
     function get_basename(filename) result(basename)

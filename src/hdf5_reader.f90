@@ -30,21 +30,60 @@ module hdf5_reader
         real(real64), allocatable :: xm(:)
         real(real64), allocatable :: xn(:)
         integer :: mnmax
+    contains
+        procedure :: clear => hdf5_data_clear
     end type hdf5_data_t
     
 contains
     
+    subroutine hdf5_data_clear(this)
+        class(hdf5_data_t), intent(inout) :: this
+        
+        this%valid = .false.
+        this%wb = 0.0_real64
+        this%betatotal = 0.0_real64
+        this%betapol = 0.0_real64
+        this%betator = 0.0_real64
+        this%aspect = 0.0_real64
+        this%raxis_cc = 0.0_real64
+        this%volume_p = 0.0_real64
+        this%iotaf_edge = 0.0_real64
+        this%itor = 0.0_real64
+        this%b0 = 0.0_real64
+        this%rmajor_p = 0.0_real64
+        this%aminor_p = 0.0_real64
+        this%mnmax = 0
+        
+        if (allocated(this%rmnc)) deallocate(this%rmnc)
+        if (allocated(this%rmns)) deallocate(this%rmns)
+        if (allocated(this%zmnc)) deallocate(this%zmnc)
+        if (allocated(this%zmns)) deallocate(this%zmns)
+        if (allocated(this%lmnc)) deallocate(this%lmnc)
+        if (allocated(this%lmns)) deallocate(this%lmns)
+        if (allocated(this%xm)) deallocate(this%xm)
+        if (allocated(this%xn)) deallocate(this%xn)
+    end subroutine hdf5_data_clear
+    
+    
     function read_hdf5_file(filename, data) result(success)
         character(len=*), intent(in) :: filename
-        type(hdf5_data_t), intent(out) :: data
+        type(hdf5_data_t), intent(inout) :: data
         logical :: success
         
         integer(hid_t) :: file_id, dset_id, dspace_id
         integer :: error
         logical :: exists
         
+        ! Initialize values to avoid potential issues
+        file_id = -1
+        dset_id = -1
+        dspace_id = -1
+        error = -1
+        
         success = .false.
-        data%valid = .false.
+        write(error_unit, '(A)') 'DEBUG: About to call data%clear()'
+        call data%clear()
+        write(error_unit, '(A)') 'DEBUG: data%clear() completed'
         
         ! Check if file exists
         inquire(file=filename, exist=exists)
@@ -54,11 +93,13 @@ contains
         end if
         
         ! Initialize HDF5 library
+        write(error_unit, '(A)') 'DEBUG: About to initialize HDF5 library'
         call h5open_f(error)
         if (error /= 0) then
             write(error_unit, '(A)') "Failed to initialize HDF5 library"
             return
         end if
+        write(error_unit, '(A)') 'DEBUG: HDF5 library initialized successfully'
         
         ! Open the file
         call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, error)
@@ -97,7 +138,14 @@ contains
         
         ! Close the file
         call h5fclose_f(file_id, error)
+        if (error /= 0) then
+            write(error_unit, '(A)') "Warning: Failed to close HDF5 file properly"
+        end if
+        
         call h5close_f(error)
+        if (error /= 0) then
+            write(error_unit, '(A)') "Warning: Failed to close HDF5 library properly"
+        end if
         
         data%valid = .true.
         success = .true.
@@ -220,23 +268,36 @@ contains
         ! Get dimensions from rmnc dataset
         call get_hdf5_2d_dims(file_id, "/wout/rmnc", ns, mnmax)
         
-        if (ns > 0 .and. mnmax > 0) then
+        ! Add bounds checking to prevent memory corruption
+        if (ns > 0 .and. mnmax > 0 .and. ns < 10000 .and. mnmax < 10000) then
             data%mnmax = mnmax
             
-            ! Read main Fourier coefficients
-            allocate(data%rmnc(ns, mnmax))
-            allocate(data%zmns(ns, mnmax))
-            allocate(data%lmns(ns, mnmax))
+            ! Read main Fourier coefficients with error checking
+            if (dataset_exists(file_id, "/wout/rmnc")) then
+                allocate(data%rmnc(ns, mnmax))
+                call read_hdf5_2d_array(file_id, "/wout/rmnc", data%rmnc, ns, mnmax)
+            end if
             
-            call read_hdf5_2d_array(file_id, "/wout/rmnc", data%rmnc, ns, mnmax)
-            call read_hdf5_2d_array(file_id, "/wout/zmns", data%zmns, ns, mnmax)
-            call read_hdf5_2d_array(file_id, "/wout/lmns", data%lmns, ns, mnmax)
+            if (dataset_exists(file_id, "/wout/zmns")) then
+                allocate(data%zmns(ns, mnmax))
+                call read_hdf5_2d_array(file_id, "/wout/zmns", data%zmns, ns, mnmax)
+            end if
+            
+            if (dataset_exists(file_id, "/wout/lmns")) then
+                allocate(data%lmns(ns, mnmax))
+                call read_hdf5_2d_array(file_id, "/wout/lmns", data%lmns, ns, mnmax)
+            end if
             
             ! Read mode numbers
-            allocate(data%xm(mnmax))
-            allocate(data%xn(mnmax))
-            call read_hdf5_1d_array(file_id, "/wout/xm", data%xm, mnmax)
-            call read_hdf5_1d_array(file_id, "/wout/xn", data%xn, mnmax)
+            if (dataset_exists(file_id, "/wout/xm")) then
+                allocate(data%xm(mnmax))
+                call read_hdf5_1d_array(file_id, "/wout/xm", data%xm, mnmax)
+            end if
+            
+            if (dataset_exists(file_id, "/wout/xn")) then
+                allocate(data%xn(mnmax))
+                call read_hdf5_1d_array(file_id, "/wout/xn", data%xn, mnmax)
+            end if
             
             ! Read optional arrays (may be zero-sized for stellarator symmetry)
             if (dataset_exists(file_id, "/wout/rmns")) then
@@ -302,7 +363,13 @@ contains
         call h5dopen_f(file_id, dataset_name, dset_id, error)
         if (error == 0) then
             call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, error)
+            if (error /= 0) then
+                write(error_unit, '(A)') "Warning: Failed to read HDF5 dataset " // trim(dataset_name)
+                array = 0.0_dp
+            end if
             call h5dclose_f(dset_id, error)
+        else
+            write(error_unit, '(A)') "Warning: Failed to open HDF5 dataset " // trim(dataset_name)
         end if
     end subroutine read_hdf5_2d_array
     
@@ -322,7 +389,13 @@ contains
         call h5dopen_f(file_id, dataset_name, dset_id, error)
         if (error == 0) then
             call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, array, dims, error)
+            if (error /= 0) then
+                write(error_unit, '(A)') "Warning: Failed to read HDF5 dataset " // trim(dataset_name)
+                array = 0.0_dp
+            end if
             call h5dclose_f(dset_id, error)
+        else
+            write(error_unit, '(A)') "Warning: Failed to open HDF5 dataset " // trim(dataset_name)
         end if
     end subroutine read_hdf5_1d_array
     
