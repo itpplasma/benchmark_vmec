@@ -100,20 +100,29 @@ contains
 
         write(unit, '(A)') "import sys"
         write(unit, '(A)') "import os"
+        write(unit, '(A)') "import numpy as np"
+        write(unit, '(A)') "from mpi4py import MPI"
         write(unit, '(A)') "try:"
         write(unit, '(A)') "    import vmec"
         write(unit, '(A)') "    os.chdir('" // trim(output_dir) // "')"
-        write(unit, '(A)') "    result = vmec.Vmec('" // get_basename(local_input) // "')"
-        write(unit, '(A)') "    result.indata.niter = 1000"
-        write(unit, '(A)') "    result.run()"
+        write(unit, '(A)') "    # Setup VMEC2000 parameters"
+        write(unit, '(A)') "    ictrl = np.zeros(5, dtype=np.int32)"
+        write(unit, '(A)') "    verbose = True"
+        write(unit, '(A)') "    reset_file = ''"
+        write(unit, '(A)') "    fcomm = MPI.COMM_WORLD.py2f()"
+        write(unit, '(A)') "    # Run VMEC: readin + timestep + output + cleanup"
+        write(unit, '(A)') "    ictrl[0] = 2 + 4 + 8 + 16"
+        write(unit, '(A)') "    vmec.runvmec(ictrl, '" // get_basename(local_input) // "', verbose, fcomm, reset_file)"
         write(unit, '(A)') "    print('VMEC2000 run completed successfully')"
         write(unit, '(A)') "except Exception as e:"
         write(unit, '(A)') "    print(f'VMEC2000 failed: {e}')"
+        write(unit, '(A)') "    import traceback"
+        write(unit, '(A)') "    traceback.print_exc()"
         write(unit, '(A)') "    sys.exit(1)"
         close(unit)
 
         cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // &
-              " python " // trim(python_script) // " > vmec2000.log 2>&1"
+              " python " // get_basename(python_script) // " > vmec2000.log 2>&1"
 
         call execute_command_line(trim(cmd), exitstat=stat)
 
