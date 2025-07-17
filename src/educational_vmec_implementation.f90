@@ -15,6 +15,7 @@ module educational_vmec_implementation
         procedure :: run_case => educational_vmec_run_case
         procedure :: extract_results => educational_vmec_extract_results
         procedure :: convert_json_to_indata => educational_vmec_convert_json_to_indata
+        procedure :: clean_input_for_educational_vmec => educational_vmec_clean_input
     end type educational_vmec_t
 
 contains
@@ -171,11 +172,11 @@ contains
             indata_file = input_file
         end if
         
-        ! Copy input file to output directory
+        ! Copy and clean input file to output directory
         local_input = trim(output_dir) // "/" // get_basename(indata_file)
-        if (local_input /= indata_file) then
-            cmd = "cp " // trim(indata_file) // " " // trim(local_input)
-            call execute_command_line(trim(cmd), exitstat=stat)
+        if (.not. this%clean_input_for_educational_vmec(indata_file, local_input)) then
+            write(error_unit, '(A)') "Failed to clean input file for Educational VMEC"
+            return
         end if
         
         ! Run Educational VMEC
@@ -388,5 +389,58 @@ contains
         write(temp, '(I0)') i
         str = trim(temp)
     end function int_to_str
+
+    function educational_vmec_clean_input(this, input_file, output_file) result(success)
+        class(educational_vmec_t), intent(in) :: this
+        character(len=*), intent(in) :: input_file
+        character(len=*), intent(in) :: output_file
+        logical :: success
+        integer :: input_unit, output_unit, stat
+        character(len=1000) :: line
+        logical :: skip_line
+        
+        success = .false.
+        
+        ! Open input and output files
+        open(newunit=input_unit, file=input_file, status='old', action='read', iostat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to open input file: " // trim(input_file)
+            return
+        end if
+        
+        open(newunit=output_unit, file=output_file, status='replace', action='write', iostat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to open output file: " // trim(output_file)
+            close(input_unit)
+            return
+        end if
+        
+        ! Process each line
+        do
+            read(input_unit, '(A)', iostat=stat) line
+            if (stat /= 0) exit  ! End of file or error
+            
+            skip_line = .false.
+            
+            ! Remove parameters that Educational VMEC doesn't understand
+            if (index(adjustl(line), 'LOPTIM') > 0) skip_line = .true.
+            if (index(adjustl(line), 'LSPECTRUM_DUMP') > 0) skip_line = .true.
+            if (index(adjustl(line), 'LDIAGNO') > 0) skip_line = .true.
+            if (index(adjustl(line), 'LTHREED') > 0) skip_line = .true.
+            if (index(adjustl(line), 'LWOUTTXT') > 0) skip_line = .true.
+            if (index(adjustl(line), 'LMAC') > 0) skip_line = .true.
+            if (index(adjustl(line), 'LPRINT_ERRORS') > 0) skip_line = .true.
+            
+            ! Write line to output if not skipped
+            if (.not. skip_line) then
+                write(output_unit, '(A)') trim(line)
+            end if
+        end do
+        
+        close(input_unit)
+        close(output_unit)
+        
+        success = .true.
+    end function educational_vmec_clean_input
 
 end module educational_vmec_implementation
