@@ -1,6 +1,7 @@
 module results_comparator
     use iso_fortran_env, only: int32, real64, error_unit, output_unit
     use vmec_benchmark_types, only: vmec_result_t
+    use jvmec_comparison, only: generate_jvmec_quantitative_summary
     implicit none
     private
 
@@ -33,6 +34,7 @@ module results_comparator
         procedure :: generate_report => results_comparator_generate_report
         procedure :: export_to_csv => results_comparator_export_to_csv
         procedure :: write_fourier_summary => write_fourier_summary
+        procedure :: generate_jvmec_reports => generate_jvmec_reports
         procedure :: finalize => results_comparator_finalize
     end type results_comparator_t
 
@@ -277,6 +279,9 @@ contains
         
         close(unit)
         
+        ! Generate jVMEC-specific quantitative reports
+        call this%generate_jvmec_reports()
+        
         write(output_unit, '(A)') "Report saved to " // trim(output_file)
     end subroutine results_comparator_generate_report
 
@@ -386,6 +391,25 @@ contains
             "| ", trim(impl_name), " | ", ns, " | ", mnmax, " | ", &
             rmnc_11, " | ", zmns_11, " | ", lmns_11, " |"
     end subroutine write_fourier_row
+
+    subroutine generate_jvmec_reports(this)
+        class(results_comparator_t), intent(in) :: this
+        integer :: i
+        character(len=:), allocatable :: jvmec_report_file
+        
+        do i = 1, this%n_cases
+            if (this%case_results(i)%n_impls > 0) then
+                jvmec_report_file = "benchmark_results/jvmec_quantitative_" // &
+                                   trim(this%case_results(i)%case_name) // ".md"
+                
+                call generate_jvmec_quantitative_summary( &
+                    this%case_results(i)%results(1:this%case_results(i)%n_impls), &
+                    this%case_results(i)%impl_names(1:this%case_results(i)%n_impls), &
+                    jvmec_report_file)
+            end if
+        end do
+        
+    end subroutine generate_jvmec_reports
 
     subroutine results_comparator_finalize(this)
         class(results_comparator_t), intent(inout) :: this
