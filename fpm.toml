@@ -40,10 +40,6 @@ name = "demo-jvmec-comparison"
 source-dir = "."
 main = "demo_jvmec_comparison.f90"
 
-[[executable]]
-name = "create-inputs-directory"
-source-dir = "."
-main = "create_inputs_directory.f90"
 
 
 [dependencies]

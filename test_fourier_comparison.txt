@@ -1,0 +1,2 @@
+- Fourier R modes: RMS Δ =  1.00000E-03, Max Δ =  1.00000E-03 (5 modes)
+- Fourier Z modes: RMS Δ =  2.00000E-03, Max Δ =  2.00000E-03 (5 modes)
