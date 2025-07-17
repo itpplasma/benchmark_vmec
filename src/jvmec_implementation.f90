@@ -150,32 +150,89 @@ contains
     end function jvmec_run_case
 
     subroutine jvmec_extract_results(this, output_dir, results)
+        use netcdf
         class(jvmec_t), intent(in) :: this
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
-        character(len=256) :: log_file
-        integer :: stat
+        character(len=256) :: wout_file, log_file
+        integer :: stat, ncid, varid, dimid
+        integer :: ns, mnmax, mnmax_nyq
+        integer, dimension(2) :: dims
         logical :: exists
         
         call results%clear()
         
         ! Look for VMEC output files (wout.nc or wout_*.nc)
         ! Try common patterns for jVMEC output
-        inquire(file=trim(output_dir) // "/wout_input_cleaned.nc", exist=exists)
+        wout_file = trim(output_dir) // "/wout_input_cleaned.nc"
+        inquire(file=trim(wout_file), exist=exists)
         if (.not. exists) then
-            inquire(file=trim(output_dir) // "/wout_input_cleaned.txt.nc", exist=exists)
+            wout_file = trim(output_dir) // "/wout_input_cleaned.txt.nc"
+            inquire(file=trim(wout_file), exist=exists)
         end if
         
         if (exists) then
+            ! Open NetCDF file
+            stat = nf90_open(trim(wout_file), NF90_NOWRITE, ncid)
+            if (stat /= NF90_NOERR) then
+                results%error_message = "Failed to open jVMEC NetCDF file"
+                return
+            end if
+            
+            ! Read dimensions
+            stat = nf90_inq_dimid(ncid, "rmnc_dim0", dimid)
+            if (stat == NF90_NOERR) stat = nf90_inquire_dimension(ncid, dimid, len=ns)
+            
+            stat = nf90_inq_dimid(ncid, "rmnc_dim1", dimid)
+            if (stat == NF90_NOERR) stat = nf90_inquire_dimension(ncid, dimid, len=mnmax)
+            
+            ! Read basic quantities that jVMEC provides
+            stat = nf90_get_att(ncid, NF90_GLOBAL, "ns", ns)
+            stat = nf90_get_att(ncid, NF90_GLOBAL, "mnmax", mnmax)
+            
+            ! Allocate arrays
+            if (mnmax > 0 .and. ns > 0) then
+                allocate(results%rmnc(ns, mnmax))
+                allocate(results%zmns(ns, mnmax))
+                allocate(results%lmns(ns, mnmax))
+                allocate(results%xm(mnmax))
+                allocate(results%xn(mnmax))
+                
+                ! Read Fourier coefficients
+                stat = nf90_inq_varid(ncid, "rmnc", varid)
+                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%rmnc)
+                
+                stat = nf90_inq_varid(ncid, "zmns", varid)
+                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%zmns)
+                
+                stat = nf90_inq_varid(ncid, "lmns", varid)
+                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%lmns)
+                
+                ! Read mode numbers
+                stat = nf90_inq_varid(ncid, "xm", varid)
+                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%xm)
+                
+                stat = nf90_inq_varid(ncid, "xn", varid)
+                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%xn)
+                
+                ! Extract R axis from Fourier coefficients (m=0, n=0 mode)
+                if (allocated(results%rmnc)) then
+                    results%raxis_cc = results%rmnc(ns, 1)  ! Assuming first mode is (0,0)
+                end if
+            end if
+            
+            ! Close NetCDF file
+            stat = nf90_close(ncid)
+            
             results%success = .true.
-            results%error_message = "jVMEC completed successfully"
+            results%error_message = "jVMEC data extracted successfully"
         else
             ! No wout file found, check log for convergence
             log_file = trim(output_dir) // "/jvmec.log"
             inquire(file=trim(log_file), exist=exists)
             if (exists) then
                 ! Check if VMEC converged by looking for convergence indicators
-                call execute_command_line("grep -q -i 'execution terminated normally\|converged\|success' " // trim(log_file), &
+                call execute_command_line("grep -q -i 'converged' " // trim(log_file), &
                                         exitstat=stat)
                 if (stat == 0) then
                     results%success = .true.

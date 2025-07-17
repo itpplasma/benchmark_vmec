@@ -30,6 +30,11 @@ name = "vmec-build"
 source-dir = "app"
 main = "vmec-build.f90"
 
+[[executable]]
+name = "jvmec-test"
+source-dir = "app"
+main = "jvmec_test.f90"
+
 
 [dependencies]
 json-fortran = { git = "https://github.com/jacobwilliams/json-fortran.git" }
