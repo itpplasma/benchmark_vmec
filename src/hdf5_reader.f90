@@ -263,7 +263,7 @@ contains
         integer(hid_t), intent(in) :: file_id
         type(hdf5_data_t), intent(inout) :: data
         
-        integer :: ns, mnmax
+        integer :: ns, mnmax, actual_ns, actual_mnmax
         
         ! Get dimensions from rmnc dataset
         call get_hdf5_2d_dims(file_id, "/wout/rmnc", ns, mnmax)
@@ -301,18 +301,27 @@ contains
             
             ! Read optional arrays (may be zero-sized for stellarator symmetry)
             if (dataset_exists(file_id, "/wout/rmns")) then
-                allocate(data%rmns(ns, mnmax))
-                call read_hdf5_2d_array(file_id, "/wout/rmns", data%rmns, ns, mnmax)
+                call get_hdf5_2d_dims(file_id, "/wout/rmns", actual_ns, actual_mnmax)
+                if (actual_ns > 0 .and. actual_mnmax > 0) then
+                    allocate(data%rmns(actual_ns, actual_mnmax))
+                    call read_hdf5_2d_array(file_id, "/wout/rmns", data%rmns, actual_ns, actual_mnmax)
+                end if
             end if
             
             if (dataset_exists(file_id, "/wout/zmnc")) then
-                allocate(data%zmnc(ns, mnmax))
-                call read_hdf5_2d_array(file_id, "/wout/zmnc", data%zmnc, ns, mnmax)
+                call get_hdf5_2d_dims(file_id, "/wout/zmnc", actual_ns, actual_mnmax)
+                if (actual_ns > 0 .and. actual_mnmax > 0) then
+                    allocate(data%zmnc(actual_ns, actual_mnmax))
+                    call read_hdf5_2d_array(file_id, "/wout/zmnc", data%zmnc, actual_ns, actual_mnmax)
+                end if
             end if
             
             if (dataset_exists(file_id, "/wout/lmnc")) then
-                allocate(data%lmnc(ns, mnmax))
-                call read_hdf5_2d_array(file_id, "/wout/lmnc", data%lmnc, ns, mnmax)
+                call get_hdf5_2d_dims(file_id, "/wout/lmnc", actual_ns, actual_mnmax)
+                if (actual_ns > 0 .and. actual_mnmax > 0) then
+                    allocate(data%lmnc(actual_ns, actual_mnmax))
+                    call read_hdf5_2d_array(file_id, "/wout/lmnc", data%lmnc, actual_ns, actual_mnmax)
+                end if
             end if
         end if
     end subroutine read_hdf5_fourier_coefficients

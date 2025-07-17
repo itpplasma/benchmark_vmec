@@ -2,7 +2,7 @@ module vmecpp_implementation
     use iso_fortran_env, only: int32, real64, error_unit, output_unit
     use vmec_implementation_base, only: vmec_implementation_t
     use vmec_benchmark_types, only: vmec_result_t
-    use hdf5_reader, only: hdf5_data_t, read_hdf5_file
+    use wout_reader, only: wout_data_t, read_wout_file
     implicit none
     private
 
@@ -146,10 +146,10 @@ contains
             end if
         end if
 
-        ! Run VMEC++ standalone executable
+        ! Use VMEC++ Python API to generate NetCDF directly
         cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // &
-              " " // trim(this%executable) // " " // get_basename(local_input) // &
-              " > vmecpp.log 2>&1"
+              " python3 -c ""import vmecpp; vmec_input = vmecpp.VmecInput.from_file('" // get_basename(local_input) // &
+              "'); output = vmecpp.run(vmec_input); output.wout.save('wout_" // get_basename_without_ext(local_input) // ".nc')"" > vmecpp.log 2>&1"
 
         write(output_unit, '(A)') "DEBUG: Running command: " // trim(cmd)
         
@@ -168,95 +168,96 @@ contains
         class(vmecpp_t), intent(in) :: this
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
-        character(len=256) :: hdf5_file
-        type(hdf5_data_t) :: hdf5_data
+        character(len=256) :: netcdf_file
+        type(wout_data_t) :: wout_data
         integer :: stat, unit
         logical :: exists, read_success
 
         call results%clear()
 
-        ! Look for HDF5 file - use the most recently modified one
-        call execute_command_line("ls -t " // trim(output_dir) // "/*.out.h5 2>/dev/null | head -1 > /tmp/hdf5_file_vmecpp.tmp", &
+        ! Look for NetCDF file - use the most recently modified one
+        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1 > /tmp/netcdf_file_vmecpp.tmp", &
                                 exitstat=stat)
         if (stat == 0) then
-            open(newunit=unit, file="/tmp/hdf5_file_vmecpp.tmp", status="old", action="read")
-            read(unit, '(A)') hdf5_file
+            open(newunit=unit, file="/tmp/netcdf_file_vmecpp.tmp", status="old", action="read")
+            read(unit, '(A)') netcdf_file
             close(unit)
         else
-            hdf5_file = ""
+            netcdf_file = ""
         end if
 
-        if (stat == 0 .and. len_trim(hdf5_file) > 0) then
-            hdf5_file = trim(adjustl(hdf5_file))
-            inquire(file=hdf5_file, exist=exists)
+        if (stat == 0 .and. len_trim(netcdf_file) > 0) then
+            netcdf_file = trim(adjustl(netcdf_file))
+            inquire(file=netcdf_file, exist=exists)
             
             if (exists) then
-                ! Read the HDF5 file
-                read_success = read_hdf5_file(hdf5_file, hdf5_data)
+                write(output_unit, '(A)') "DEBUG: File exists, calling read_wout_file"
+                ! Read the NetCDF file
+                read_success = read_wout_file(netcdf_file, wout_data)
                 
-                if (read_success .and. hdf5_data%valid) then
+                if (read_success .and. wout_data%valid) then
                     results%success = .true.
                     
                     ! Copy physics quantities to results
-                    results%wb = hdf5_data%wb
-                    results%betatotal = hdf5_data%betatotal
-                    results%betapol = hdf5_data%betapol
-                    results%betator = hdf5_data%betator
-                    results%aspect = hdf5_data%aspect
-                    results%raxis_cc = hdf5_data%raxis_cc
-                    results%volume_p = hdf5_data%volume_p
-                    results%iotaf_edge = hdf5_data%iotaf_edge
-                    results%itor = hdf5_data%itor
-                    results%b0 = hdf5_data%b0
-                    results%rmajor_p = hdf5_data%rmajor_p
-                    results%aminor_p = hdf5_data%aminor_p
+                    results%wb = wout_data%wb
+                    results%betatotal = wout_data%betatotal
+                    results%betapol = wout_data%betapol
+                    results%betator = wout_data%betator
+                    results%aspect = wout_data%aspect
+                    results%raxis_cc = wout_data%raxis_cc
+                    results%volume_p = wout_data%volume_p
+                    results%iotaf_edge = wout_data%iotaf_edge
+                    results%itor = wout_data%itor
+                    results%b0 = wout_data%b0
+                    results%rmajor_p = wout_data%rmajor_p
+                    results%aminor_p = wout_data%aminor_p
                     
                     ! Copy Fourier coefficients if available
-                    if (allocated(hdf5_data%rmnc)) then
-                        allocate(results%rmnc(size(hdf5_data%rmnc,1), size(hdf5_data%rmnc,2)))
-                        results%rmnc = hdf5_data%rmnc
+                    if (allocated(wout_data%rmnc)) then
+                        allocate(results%rmnc(size(wout_data%rmnc,1), size(wout_data%rmnc,2)))
+                        results%rmnc = wout_data%rmnc
                     end if
-                    if (allocated(hdf5_data%rmns)) then
-                        allocate(results%rmns(size(hdf5_data%rmns,1), size(hdf5_data%rmns,2)))
-                        results%rmns = hdf5_data%rmns
+                    if (allocated(wout_data%rmns)) then
+                        allocate(results%rmns(size(wout_data%rmns,1), size(wout_data%rmns,2)))
+                        results%rmns = wout_data%rmns
                     end if
-                    if (allocated(hdf5_data%zmnc)) then
-                        allocate(results%zmnc(size(hdf5_data%zmnc,1), size(hdf5_data%zmnc,2)))
-                        results%zmnc = hdf5_data%zmnc
+                    if (allocated(wout_data%zmnc)) then
+                        allocate(results%zmnc(size(wout_data%zmnc,1), size(wout_data%zmnc,2)))
+                        results%zmnc = wout_data%zmnc
                     end if
-                    if (allocated(hdf5_data%zmns)) then
-                        allocate(results%zmns(size(hdf5_data%zmns,1), size(hdf5_data%zmns,2)))
-                        results%zmns = hdf5_data%zmns
+                    if (allocated(wout_data%zmns)) then
+                        allocate(results%zmns(size(wout_data%zmns,1), size(wout_data%zmns,2)))
+                        results%zmns = wout_data%zmns
                     end if
-                    if (allocated(hdf5_data%lmnc)) then
-                        allocate(results%lmnc(size(hdf5_data%lmnc,1), size(hdf5_data%lmnc,2)))
-                        results%lmnc = hdf5_data%lmnc
+                    if (allocated(wout_data%lmnc)) then
+                        allocate(results%lmnc(size(wout_data%lmnc,1), size(wout_data%lmnc,2)))
+                        results%lmnc = wout_data%lmnc
                     end if
-                    if (allocated(hdf5_data%lmns)) then
-                        allocate(results%lmns(size(hdf5_data%lmns,1), size(hdf5_data%lmns,2)))
-                        results%lmns = hdf5_data%lmns
+                    if (allocated(wout_data%lmns)) then
+                        allocate(results%lmns(size(wout_data%lmns,1), size(wout_data%lmns,2)))
+                        results%lmns = wout_data%lmns
                     end if
-                    if (allocated(hdf5_data%xm)) then
-                        allocate(results%xm(size(hdf5_data%xm)))
-                        results%xm = hdf5_data%xm
+                    if (allocated(wout_data%xm)) then
+                        allocate(results%xm(size(wout_data%xm)))
+                        results%xm = wout_data%xm
                     end if
-                    if (allocated(hdf5_data%xn)) then
-                        allocate(results%xn(size(hdf5_data%xn)))
-                        results%xn = hdf5_data%xn
+                    if (allocated(wout_data%xn)) then
+                        allocate(results%xn(size(wout_data%xn)))
+                        results%xn = wout_data%xn
                     end if
                     
                 else
-                    results%error_message = "Failed to read HDF5 file: " // trim(hdf5_file)
+                    results%error_message = "Failed to read NetCDF file: " // trim(netcdf_file)
                 end if
             else
-                results%error_message = "HDF5 file not found: " // trim(hdf5_file)
+                results%error_message = "NetCDF file not found: " // trim(netcdf_file)
             end if
         else
-            results%error_message = "No HDF5 file found"
+            results%error_message = "No NetCDF file found"
         end if
         
-        ! Clean up HDF5 data
-        call hdf5_data%clear()
+        ! Clean up wout data
+        call wout_data%clear()
     end subroutine vmecpp_extract_results
 
     function get_basename(filename) result(basename)
@@ -271,6 +272,27 @@ contains
             basename = filename
         end if
     end function get_basename
+
+    function get_basename_without_ext(filename) result(basename)
+        character(len=*), intent(in) :: filename
+        character(len=:), allocatable :: basename
+        character(len=:), allocatable :: temp
+        integer :: last_slash, last_dot
+
+        last_slash = index(filename, '/', back=.true.)
+        if (last_slash > 0) then
+            temp = filename(last_slash+1:)
+        else
+            temp = filename
+        end if
+        
+        last_dot = index(temp, '.', back=.true.)
+        if (last_dot > 0) then
+            basename = temp(1:last_dot-1)
+        else
+            basename = temp
+        end if
+    end function get_basename_without_ext
 
     function get_case_name(filepath) result(name)
         character(len=*), intent(in) :: filepath
