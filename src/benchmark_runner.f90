@@ -35,6 +35,7 @@ module benchmark_runner
         procedure :: get_implementation_names => benchmark_runner_get_implementation_names
         procedure :: get_test_case_names => benchmark_runner_get_test_case_names
         procedure :: finalize => benchmark_runner_finalize
+        procedure, private :: is_duplicate_json => benchmark_runner_is_duplicate_json
     end type benchmark_runner_t
 
 contains
@@ -199,12 +200,12 @@ contains
         call get_environment_variable("BENCHMARK_INCLUDE_JVMEC", env_value, status=env_stat)
         include_jvmec = (env_stat == 0 .and. trim(env_value) == "1")
         
-        ! Search for input files in all repositories
+        ! Search for input files in all repositories (including JSON files for VMEC++)
         if (include_jvmec) then
-            cmd = "find " // trim(this%repo_manager%base_path) // " -name 'input.*' -type f 2>/dev/null"
+            cmd = "find " // trim(this%repo_manager%base_path) // " \( -name 'input.*' -o -name '*.json' \) -type f 2>/dev/null | grep -v '_deps'"
             write(output_unit, '(A)') "  (Including jVMEC test cases)"
         else
-            cmd = "find " // trim(this%repo_manager%base_path) // " -path '*/jvmec' -prune -o -name 'input.*' -type f -print 2>/dev/null"
+            cmd = "find " // trim(this%repo_manager%base_path) // " -path '*/jvmec' -prune -o \( -name 'input.*' -o -name '*.json' \) -type f -print 2>/dev/null | grep -v '_deps'"
             write(output_unit, '(A)') "  (Excluding jVMEC test cases - set BENCHMARK_INCLUDE_JVMEC=1 to include)"
         end if
         call execute_command_line(trim(cmd) // " > test_files.tmp", exitstat=stat)
@@ -215,6 +216,13 @@ contains
                 do
                     read(unit, '(A)', iostat=stat) line
                     if (stat /= 0) exit
+                    
+                    ! Skip JSON files if we already have the corresponding input file
+                    if (index(line, '.json') > 0) then
+                        ! Check if we already have the non-JSON version
+                        if (this%is_duplicate_json(line)) cycle
+                    end if
+                    
                     if (this%n_test_cases < max_cases) then
                         this%n_test_cases = this%n_test_cases + 1
                         this%test_cases(this%n_test_cases)%str = trim(line)
@@ -338,6 +346,30 @@ contains
         this%n_implementations = 0
         this%n_test_cases = 0
     end subroutine benchmark_runner_finalize
+    
+    function benchmark_runner_is_duplicate_json(this, json_file) result(is_duplicate)
+        class(benchmark_runner_t), intent(in) :: this
+        character(len=*), intent(in) :: json_file
+        logical :: is_duplicate
+        character(len=:), allocatable :: base_file
+        integer :: i, json_pos
+        
+        is_duplicate = .false.
+        
+        ! Get the base filename without .json extension
+        json_pos = index(json_file, '.json', back=.true.)
+        if (json_pos > 0) then
+            base_file = json_file(1:json_pos-1)
+            
+            ! Check if we already have this test case without .json
+            do i = 1, this%n_test_cases
+                if (trim(this%test_cases(i)%str) == trim(base_file)) then
+                    is_duplicate = .true.
+                    return
+                end if
+            end do
+        end if
+    end function benchmark_runner_is_duplicate_json
 
     ! Utility function
     function get_case_name(filepath) result(name)
