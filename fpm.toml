@@ -35,6 +35,16 @@ name = "jvmec-test"
 source-dir = "app"
 main = "jvmec_test.f90"
 
+[[executable]]
+name = "demo-jvmec-comparison"
+source-dir = "."
+main = "demo_jvmec_comparison.f90"
+
+[[executable]]
+name = "create-inputs-directory"
+source-dir = "."
+main = "create_inputs_directory.f90"
+
 
 [dependencies]
 json-fortran = { git = "https://github.com/jacobwilliams/json-fortran.git" }
