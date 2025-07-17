@@ -160,18 +160,15 @@ contains
         call results%clear()
         
         ! Look for VMEC output files (wout.nc or wout_*.nc)
-        call execute_command_line("find " // trim(output_dir) // " -name 'wout*.nc' -type f | head -1", &
-                                exitstat=stat, cmdmsg=log_file)
+        ! Try common patterns for jVMEC output
+        inquire(file=trim(output_dir) // "/wout_input_cleaned.nc", exist=exists)
+        if (.not. exists) then
+            inquire(file=trim(output_dir) // "/wout_input_cleaned.txt.nc", exist=exists)
+        end if
         
-        if (stat == 0 .and. len_trim(log_file) > 0) then
-            ! Found wout file, check if it exists and is valid
-            inquire(file=trim(adjustl(log_file)), exist=exists)
-            if (exists) then
-                results%success = .true.
-                results%error_message = "jVMEC completed successfully"
-            else
-                results%error_message = "jVMEC wout file not found"
-            end if
+        if (exists) then
+            results%success = .true.
+            results%error_message = "jVMEC completed successfully"
         else
             ! No wout file found, check log for convergence
             log_file = trim(output_dir) // "/jvmec.log"
