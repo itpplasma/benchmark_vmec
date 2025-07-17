@@ -42,7 +42,7 @@ contains
         if (exists) then
             ! Already built, set executable with absolute path including dependencies
             this%executable = "java -cp /home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/jVMEC-1.0.0.jar:" // &
-                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/lib/* de.labathome.jvmec.VmecRunner"
+                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/dependency/* de.labathome.jvmec.VmecRunner"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "jVMEC already built at " // trim(jar_file)
@@ -62,33 +62,15 @@ contains
             return
         end if
         
-        write(output_unit, '(A)') "Building jVMEC with Maven"
+        write(output_unit, '(A)') "Building jVMEC with build script"
         
-        ! Build jVMEC - automatic fix for buildnumber plugin issue
-        ! The buildnumber plugin fails due to undefined SCM variables in parent POM
-        ! We need to disable SCM checks and skip javadoc to build successfully
-        cmd = "cd " // trim(this%path) // " && " // &
-              "mvn clean package -DskipTests " // &
-              "-Dmaven.buildNumber.doCheck=false " // &
-              "-Dmaven.buildNumber.doUpdate=false " // &
-              "-Dmaven.javadoc.skip=true -q"
+        ! Use the build script which handles all the Maven complexities
+        cmd = "cd " // trim(this%path) // " && ./build.sh"
         call execute_command_line(trim(cmd), exitstat=stat)
         
         if (stat /= 0) then
-            write(error_unit, '(A)') "Failed to build jVMEC with Maven - trying fallback approach"
-            ! Fallback: try to patch POM and build again
-            call fix_jvmec_pom_scm_issue(this%path)
-            cmd = "cd " // trim(this%path) // " && " // &
-                  "mvn clean package -DskipTests " // &
-                  "-Dmaven.buildNumber.doCheck=false " // &
-                  "-Dmaven.buildNumber.doUpdate=false " // &
-                  "-Dmaven.javadoc.skip=true -q"
-            call execute_command_line(trim(cmd), exitstat=stat)
-            
-            if (stat /= 0) then
-                write(error_unit, '(A)') "Failed to build jVMEC even with POM fixes"
-                return
-            end if
+            write(error_unit, '(A)') "Failed to build jVMEC with build script"
+            return
         end if
         
         ! Check for built JAR file
@@ -97,12 +79,9 @@ contains
         
         if (exists) then
             ! Use the built JAR with VmecRunner main class (full VMEC implementation)
-            ! Download dependencies to ensure complete classpath
-            cmd = "cd " // trim(this%path) // " && mvn dependency:copy-dependencies -DoutputDirectory=target/lib -q"
-            call execute_command_line(trim(cmd), exitstat=stat)
-            
+            ! Dependencies are already copied by the build script
             this%executable = "java -cp /home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/jVMEC-1.0.0.jar:" // &
-                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/lib/* de.labathome.jvmec.VmecRunner"
+                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/dependency/* de.labathome.jvmec.VmecRunner"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "Successfully built jVMEC JAR at " // trim(jar_file)
