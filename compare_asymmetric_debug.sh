@@ -73,8 +73,8 @@ run_jvmec() {
     sed -e 's/!.*$//' -e '/^$/d' input.test > input_cleaned.txt
     
     # Run jVMEC
-    echo "Running: java -jar ${REPOS_DIR}/jvmec/target/jvmec-2.0.0-SNAPSHOT.jar input_cleaned.txt"
-    java -jar "${REPOS_DIR}/jvmec/target/jvmec-2.0.0-SNAPSHOT.jar" input_cleaned.txt 2>&1 | tee jvmec_output.log
+    echo "Running: java -cp ${REPOS_DIR}/jvmec/target/jVMEC-1.0.0.jar:${REPOS_DIR}/jvmec/target/dependency/* de.labathome.jvmec.VmecRunner input_cleaned.txt"
+    java -cp "${REPOS_DIR}/jvmec/target/jVMEC-1.0.0.jar:${REPOS_DIR}/jvmec/target/dependency/*" de.labathome.jvmec.VmecRunner input_cleaned.txt 2>&1 | tee jvmec_output.log
     
     # Check if it ran successfully
     if [ -f "wout_input_cleaned.nc" ]; then
@@ -97,8 +97,8 @@ run_vmecpp() {
     python3 -m vmecpp.input2json input.test test.json
     
     # Run VMEC++
-    echo "Running: ${REPOS_DIR}/vmecpp/build/src/vmecpp/cpp/vmecpp -i test.json -o test.out.h5"
-    "${REPOS_DIR}/vmecpp/build/src/vmecpp/cpp/vmecpp" -i test.json -o test.out.h5 2>&1 | tee vmecpp_output.log
+    echo "Running: /home/ert/code/vmecpp/build/vmec_standalone -i test.json -o test.out.h5"
+    "/home/ert/code/vmecpp/build/vmec_standalone" -i test.json -o test.out.h5 2>&1 | tee vmecpp_output.log
     
     # Check if it ran successfully
     if [ -f "test.out.h5" ]; then
@@ -146,14 +146,14 @@ if [ ! -f "${REPOS_DIR}/educational_VMEC/build/bin/xvmec" ]; then
     cd "$BASE_DIR"
 fi
 
-if [ ! -f "${REPOS_DIR}/jvmec/target/jvmec-2.0.0-SNAPSHOT.jar" ]; then
+if [ ! -f "${REPOS_DIR}/jvmec/target/jVMEC-1.0.0.jar" ]; then
     echo -e "${RED}jVMEC JAR not found. Building...${NC}"
     cd "${REPOS_DIR}/jvmec"
-    mvn clean package
+    ./build.sh
     cd "$BASE_DIR"
 fi
 
-if [ ! -f "${REPOS_DIR}/vmecpp/build/src/vmecpp/cpp/vmecpp" ]; then
+if [ ! -f "/home/ert/code/vmecpp/build/vmec_standalone" ]; then
     echo -e "${RED}VMEC++ executable not found. Please build it first.${NC}"
     exit 1
 fi

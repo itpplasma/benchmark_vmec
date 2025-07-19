@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Reference Implementation Decision for Asymmetric VMEC
+
+- **Primary Reference**: jVMEC - most up-to-date with bugfixes and optimizations
+- **Secondary Reference**: educational_VMEC - for additional insight, not strict matching required
+- **Target**: VMEC++ asymmetric implementation should match jVMEC exactly
+
+jVMEC has been identified as the most reliable reference for asymmetric VMEC implementation due to:
+- More recent development and bug fixes
+- Better maintained and optimized code
+- More robust handling of edge cases
+- educational_VMEC serves as supplementary information only
+
 ## Essential Commands
 
 ### Build and Development

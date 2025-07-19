@@ -1,0 +1,64 @@
+ THIS IS VMEC2000, A 3D EQUILIBRIUM CODE, VERSION 8.52
+ Lambda: Full Radial Mesh. L-Force: hybrid full/half.
+
+
+ COMPUTATION PARAMETERS: (u = theta, v = zeta)
+ ---------------------------------------------
+     ns     nu     nv     mu     mv
+     17     16      8      5      2
+
+ CONFIGURATION PARAMETERS:
+ ---------------------------------------
+    nfp      gamma      spres_ped    phiedge(wb)     curtor(A)
+      1  0.000E+00      1.000E+00      6.000E+00     1.000E+00
+
+ RUN CONTROL PARAMETERS:
+ -----------------------
+  ncurr  niter   nsin  nstep  nvacskip      ftol     tcon0    lasym   lconm1
+      0   2000     17    200         3  1.00E-11  2.00E+00        T        T
+  mfilter_fbdy nfilter_fbdy
+           -1           -1
+
+ MASS PROFILE COEFFICIENTS am - newton/m**2 (EXPANSION IN NORMALIZED RADIUS):
+ PMASS parameterization type is 'power_series'
+ -----------------------------------
+   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00
+   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00
+   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00
+   0.000E+00   0.000E+00   0.000E+00
+
+ IOTA PROFILE COEFFICIENTS ai (EXPANSION IN NORMALIZED RADIUS):
+ PIOTA parameterization type is 'power_series'
+ -----------------------------------
+   9.000E-01  -6.500E-01   0.000E+00   0.000E+00   0.000E+00   0.000E+00
+   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00
+   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00
+   0.000E+00   0.000E+00   0.000E+00
+
+ NORMALIZED TOROIDAL FLUX COEFFICIENTS aphi (EXPANSION IN S):
+ -----------------------------------
+   1.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00
+   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00
+   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00   0.000E+00
+   0.000E+00   0.000E+00
+
+ R-Z FOURIER BOUNDARY COEFFICIENTS AND MAGNETIC AXIS INITIAL GUESS
+ R = RBC*COS(m*u - n*v) + RBS*SIN(m*u - n*v), Z = ZBC*COS(m*u - n*v) + ZBS*SIN(m*u-n*v)
+ --------------------------------------------------------------------------------------
+   nb  mb     rbc         rbs         zbc         zbs       raxis(c)    raxis(s)    zaxis(c)    zaxis(s)
+    0   0  6.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00  0.0000E+00
+    0   1  8.0498E-01  2.6833E-01  2.6833E-01  5.3666E-01
+    0   2  9.6000E-02  7.2000E-02  0.0000E+00  0.0000E+00
+ FSQR, FSQZ = Normalized Physical Force Residuals
+ fsqr, fsqz = Preconditioned Force Residuals
+ -----------------------
+ BEGIN FORCE ITERATIONS
+ -----------------------
+
+
+  NS =   17 NO. FOURIER MODES =   23 FTOLV =  1.000E-11 NITER =   2000
+
+ INITIAL JACOBIAN CHANGED SIGN (IMPROVE INITIAL GUESS)
+
+
+ The jacobian was non-definite!
