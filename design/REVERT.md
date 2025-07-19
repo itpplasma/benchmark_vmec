@@ -99,3 +99,50 @@ All actual logic changes have been reverted. The only changes remaining are:
 3. Cosmetic restructuring of the scaling code (no functional change)
 
 **No factor of 2 errors or other mathematical changes remain.**
+
+## PR 360 vs PR 359 Analysis
+
+After analyzing PR 360, we discovered it contains important improvements over PR 359:
+
+### Critical Bug Fixes in PR 360 (Missing from PR 359)
+
+1. **Python Wrapper Initialization**: Fixed array initialization logic in `vmec_indata_pywrapper.cc`
+2. **Output Quantities Indexing**: Fixed array indexing bug in `output_quantities.cc` 
+3. **Better Test Coverage**: Added `test_asymmetric_loading.py`
+4. **Complete Example**: Added proper `input.up_down_asymmetric_tokamak` file
+
+### Our Implementation Status
+
+**Based on PR 359** (older version), so we may have:
+- Worked around bugs that are already fixed in PR 360
+- Duplicated fixes that PR 360 already includes
+- Used inferior implementations
+
+### Recommended Rebase Strategy
+
+**Should Rebase onto PR 360** and selectively preserve:
+
+**Keep from Our Work**:
+- Debug output from `guess_magnetic_axis.cc` (temporarily)
+- Documentation in `benchmark_vmec/design/`
+- Analysis of algorithmic differences
+
+**Discard from Our Work**:
+- Duplicate input files with different formatting
+- Temporary debugging files
+- Any workarounds for bugs fixed in PR 360
+
+**Benefits of Rebasing to PR 360**:
+- Get latest bug fixes automatically
+- Cleaner codebase foundation
+- Better Python interface
+- Proper test infrastructure
+
+### Minimal Changes Needed
+
+After rebasing to PR 360, we likely only need:
+1. **Debug output** in `guess_magnetic_axis.cc` (for development)
+2. **Documentation** of our analysis findings
+3. **Any remaining convergence issues** not addressed by PR 360's fixes
+
+This approach minimizes changes while ensuring we have the most robust foundation.
