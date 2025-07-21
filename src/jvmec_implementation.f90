@@ -155,7 +155,7 @@ contains
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
         character(len=256) :: wout_file, log_file
-        integer :: stat, ncid, varid, dimid
+        integer :: stat, ncid, varid, dimid, i
         integer :: ns, mnmax, mnmax_nyq
         integer, dimension(2) :: dims
         logical :: exists
@@ -179,16 +179,31 @@ contains
                 return
             end if
             
-            ! Read dimensions
+            ! Read dimensions from dimension variables
             stat = nf90_inq_dimid(ncid, "rmnc_dim0", dimid)
-            if (stat == NF90_NOERR) stat = nf90_inquire_dimension(ncid, dimid, len=ns)
+            if (stat == NF90_NOERR) then
+                stat = nf90_inquire_dimension(ncid, dimid, len=ns)
+            else
+                ns = 0
+            end if
             
             stat = nf90_inq_dimid(ncid, "rmnc_dim1", dimid)
-            if (stat == NF90_NOERR) stat = nf90_inquire_dimension(ncid, dimid, len=mnmax)
+            if (stat == NF90_NOERR) then
+                stat = nf90_inquire_dimension(ncid, dimid, len=mnmax)
+            else
+                mnmax = 0
+            end if
             
-            ! Read basic quantities that jVMEC provides
-            stat = nf90_get_att(ncid, NF90_GLOBAL, "ns", ns)
-            stat = nf90_get_att(ncid, NF90_GLOBAL, "mnmax", mnmax)
+            ! Also try to read ns and mnmax as variables if they exist
+            stat = nf90_inq_varid(ncid, "ns", varid)
+            if (stat == NF90_NOERR) then
+                stat = nf90_get_var(ncid, varid, ns)
+            end if
+            
+            stat = nf90_inq_varid(ncid, "mnmax", varid)
+            if (stat == NF90_NOERR) then
+                stat = nf90_get_var(ncid, varid, mnmax)
+            end if
             
             ! Allocate arrays
             if (mnmax > 0 .and. ns > 0) then
@@ -216,8 +231,57 @@ contains
                 if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%xn)
                 
                 ! Extract R axis from Fourier coefficients (m=0, n=0 mode)
-                if (allocated(results%rmnc)) then
-                    results%raxis_cc = results%rmnc(ns, 1)  ! Assuming first mode is (0,0)
+                ! Find the (0,0) mode index
+                if (allocated(results%rmnc) .and. allocated(results%xm) .and. allocated(results%xn)) then
+                    do i = 1, mnmax
+                        if (results%xm(i) == 0 .and. results%xn(i) == 0) then
+                            ! jVMEC stores R at magnetic axis in first radial point
+                            results%raxis_cc = results%rmnc(1, i)
+                            ! Also extract major radius at edge for aspect ratio
+                            if (ns > 0) then
+                                results%rmajor_p = results%rmnc(ns, i)
+                            end if
+                            exit
+                        end if
+                    end do
+                end if
+                
+                ! Try to read additional quantities if available
+                stat = nf90_inq_varid(ncid, "iotas", varid)
+                if (stat == NF90_NOERR) then
+                    block
+                        real(real64), allocatable :: iotas_temp(:)
+                        allocate(iotas_temp(ns))
+                        stat = nf90_get_var(ncid, varid, iotas_temp)
+                        if (ns > 0) then
+                            results%iotaf_edge = iotas_temp(ns)  ! Edge iota
+                        end if
+                        deallocate(iotas_temp)
+                    end block
+                end if
+                
+                ! Read toroidal flux if available
+                stat = nf90_inq_varid(ncid, "phips", varid)
+                if (stat == NF90_NOERR) then
+                    block
+                        real(real64), allocatable :: phips_temp(:)
+                        allocate(phips_temp(ns))
+                        stat = nf90_get_var(ncid, varid, phips_temp)
+                        if (ns > 0) then
+                            ! Volume is related to toroidal flux
+                            results%volume_p = abs(phips_temp(ns)) * 2.0 * 3.14159265359
+                        end if
+                        deallocate(phips_temp)
+                    end block
+                end if
+                
+                ! Read nfp (number of field periods) if available
+                stat = nf90_inq_varid(ncid, "nfp", varid)
+                if (stat == NF90_NOERR) then
+                    block
+                        integer :: nfp_temp
+                        stat = nf90_get_var(ncid, varid, nfp_temp)
+                    end block
                 end if
             end if
             
