@@ -110,7 +110,7 @@ contains
         integer, intent(in), optional :: timeout
         logical :: success
         character(len=:), allocatable :: local_input, cmd
-        integer :: stat, timeout_val
+        integer :: stat, timeout_val, unit
         logical :: exists
 
         success = .false.
@@ -125,31 +125,33 @@ contains
         timeout_val = 300
         if (present(timeout)) timeout_val = timeout
 
-        ! Look for corresponding JSON file first
-        if (index(input_file, ".json") > 0) then
-            ! Already a JSON file
-            local_input = trim(output_dir) // "/" // get_basename(input_file)
-            cmd = "cp " // trim(input_file) // " " // trim(local_input)
-            call execute_command_line(trim(cmd), exitstat=stat)
-        else
-            ! Try to find corresponding JSON file
-            local_input = get_json_filename(input_file)
-            inquire(file=local_input, exist=exists)
-            if (exists) then
-                ! Copy the JSON file instead
-                local_input = trim(output_dir) // "/" // get_basename(local_input)
-                cmd = "cp " // get_json_filename(input_file) // " " // trim(local_input)
-                call execute_command_line(trim(cmd), exitstat=stat)
-            else
-                write(error_unit, '(A)') "No JSON file found for VMEC++ input: " // trim(input_file)
-                return
-            end if
+        ! Copy input file (JSON or INDATA) to output directory
+        local_input = trim(output_dir) // "/" // get_basename(input_file)
+        cmd = "cp " // trim(input_file) // " " // trim(local_input)
+        call execute_command_line(trim(cmd), exitstat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to copy input file to output directory"
+            return
         end if
 
-        ! Use VMEC++ Python API to generate NetCDF directly
+        ! Create a Python script to run VMEC++
+        open(newunit=unit, file=trim(output_dir) // "/run_vmecpp.py", status="replace", action="write")
+        write(unit, '(A)') "import vmecpp"
+        write(unit, '(A)') "import sys"
+        write(unit, '(A)') "try:"
+        write(unit, '(A)') "    vmec_input = vmecpp.VmecInput.from_file('" // get_basename(local_input) // "')"
+        write(unit, '(A)') "    output = vmecpp.run(vmec_input)"
+        write(unit, '(A)') "    output.wout.save('wout_" // get_basename_without_ext(local_input) // ".nc')"
+        write(unit, '(A)') "except Exception as e:"
+        write(unit, '(A)') "    print(f'Error: {e}')"
+        write(unit, '(A)') "    import traceback"
+        write(unit, '(A)') "    traceback.print_exc()"
+        write(unit, '(A)') "    sys.exit(1)"
+        close(unit)
+        
+        ! Run the Python script
         cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // &
-              " python3 -c ""import vmecpp; vmec_input = vmecpp.VmecInput.from_file('" // get_basename(local_input) // &
-              "'); output = vmecpp.run(vmec_input); output.wout.save('wout_" // get_basename_without_ext(local_input) // ".nc')"" > vmecpp.log 2>&1"
+              " python3 run_vmecpp.py > vmecpp.log 2>&1"
 
         write(output_unit, '(A)') "DEBUG: Running command: " // trim(cmd)
         

@@ -21,7 +21,7 @@ jVMEC has been identified as the most reliable reference for asymmetric VMEC imp
 # Build the project
 fpm build
 
-# Build in debug mode
+# Build in debug mode with coverage flags
 fpm build --profile debug
 
 # Run tests
@@ -30,6 +30,7 @@ fpm test
 # Run specific test
 fpm test test_vmec_types
 fpm test test_repository_manager
+fpm test test_jvmec_comparison
 ```
 
 ### VMEC Operations
@@ -51,6 +52,24 @@ BENCHMARK_INCLUDE_JVMEC=1 fpm run vmec-benchmark -- run
 
 # Show help
 fpm run vmec-benchmark -- --help
+```
+
+### Helper Scripts
+```bash
+# Debug asymmetric VMEC cases
+./compare_asymmetric_debug.sh
+
+# Debug symmetric VMEC cases  
+./compare_symmetric_debug.sh
+
+# Run comprehensive benchmark suite
+./run_comprehensive_benchmark.sh
+
+# Run selected benchmarks
+./run_specific_benchmarks.sh
+
+# Set up input directory structure
+./create_inputs_dir.sh
 ```
 
 ## Architecture Overview
@@ -124,6 +143,13 @@ The system handles format conversion automatically:
 
 Results are saved to `benchmark_results/` with per-implementation subdirectories containing logs and output files. The system generates comparison reports and CSV data for analysis.
 
+### CI/CD and Quality
+
+- **GitHub Actions**: Runs on push/PR to main and develop branches
+- **Code Coverage**: Uses gcovr with flags `-fprofile-arcs -ftest-coverage`
+- **Coverage Reporting**: Uploads to Codecov
+- **Compiler**: GCC/gfortran
+
 ## Adding New VMEC Implementations
 
 1. Create new module extending `vmec_implementation_base`
@@ -139,3 +165,5 @@ Results are saved to `benchmark_results/` with per-implementation subdirectories
 - Each implementation handles its own input format requirements
 - Output comparison focuses on physics quantities (MHD energy, beta values, etc.)
 - The system is designed for cross-platform compatibility (Linux/macOS)
+- External dependencies: NetCDF, HDF5, json-fortran, M_CLI2, fortran_test_helper (dev)
+- Test timeout: 5 minutes per test case with graceful failure handling

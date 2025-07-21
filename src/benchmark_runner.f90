@@ -36,6 +36,7 @@ module benchmark_runner
         procedure :: get_test_case_names => benchmark_runner_get_test_case_names
         procedure :: finalize => benchmark_runner_finalize
         procedure, private :: is_duplicate_json => benchmark_runner_is_duplicate_json
+        procedure, private :: is_free_boundary => benchmark_runner_is_free_boundary
     end type benchmark_runner_t
 
 contains
@@ -176,7 +177,9 @@ contains
         write(output_unit, '(A)') "Discovering test cases..."
         
         max_cases = 100
-        if (present(limit) .and. limit > 0) max_cases = limit
+        if (present(limit)) then
+            if (limit > 0) max_cases = limit
+        end if
         
         ! Allocate space for test cases
         allocate(this%test_cases(max_cases))
@@ -221,6 +224,12 @@ contains
                     if (index(line, '.json') > 0) then
                         ! Check if we already have the non-JSON version
                         if (this%is_duplicate_json(line)) cycle
+                    end if
+                    
+                    ! Skip free boundary cases
+                    if (this%is_free_boundary(trim(line))) then
+                        write(output_unit, '(A)') "  Skipping free boundary case: " // trim(line)
+                        cycle
                     end if
                     
                     if (this%n_test_cases < max_cases) then
@@ -370,6 +379,56 @@ contains
             end do
         end if
     end function benchmark_runner_is_duplicate_json
+    
+    function benchmark_runner_is_free_boundary(this, filepath) result(is_free)
+        class(benchmark_runner_t), intent(in) :: this
+        character(len=*), intent(in) :: filepath
+        logical :: is_free
+        character(len=256) :: line
+        integer :: unit, stat
+        logical :: file_exists
+        
+        is_free = .false.
+        
+        ! Check if file exists
+        inquire(file=filepath, exist=file_exists)
+        if (.not. file_exists) return
+        
+        ! For JSON files, check for "lfreeb": true
+        if (index(filepath, '.json') > 0) then
+            open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
+            if (stat == 0) then
+                do
+                    read(unit, '(A)', iostat=stat) line
+                    if (stat /= 0) exit
+                    ! Check for lfreeb setting
+                    if (index(line, '"lfreeb"') > 0 .and. index(line, 'true') > 0) then
+                        is_free = .true.
+                        exit
+                    end if
+                end do
+                close(unit)
+            end if
+        else
+            ! For input files, check for LFREEB = T
+            open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
+            if (stat == 0) then
+                do
+                    read(unit, '(A)', iostat=stat) line
+                    if (stat /= 0) exit
+                    ! Convert to uppercase for comparison
+                    call to_upper(line)
+                    ! Check for LFREEB = T
+                    if (index(line, 'LFREEB') > 0 .and. &
+                        (index(line, '= T') > 0 .or. index(line, '=T') > 0)) then
+                        is_free = .true.
+                        exit
+                    end if
+                end do
+                close(unit)
+            end if
+        end if
+    end function benchmark_runner_is_free_boundary
 
     ! Utility function
     function get_case_name(filepath) result(name)
@@ -395,5 +454,17 @@ contains
             name = name(7:)
         end if
     end function get_case_name
+    
+    ! Convert string to uppercase
+    subroutine to_upper(str)
+        character(len=*), intent(inout) :: str
+        integer :: i
+        
+        do i = 1, len_trim(str)
+            if (str(i:i) >= 'a' .and. str(i:i) <= 'z') then
+                str(i:i) = char(ichar(str(i:i)) - 32)
+            end if
+        end do
+    end subroutine to_upper
 
 end module benchmark_runner
