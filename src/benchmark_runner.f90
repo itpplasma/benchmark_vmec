@@ -37,6 +37,7 @@ module benchmark_runner
         procedure :: finalize => benchmark_runner_finalize
         procedure, private :: is_duplicate_json => benchmark_runner_is_duplicate_json
         procedure, private :: is_free_boundary => benchmark_runner_is_free_boundary
+        procedure, private :: is_symmetric_case => benchmark_runner_is_symmetric_case
     end type benchmark_runner_t
 
 contains
@@ -166,9 +167,10 @@ contains
         end if
     end subroutine benchmark_runner_setup_implementations
 
-    subroutine benchmark_runner_discover_test_cases(this, limit)
+    subroutine benchmark_runner_discover_test_cases(this, limit, symmetric_only)
         class(benchmark_runner_t), intent(inout) :: this
         integer, intent(in), optional :: limit
+        logical, intent(in), optional :: symmetric_only
         character(len=:), allocatable :: test_path, cmd, file_list
         character(len=256) :: line
         integer :: stat, unit, n_found, max_cases
@@ -186,22 +188,27 @@ contains
         this%n_test_cases = 0
         
         ! Discover test cases from all available repositories
-        call this%discover_from_all_repos(max_cases)
+        call this%discover_from_all_repos(max_cases, symmetric_only)
         
         write(output_unit, '(A,I0)') "Total test cases found: ", this%n_test_cases
     end subroutine benchmark_runner_discover_test_cases
 
-    subroutine discover_from_all_repos(this, max_cases)
+    subroutine discover_from_all_repos(this, max_cases, symmetric_only)
         class(benchmark_runner_t), intent(inout) :: this
         integer, intent(in) :: max_cases
+        logical, intent(in), optional :: symmetric_only
         character(len=:), allocatable :: cmd
         character(len=256) :: line, env_value
         integer :: stat, unit, env_stat
-        logical :: include_jvmec
+        logical :: include_jvmec, filter_symmetric
         
         ! Check if jVMEC tests should be included
         call get_environment_variable("BENCHMARK_INCLUDE_JVMEC", env_value, status=env_stat)
         include_jvmec = (env_stat == 0 .and. trim(env_value) == "1")
+        
+        ! Check if symmetric-only filtering is requested
+        filter_symmetric = .false.
+        if (present(symmetric_only)) filter_symmetric = symmetric_only
         
         ! Search for input files in all repositories (including JSON files for VMEC++)
         if (include_jvmec) then
@@ -229,6 +236,12 @@ contains
                     ! Skip free boundary cases
                     if (this%is_free_boundary(trim(line))) then
                         write(output_unit, '(A)') "  Skipping free boundary case: " // trim(line)
+                        cycle
+                    end if
+                    
+                    ! Skip non-symmetric cases if symmetric_only filter is active
+                    if (filter_symmetric .and. .not. this%is_symmetric_case(trim(line))) then
+                        write(output_unit, '(A)') "  Skipping asymmetric case: " // trim(line)
                         cycle
                     end if
                     
@@ -429,6 +442,62 @@ contains
             end if
         end if
     end function benchmark_runner_is_free_boundary
+    
+    function benchmark_runner_is_symmetric_case(this, filepath) result(is_symmetric)
+        class(benchmark_runner_t), intent(in) :: this
+        character(len=*), intent(in) :: filepath
+        logical :: is_symmetric
+        character(len=256) :: line
+        integer :: unit, stat
+        logical :: file_exists, lasym_found
+        
+        is_symmetric = .true.  ! Default to symmetric (LASYM = F is default)
+        lasym_found = .false.
+        
+        ! Check if file exists
+        inquire(file=filepath, exist=file_exists)
+        if (.not. file_exists) return
+        
+        ! For JSON files, check for "lasym": true
+        if (index(filepath, '.json') > 0) then
+            open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
+            if (stat == 0) then
+                do
+                    read(unit, '(A)', iostat=stat) line
+                    if (stat /= 0) exit
+                    ! Check for lasym setting
+                    if (index(line, '"lasym"') > 0) then
+                        lasym_found = .true.
+                        if (index(line, 'true') > 0) then
+                            is_symmetric = .false.
+                        end if
+                        exit
+                    end if
+                end do
+                close(unit)
+            end if
+        else
+            ! For input files, check for LASYM = T
+            open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
+            if (stat == 0) then
+                do
+                    read(unit, '(A)', iostat=stat) line
+                    if (stat /= 0) exit
+                    ! Convert to uppercase for comparison
+                    call to_upper(line)
+                    ! Check for LASYM = T
+                    if (index(line, 'LASYM') > 0) then
+                        lasym_found = .true.
+                        if (index(line, '= T') > 0 .or. index(line, '=T') > 0) then
+                            is_symmetric = .false.
+                        end if
+                        exit
+                    end if
+                end do
+                close(unit)
+            end if
+        end if
+    end function benchmark_runner_is_symmetric_case
 
     ! Utility function
     function get_case_name(filepath) result(name)
