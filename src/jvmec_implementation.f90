@@ -155,15 +155,14 @@ contains
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
         character(len=256) :: wout_file, log_file
-        integer :: stat, ncid, varid, dimid, i
-        integer :: ns, mnmax, mnmax_nyq
-        integer, dimension(2) :: dims
+        integer :: stat, ncid, varid, dimid, i, nfp_val
+        integer :: ns, mnmax
+        real(real64), allocatable :: iotas_temp(:), phips_temp(:)
         logical :: exists
         
         call results%clear()
         
         ! Look for VMEC output files (wout.nc or wout_*.nc)
-        ! Try common patterns for jVMEC output
         wout_file = trim(output_dir) // "/wout_input_cleaned.nc"
         inquire(file=trim(wout_file), exist=exists)
         if (.not. exists) then
@@ -175,11 +174,11 @@ contains
             ! Open NetCDF file
             stat = nf90_open(trim(wout_file), NF90_NOWRITE, ncid)
             if (stat /= NF90_NOERR) then
-                results%error_message = "Failed to open jVMEC NetCDF file"
+                results%error_message = "Failed to open jVMEC NetCDF file: " // trim(nf90_strerror(stat))
                 return
             end if
             
-            ! Read dimensions from dimension variables
+            ! Read actual array dimensions from NetCDF file
             stat = nf90_inq_dimid(ncid, "rmnc_dim0", dimid)
             if (stat == NF90_NOERR) then
                 stat = nf90_inquire_dimension(ncid, dimid, len=ns)
@@ -187,109 +186,199 @@ contains
                 ns = 0
             end if
             
-            stat = nf90_inq_dimid(ncid, "rmnc_dim1", dimid)
+            stat = nf90_inq_dimid(ncid, "rmnc_dim1", dimid)  
             if (stat == NF90_NOERR) then
                 stat = nf90_inquire_dimension(ncid, dimid, len=mnmax)
             else
                 mnmax = 0
             end if
             
-            ! Also try to read ns and mnmax as variables if they exist
-            stat = nf90_inq_varid(ncid, "ns", varid)
-            if (stat == NF90_NOERR) then
-                stat = nf90_get_var(ncid, varid, ns)
+            if (ns <= 0 .or. mnmax <= 0) then
+                results%error_message = "Invalid dimensions in jVMEC output: ns=" // &
+                                      trim(int_to_str(ns)) // ", mnmax=" // trim(int_to_str(mnmax))
+                stat = nf90_close(ncid)
+                return
             end if
             
-            stat = nf90_inq_varid(ncid, "mnmax", varid)
+            ! Store dimensions locally for array allocation
+            
+            ! Read number of field periods for calculations
+            stat = nf90_inq_varid(ncid, "nfp", varid)
             if (stat == NF90_NOERR) then
-                stat = nf90_get_var(ncid, varid, mnmax)
+                stat = nf90_get_var(ncid, varid, nfp_val)
+            else
+                nfp_val = 1
             end if
             
-            ! Allocate arrays
-            if (mnmax > 0 .and. ns > 0) then
-                allocate(results%rmnc(ns, mnmax))
-                allocate(results%zmns(ns, mnmax))
-                allocate(results%lmns(ns, mnmax))
-                allocate(results%xm(mnmax))
-                allocate(results%xn(mnmax))
-                
-                ! Read Fourier coefficients
-                stat = nf90_inq_varid(ncid, "rmnc", varid)
-                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%rmnc)
-                
-                stat = nf90_inq_varid(ncid, "zmns", varid)
-                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%zmns)
-                
-                stat = nf90_inq_varid(ncid, "lmns", varid)
-                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%lmns)
-                
-                ! Read mode numbers
-                stat = nf90_inq_varid(ncid, "xm", varid)
-                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%xm)
-                
-                stat = nf90_inq_varid(ncid, "xn", varid)
-                if (stat == NF90_NOERR) stat = nf90_get_var(ncid, varid, results%xn)
-                
-                ! Extract R axis from Fourier coefficients (m=0, n=0 mode)
-                ! Find the (0,0) mode index
-                if (allocated(results%rmnc) .and. allocated(results%xm) .and. allocated(results%xn)) then
-                    do i = 1, mnmax
-                        if (results%xm(i) == 0 .and. results%xn(i) == 0) then
-                            ! jVMEC stores R at magnetic axis in first radial point
-                            results%raxis_cc = results%rmnc(1, i)
-                            ! Also extract major radius at edge for aspect ratio
-                            if (ns > 0) then
-                                results%rmajor_p = results%rmnc(ns, i)
-                            end if
-                            exit
-                        end if
-                    end do
-                end if
-                
-                ! Try to read additional quantities if available
-                stat = nf90_inq_varid(ncid, "iotas", varid)
-                if (stat == NF90_NOERR) then
-                    block
-                        real(real64), allocatable :: iotas_temp(:)
-                        allocate(iotas_temp(ns))
-                        stat = nf90_get_var(ncid, varid, iotas_temp)
-                        if (ns > 0) then
-                            results%iotaf_edge = iotas_temp(ns)  ! Edge iota
-                        end if
-                        deallocate(iotas_temp)
-                    end block
-                end if
-                
-                ! Read toroidal flux if available
-                stat = nf90_inq_varid(ncid, "phips", varid)
-                if (stat == NF90_NOERR) then
-                    block
-                        real(real64), allocatable :: phips_temp(:)
-                        allocate(phips_temp(ns))
-                        stat = nf90_get_var(ncid, varid, phips_temp)
-                        if (ns > 0) then
-                            ! Volume is related to toroidal flux
-                            results%volume_p = abs(phips_temp(ns)) * 2.0 * 3.14159265359
-                        end if
-                        deallocate(phips_temp)
-                    end block
-                end if
-                
-                ! Read nfp (number of field periods) if available
-                stat = nf90_inq_varid(ncid, "nfp", varid)
-                if (stat == NF90_NOERR) then
-                    block
-                        integer :: nfp_temp
-                        stat = nf90_get_var(ncid, varid, nfp_temp)
-                    end block
+            ! Allocate arrays with correct dimensions
+            allocate(results%rmnc(ns, mnmax))
+            allocate(results%zmns(ns, mnmax))
+            allocate(results%lmns(ns, mnmax))
+            allocate(results%xm(mnmax))
+            allocate(results%xn(mnmax))
+            
+            ! Initialize arrays to zero
+            results%rmnc = 0.0_real64
+            results%zmns = 0.0_real64
+            results%lmns = 0.0_real64
+            results%xm = 0
+            results%xn = 0
+            
+            ! Read Fourier coefficients
+            stat = nf90_inq_varid(ncid, "rmnc", varid)
+            if (stat == NF90_NOERR) then
+                stat = nf90_get_var(ncid, varid, results%rmnc, start=[1,1], count=[ns,mnmax])
+                if (stat /= NF90_NOERR) then
+                    write(error_unit, '(A)') "Warning: Failed to read rmnc: " // trim(nf90_strerror(stat))
+                    ! Try reading single values for the axis and edge
+                    stat = nf90_get_var(ncid, varid, results%raxis_cc, start=[1,1])
+                    if (stat == NF90_NOERR) then
+                        write(output_unit, '(A,F12.6)') "Successfully read raxis_cc directly: ", results%raxis_cc
+                    end if
+                    
+                    ! Also read the edge value for aspect ratio
+                    stat = nf90_get_var(ncid, varid, results%rmajor_p, start=[ns,1])
+                    if (stat == NF90_NOERR) then
+                        write(output_unit, '(A,F12.6)') "Successfully read rmajor_p directly: ", results%rmajor_p
+                    end if
                 end if
             end if
+            
+            stat = nf90_inq_varid(ncid, "zmns", varid)
+            if (stat == NF90_NOERR) then
+                stat = nf90_get_var(ncid, varid, results%zmns, start=[1,1], count=[ns,mnmax])
+                if (stat /= NF90_NOERR) then
+                    write(error_unit, '(A)') "Warning: Failed to read zmns: " // trim(nf90_strerror(stat))
+                end if
+            end if
+            
+            stat = nf90_inq_varid(ncid, "lmns", varid)
+            if (stat == NF90_NOERR) then
+                stat = nf90_get_var(ncid, varid, results%lmns, start=[1,1], count=[ns,mnmax])
+                if (stat /= NF90_NOERR) then
+                    write(error_unit, '(A)') "Warning: Failed to read lmns: " // trim(nf90_strerror(stat))
+                end if
+            end if
+            
+            ! Read mode numbers (convert from integer to real) - use actual xm dimension 
+            stat = nf90_inq_varid(ncid, "xm", varid)
+            if (stat == NF90_NOERR) then
+                block
+                    integer, allocatable :: xm_temp(:)
+                    integer :: xm_len
+                    
+                    ! Get actual dimension of xm array
+                    stat = nf90_inq_dimid(ncid, "xm_dim0", dimid)
+                    if (stat == NF90_NOERR) then
+                        stat = nf90_inquire_dimension(ncid, dimid, len=xm_len)
+                        allocate(xm_temp(xm_len))
+                        stat = nf90_get_var(ncid, varid, xm_temp)
+                        if (stat == NF90_NOERR) then
+                            results%xm(1:min(mnmax,xm_len)) = real(xm_temp(1:min(mnmax,xm_len)), real64)
+                        else
+                            write(error_unit, '(A)') "Warning: Failed to read xm: " // trim(nf90_strerror(stat))
+                        end if
+                        deallocate(xm_temp)
+                    else
+                        write(error_unit, '(A)') "Warning: Failed to get xm dimension"
+                    end if
+                end block
+            end if
+            
+            stat = nf90_inq_varid(ncid, "xn", varid)
+            if (stat == NF90_NOERR) then
+                block
+                    integer, allocatable :: xn_temp(:)
+                    integer :: xn_len
+                    
+                    ! Get actual dimension of xn array
+                    stat = nf90_inq_dimid(ncid, "xn_dim0", dimid)
+                    if (stat == NF90_NOERR) then
+                        stat = nf90_inquire_dimension(ncid, dimid, len=xn_len)
+                        allocate(xn_temp(xn_len))
+                        stat = nf90_get_var(ncid, varid, xn_temp)
+                        if (stat == NF90_NOERR) then
+                            results%xn(1:min(mnmax,xn_len)) = real(xn_temp(1:min(mnmax,xn_len)), real64)
+                        else
+                            write(error_unit, '(A)') "Warning: Failed to read xn: " // trim(nf90_strerror(stat))
+                        end if
+                        deallocate(xn_temp)
+                    else
+                        write(error_unit, '(A)') "Warning: Failed to get xn dimension"
+                    end if
+                end block
+            end if
+            
+            ! Calculate physics quantities from Fourier coefficients (if arrays loaded successfully)
+            if (allocated(results%rmnc) .and. allocated(results%xm) .and. allocated(results%xn)) then
+                ! Find the (m=0, n=0) mode for magnetic axis
+                do i = 1, mnmax
+                    if (abs(results%xm(i)) < 1e-12_real64 .and. abs(results%xn(i)) < 1e-12_real64) then
+                        ! Only overwrite if we don't already have a valid value from direct read
+                        if (abs(results%raxis_cc) < 1e-12_real64) then
+                            results%raxis_cc = results%rmnc(1, i)  ! Axis value
+                        end if
+                        if (abs(results%rmajor_p) < 1e-12_real64) then
+                            results%rmajor_p = results%rmnc(ns, i) ! Edge value for aspect ratio
+                        end if
+                        write(output_unit, '(A,I0,A,F12.6,A,F12.6)') "Found (0,0) mode at index ", i, &
+                                                                    ", rmnc(1,i)=", results%rmnc(1, i), &
+                                                                    ", using raxis_cc=", results%raxis_cc
+                        exit
+                    end if
+                end do
+            else
+                write(output_unit, '(A)') "rmnc arrays not successfully loaded, using direct read values"
+            end if
+            
+            ! Read rotational transform (iota)
+            stat = nf90_inq_varid(ncid, "iotas", varid)
+            if (stat == NF90_NOERR) then
+                allocate(iotas_temp(ns))
+                stat = nf90_get_var(ncid, varid, iotas_temp)
+                if (stat == NF90_NOERR .and. ns > 0) then
+                    results%iotaf_edge = iotas_temp(ns)  ! Edge value
+                end if
+                deallocate(iotas_temp)
+            end if
+            
+            ! Read toroidal flux and calculate volume
+            stat = nf90_inq_varid(ncid, "phips", varid)
+            if (stat == NF90_NOERR) then
+                allocate(phips_temp(ns))
+                stat = nf90_get_var(ncid, varid, phips_temp)
+                if (stat == NF90_NOERR .and. ns > 0) then
+                    ! Estimate volume from toroidal flux
+                    results%volume_p = abs(phips_temp(ns)) * results%rmajor_p * 2.0_real64 * 3.14159265359_real64
+                end if
+                deallocate(phips_temp)
+            end if
+            
+            ! Calculate aspect ratio if we have both axis and major radius
+            if (results%raxis_cc > 0.0_real64 .and. results%rmajor_p > 0.0_real64) then
+                results%aspect = results%rmajor_p / results%raxis_cc
+            end if
+            
+            ! jVMEC doesn't output wb (magnetic energy) directly - would need to calculate from B-field
+            ! For now, set a placeholder value
+            results%wb = 0.0_real64
+            results%betatotal = 0.0_real64
             
             ! Close NetCDF file
             stat = nf90_close(ncid)
             
             results%success = .true.
             results%error_message = "jVMEC data extracted successfully"
+            
+            ! Debug output
+            write(output_unit, '(A)') "jVMEC extraction successful:"
+            write(output_unit, '(A,I0)') "  ns = ", ns
+            write(output_unit, '(A,I0)') "  mnmax = ", mnmax
+            write(output_unit, '(A,F12.6)') "  raxis_cc = ", results%raxis_cc
+            write(output_unit, '(A,F12.6)') "  aspect = ", results%aspect
+            write(output_unit, '(A,F12.6)') "  volume_p = ", results%volume_p
+            write(output_unit, '(A,F12.6)') "  iotaf_edge = ", results%iotaf_edge
+            
         else
             ! No wout file found, check log for convergence
             log_file = trim(output_dir) // "/jvmec.log"

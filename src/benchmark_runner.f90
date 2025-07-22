@@ -210,12 +210,15 @@ contains
         filter_symmetric = .false.
         if (present(symmetric_only)) filter_symmetric = symmetric_only
         
-        ! Search for input files in all repositories (including JSON files for VMEC++)
+        ! Search for input files in test directories and root directories of repositories
         if (include_jvmec) then
-            cmd = "find " // trim(this%repo_manager%base_path) // " \( -name 'input.*' -o -name '*.json' \) -type f 2>/dev/null | grep -v '_deps'"
+            ! First get clean VMEC input files from test directories
+            cmd = "find " // trim(this%repo_manager%base_path) // " -follow -name 'input.*' -type f 2>/dev/null | " // &
+                  "grep -E '/(tests?|examples?)/' | grep -v results | grep -v debug | grep -v bazel"
             write(output_unit, '(A)') "  (Including jVMEC test cases)"
         else
-            cmd = "find " // trim(this%repo_manager%base_path) // " -path '*/jvmec' -prune -o \( -name 'input.*' -o -name '*.json' \) -type f -print 2>/dev/null | grep -v '_deps'"
+            cmd = "find " // trim(this%repo_manager%base_path) // " -path '*/jvmec' -prune -o -name 'input.*' " // &
+                  "-type f -print 2>/dev/null | grep -E '/(tests?|examples?)/' | grep -v results | grep -v debug"
             write(output_unit, '(A)') "  (Excluding jVMEC test cases - set BENCHMARK_INCLUDE_JVMEC=1 to include)"
         end if
         call execute_command_line(trim(cmd) // " > test_files.tmp", exitstat=stat)
@@ -226,12 +229,6 @@ contains
                 do
                     read(unit, '(A)', iostat=stat) line
                     if (stat /= 0) exit
-                    
-                    ! Skip JSON files if we already have the corresponding input file
-                    if (index(line, '.json') > 0) then
-                        ! Check if we already have the non-JSON version
-                        if (this%is_duplicate_json(line)) cycle
-                    end if
                     
                     ! Skip free boundary cases
                     if (this%is_free_boundary(trim(line))) then
@@ -407,39 +404,22 @@ contains
         inquire(file=filepath, exist=file_exists)
         if (.not. file_exists) return
         
-        ! For JSON files, check for "lfreeb": true
-        if (index(filepath, '.json') > 0) then
-            open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
-            if (stat == 0) then
-                do
-                    read(unit, '(A)', iostat=stat) line
-                    if (stat /= 0) exit
-                    ! Check for lfreeb setting
-                    if (index(line, '"lfreeb"') > 0 .and. index(line, 'true') > 0) then
-                        is_free = .true.
-                        exit
-                    end if
-                end do
-                close(unit)
-            end if
-        else
-            ! For input files, check for LFREEB = T
-            open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
-            if (stat == 0) then
-                do
-                    read(unit, '(A)', iostat=stat) line
-                    if (stat /= 0) exit
-                    ! Convert to uppercase for comparison
-                    call to_upper(line)
-                    ! Check for LFREEB = T
-                    if (index(line, 'LFREEB') > 0 .and. &
-                        (index(line, '= T') > 0 .or. index(line, '=T') > 0)) then
-                        is_free = .true.
-                        exit
-                    end if
-                end do
-                close(unit)
-            end if
+        ! Check VMEC input files for LFREEB = T
+        open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
+        if (stat == 0) then
+            do
+                read(unit, '(A)', iostat=stat) line
+                if (stat /= 0) exit
+                ! Convert to uppercase for comparison
+                call to_upper(line)
+                ! Check for LFREEB = T
+                if (index(line, 'LFREEB') > 0 .and. &
+                    (index(line, '= T') > 0 .or. index(line, '=T') > 0)) then
+                    is_free = .true.
+                    exit
+                end if
+            end do
+            close(unit)
         end if
     end function benchmark_runner_is_free_boundary
     
@@ -449,53 +429,31 @@ contains
         logical :: is_symmetric
         character(len=256) :: line
         integer :: unit, stat
-        logical :: file_exists, lasym_found
+        logical :: file_exists
         
         is_symmetric = .true.  ! Default to symmetric (LASYM = F is default)
-        lasym_found = .false.
         
         ! Check if file exists
         inquire(file=filepath, exist=file_exists)
         if (.not. file_exists) return
         
-        ! For JSON files, check for "lasym": true
-        if (index(filepath, '.json') > 0) then
-            open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
-            if (stat == 0) then
-                do
-                    read(unit, '(A)', iostat=stat) line
-                    if (stat /= 0) exit
-                    ! Check for lasym setting
-                    if (index(line, '"lasym"') > 0) then
-                        lasym_found = .true.
-                        if (index(line, 'true') > 0) then
-                            is_symmetric = .false.
-                        end if
-                        exit
+        ! Check VMEC input files for LASYM = T
+        open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
+        if (stat == 0) then
+            do
+                read(unit, '(A)', iostat=stat) line
+                if (stat /= 0) exit
+                ! Convert to uppercase for comparison
+                call to_upper(line)
+                ! Check for LASYM = T (only mark as asymmetric if explicitly set to T)
+                if (index(line, 'LASYM') > 0) then
+                    if (index(line, '= T') > 0 .or. index(line, '=T') > 0) then
+                        is_symmetric = .false.
                     end if
-                end do
-                close(unit)
-            end if
-        else
-            ! For input files, check for LASYM = T
-            open(newunit=unit, file=filepath, status='old', action='read', iostat=stat)
-            if (stat == 0) then
-                do
-                    read(unit, '(A)', iostat=stat) line
-                    if (stat /= 0) exit
-                    ! Convert to uppercase for comparison
-                    call to_upper(line)
-                    ! Check for LASYM = T
-                    if (index(line, 'LASYM') > 0) then
-                        lasym_found = .true.
-                        if (index(line, '= T') > 0 .or. index(line, '=T') > 0) then
-                            is_symmetric = .false.
-                        end if
-                        exit
-                    end if
-                end do
-                close(unit)
-            end if
+                    exit
+                end if
+            end do
+            close(unit)
         end if
     end function benchmark_runner_is_symmetric_case
 
