@@ -136,14 +136,19 @@ contains
 
         ! Create a Python script to run VMEC++
         open(newunit=unit, file=trim(output_dir) // "/run_vmecpp.py", status="replace", action="write")
+        write(unit, '(A)') "#!/usr/bin/env python3"
         write(unit, '(A)') "import vmecpp"
         write(unit, '(A)') "import sys"
         write(unit, '(A)') "try:"
+        write(unit, '(A)') "    # VMEC++ can load INDATA files directly"
         write(unit, '(A)') "    vmec_input = vmecpp.VmecInput.from_file('" // get_basename(local_input) // "')"
+        write(unit, '(A)') "    # Allow non-converged results for benchmarking"
+        write(unit, '(A)') "    vmec_input.return_outputs_even_if_not_converged = True"
         write(unit, '(A)') "    output = vmecpp.run(vmec_input)"
         write(unit, '(A)') "    output.wout.save('wout_" // get_basename_without_ext(local_input) // ".nc')"
+        write(unit, '(A)') "    print('VMEC++ completed')"
         write(unit, '(A)') "except Exception as e:"
-        write(unit, '(A)') "    print(f'Error: {e}')"
+        write(unit, '(A)') "    print(f'VMEC++ Error: {e}')"
         write(unit, '(A)') "    import traceback"
         write(unit, '(A)') "    traceback.print_exc()"
         write(unit, '(A)') "    sys.exit(1)"
@@ -182,8 +187,9 @@ contains
                                 exitstat=stat)
         if (stat == 0) then
             open(newunit=unit, file="/tmp/netcdf_file_vmecpp.tmp", status="old", action="read")
-            read(unit, '(A)') netcdf_file
+            read(unit, '(A)', iostat=stat) netcdf_file
             close(unit)
+            if (stat /= 0) netcdf_file = ""
         else
             netcdf_file = ""
         end if

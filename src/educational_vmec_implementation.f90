@@ -214,8 +214,9 @@ contains
                                 exitstat=stat)
         if (stat == 0) then
             open(newunit=unit, file="/tmp/wout_file.tmp", status="old", action="read")
-            read(unit, '(A)') wout_file
+            read(unit, '(A)', iostat=stat) wout_file
             close(unit)
+            if (stat /= 0) wout_file = ""
         else
             wout_file = ""
         end if
