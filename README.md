@@ -7,11 +7,11 @@ A Fortran package built with fpm for automated comparison of multiple VMEC imple
 
 ## Overview
 
-This benchmark suite automatically clones, builds, and compares multiple VMEC implementations:
+This benchmark suite uses sibling repositories one directory above `benchmark_vmec`, builds them as needed, and compares multiple VMEC implementations:
 
 - **VMEC++** (https://github.com/itpplasma/vmecpp.git) - Modern C++ implementation with enhanced algorithms
-- **Educational VMEC** (https://github.com/hiddenSymmetries/educational_VMEC.git) - Reference Fortran implementation
-- **VMEC2000** (https://github.com/hiddenSymmetries/VMEC2000.git) - SIMSOPT-style Python interface to VMEC
+- **Educational VMEC** (https://github.com/itpplasma/educational_VMEC.git) - Reference Fortran implementation
+- **VMEC2000** (https://github.com/itpplasma/VMEC2000.git) - SIMSOPT-style Python interface to VMEC
 - **jVMEC** - Java implementation (not publicly available)
 
 ## Quick Start
@@ -141,10 +141,10 @@ Output files are generated in structured formats compatible with the Fortran ben
 ### Repository Management
 The Fortran benchmark suite includes a repository manager that handles:
 
-- **VMEC++**: `git clone https://github.com/itpplasma/vmecpp.git`
-- **Educational VMEC**: `git clone https://github.com/hiddenSymmetries/educational_VMEC.git`
-- **VMEC2000**: `git clone https://github.com/hiddenSymmetries/VMEC2000.git`
-- **jVMEC**: Manual setup required (private repository)
+- **VMEC++**: `git clone git@github.com:itpplasma/vmecpp.git`
+- **Educational VMEC**: `git clone git@github.com:itpplasma/educational_VMEC.git`
+- **VMEC2000**: `git clone git@github.com:itpplasma/VMEC2000.git`
+- **jVMEC**: expected as sibling directory `../jVMEC`
 
 Repository management is handled through the `repository_manager` module with proper error handling and status reporting.
 

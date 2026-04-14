@@ -17,7 +17,7 @@ echo "and captures debug output for comparison"
 
 # Base directory
 BASE_DIR="$(pwd)"
-REPOS_DIR="${BASE_DIR}/vmec_repos"
+REPOS_DIR="${BASE_DIR}/.."
 
 # Create temporary directories for each code
 TEMP_DIR="${BASE_DIR}/asymmetric_debug_$(date +%Y%m%d_%H%M%S)"
@@ -104,8 +104,8 @@ run_vmecpp() {
     python3 -m vmecpp.input2json input.SOLOVEV SOLOVEV.json
     
     # Run VMEC++
-    echo "Running: /home/ert/code/vmecpp/build/vmec_standalone -i SOLOVEV.json -o SOLOVEV.out.h5"
-    "/home/ert/code/vmecpp/build/vmec_standalone" -i SOLOVEV.json -o SOLOVEV.out.h5 2>&1 | tee vmecpp_output.log
+    echo "Running: ${REPOS_DIR}/vmecpp/build/vmec_standalone -i SOLOVEV.json -o SOLOVEV.out.h5"
+    "${REPOS_DIR}/vmecpp/build/vmec_standalone" -i SOLOVEV.json -o SOLOVEV.out.h5 2>&1 | tee vmecpp_output.log
     
     # Check if it ran successfully
     if [ -f "SOLOVEV.out.h5" ]; then
@@ -171,7 +171,7 @@ if [ ! -f "${REPOS_DIR}/jVMEC/target/jVMEC-1.0.0.jar" ]; then
     cd "$BASE_DIR"
 fi
 
-if [ ! -f "/home/ert/code/vmecpp/build/vmec_standalone" ]; then
+if [ ! -f "${REPOS_DIR}/vmecpp/build/vmec_standalone" ]; then
     echo -e "${RED}VMEC++ executable not found. Please build it first.${NC}"
     exit 1
 fi

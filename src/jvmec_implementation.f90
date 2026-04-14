@@ -41,8 +41,8 @@ contains
         inquire(file=trim(jar_file), exist=exists)
         if (exists) then
             ! Already built, set executable with absolute path including dependencies
-            this%executable = "java -cp /home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/jVMEC-1.0.0.jar:" // &
-                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/dependency/* de.labathome.jvmec.VmecRunner"
+            this%executable = "java -cp " // trim(this%path) // "/target/jVMEC-1.0.0.jar:" // &
+                             trim(this%path) // "/target/dependency/* de.labathome.jvmec.VmecRunner"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "jVMEC already built at " // trim(jar_file)
@@ -54,8 +54,8 @@ contains
         inquire(file=trim(jar_file), exist=exists)
         if (exists) then
             ! Already built, just set the executable using classes dir with dependencies
-            this%executable = "java -cp /home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/classes:" // &
-                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/lib/* de.labathome.jvmec.VmecRunner"
+            this%executable = "java -cp " // trim(this%path) // "/target/classes:" // &
+                             trim(this%path) // "/target/dependency/* de.labathome.jvmec.VmecRunner"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "jVMEC already built at " // trim(jar_file)
@@ -80,8 +80,8 @@ contains
         if (exists) then
             ! Use the built JAR with VmecRunner main class (full VMEC implementation)
             ! Dependencies are already copied by the build script
-            this%executable = "java -cp /home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/jVMEC-1.0.0.jar:" // &
-                             "/home/ert/code/benchmark_vmec/vmec_repos/jvmec/target/dependency/* de.labathome.jvmec.VmecRunner"
+            this%executable = "java -cp " // trim(this%path) // "/target/jVMEC-1.0.0.jar:" // &
+                             trim(this%path) // "/target/dependency/* de.labathome.jvmec.VmecRunner"
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "Successfully built jVMEC JAR at " // trim(jar_file)

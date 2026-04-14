@@ -17,7 +17,7 @@ echo "and captures debug output for comparison"
 
 # Base directory
 BASE_DIR="$(pwd)"
-REPOS_DIR="${BASE_DIR}/vmec_repos"
+REPOS_DIR="${BASE_DIR}/.."
 
 # Create temporary directories for each code
 TEMP_DIR="${BASE_DIR}/symmetric_debug_$(date +%Y%m%d_%H%M%S)"
@@ -29,7 +29,7 @@ mkdir -p "${TEMP_DIR}/vmecpp"
 echo -e "\n${BLUE}Created temporary directories in: ${TEMP_DIR}${NC}"
 
 # Input file - use the simple SOLOVEV test case which has lasym=F (symmetric)
-INPUT_FILE="${REPOS_DIR}/jvmec/src/test/resources/input.SOLOVEV"
+INPUT_FILE="${REPOS_DIR}/jVMEC/src/test/resources/input.SOLOVEV"
 
 if [ ! -f "$INPUT_FILE" ]; then
     echo -e "${RED}Error: Input file not found: $INPUT_FILE${NC}"
@@ -80,8 +80,8 @@ run_jvmec() {
     sed -e 's/!.*$//' -e '/^$/d' -e '/dump_/d' input.SOLOVEV > input_cleaned.txt
     
     # Run jVMEC
-    echo "Running: java -cp ${REPOS_DIR}/jvmec/target/jVMEC-1.0.0.jar:${REPOS_DIR}/jvmec/target/dependency/* de.labathome.jvmec.VmecRunner input_cleaned.txt"
-    java -cp "${REPOS_DIR}/jvmec/target/jVMEC-1.0.0.jar:${REPOS_DIR}/jvmec/target/dependency/*" de.labathome.jvmec.VmecRunner input_cleaned.txt 2>&1 | tee jvmec_output.log
+    echo "Running: java -cp ${REPOS_DIR}/jVMEC/target/jVMEC-1.0.0.jar:${REPOS_DIR}/jVMEC/target/dependency/* de.labathome.jvmec.VmecRunner input_cleaned.txt"
+    java -cp "${REPOS_DIR}/jVMEC/target/jVMEC-1.0.0.jar:${REPOS_DIR}/jVMEC/target/dependency/*" de.labathome.jvmec.VmecRunner input_cleaned.txt 2>&1 | tee jvmec_output.log
     
     # Check if it ran successfully  
     if [ -f "wout_input_cleaned.nc" ]; then
@@ -104,8 +104,8 @@ run_vmecpp() {
     python3 -m vmecpp.input2json input.SOLOVEV SOLOVEV.json
     
     # Run VMEC++
-    echo "Running: /home/ert/code/vmecpp/build/vmec_standalone -i SOLOVEV.json -o SOLOVEV.out.h5"
-    "/home/ert/code/vmecpp/build/vmec_standalone" -i SOLOVEV.json -o SOLOVEV.out.h5 2>&1 | tee vmecpp_output.log
+    echo "Running: ${REPOS_DIR}/vmecpp/build/vmec_standalone -i SOLOVEV.json -o SOLOVEV.out.h5"
+    "${REPOS_DIR}/vmecpp/build/vmec_standalone" -i SOLOVEV.json -o SOLOVEV.out.h5 2>&1 | tee vmecpp_output.log
     
     # Check if it ran successfully
     if [ -f "SOLOVEV.out.h5" ]; then
@@ -164,14 +164,14 @@ if [ ! -f "${REPOS_DIR}/educational_VMEC/build/bin/xvmec" ]; then
     cd "$BASE_DIR"
 fi
 
-if [ ! -f "${REPOS_DIR}/jvmec/target/jVMEC-1.0.0.jar" ]; then
+if [ ! -f "${REPOS_DIR}/jVMEC/target/jVMEC-1.0.0.jar" ]; then
     echo -e "${RED}jVMEC JAR not found. Building...${NC}"
-    cd "${REPOS_DIR}/jvmec"
+    cd "${REPOS_DIR}/jVMEC"
     ./build.sh
     cd "$BASE_DIR"
 fi
 
-if [ ! -f "/home/ert/code/vmecpp/build/vmec_standalone" ]; then
+if [ ! -f "${REPOS_DIR}/vmecpp/build/vmec_standalone" ]; then
     echo -e "${RED}VMEC++ executable not found. Please build it first.${NC}"
     exit 1
 fi

@@ -31,21 +31,21 @@ contains
         
         call repos(1)%initialize( &
             name="educational_VMEC", &
-            url="https://github.com/jonathanschilling/educational_VMEC.git", &
+            url="git@github.com:itpplasma/educational_VMEC.git", &
             branch="master", &
             build_command="cmake", &
             test_data_path="")
         
         call repos(2)%initialize( &
             name="VMEC2000", &
-            url="https://github.com/hiddenSymmetries/VMEC2000.git", &
+            url="git@github.com:itpplasma/VMEC2000.git", &
             branch="master", &
             build_command="pip", &
             test_data_path="")
         
         call repos(3)%initialize( &
             name="VMEC++", &
-            url="https://github.com/itpplasma/vmecpp.git", &
+            url="git@github.com:itpplasma/vmecpp.git", &
             branch="main", &
             build_command="pip", &
             test_data_path="src/vmecpp/test_data")

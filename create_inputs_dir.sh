@@ -3,8 +3,8 @@
 # Create VMEC Input Files Directory
 echo "Creating VMEC Input Files Directory..."
 
-# Find all input files excluding jVMEC
-find vmec_repos/ -path '*/jvmec*' -prune -o -name 'input*' -type f -print > input_files_list.tmp
+# Find all input files from sibling repositories excluding jVMEC
+find ../educational_VMEC ../VMEC2000 ../vmecpp -name 'input*' -type f -print > input_files_list.tmp
 
 echo "# VMEC Input Files Directory" > inputs.md
 echo "" >> inputs.md

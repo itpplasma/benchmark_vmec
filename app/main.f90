@@ -30,7 +30,7 @@ program vmec_benchmark
         '   list-cases  List available test cases                               ', &
         '                                                                        ', &
         'OPTIONS                                                                 ', &
-        '   --base-dir DIR      Base directory for repositories (default: ./vmec_repos)', &
+        '   --base-dir DIR      Base directory for repositories (default: ..)', &
         '   --output-dir DIR    Output directory for results (default: ./benchmark_results)', &
         '   --force             Force reclone repositories                      ', &
         '   --timeout SECONDS   Timeout per case in seconds (default: 300)     ', &
@@ -53,7 +53,7 @@ program vmec_benchmark
         '']
 
     ! Parse command line arguments
-    call set_args('--base-dir "./vmec_repos" --output-dir "./benchmark_results" &
+    call set_args('--base-dir ".." --output-dir "./benchmark_results" &
                   &--force F --timeout 300 --limit 0 --symmetric-only F --version F --help F', &
                   help_text, version_text)
     
@@ -251,9 +251,11 @@ contains
 
     subroutine cmd_hard_reset(base_dir)
         character(len=*), intent(in) :: base_dir
-        character(len=:), allocatable :: cmd
+        type(repository_manager_t) :: repo_manager
+        character(len=:), allocatable :: cmd, repo_path
         integer :: stat
         logical :: exists
+        integer :: i
         
         write(output_unit, '(A)') 'WARNING: Hard reset will delete ALL repositories and data!'
         write(output_unit, '(A)') 'This includes:'
@@ -263,20 +265,39 @@ contains
         write(output_unit, '(A)') ''
         write(output_unit, '(A)') 'Proceeding with hard reset...'
         
-        ! Check if directory exists
-        inquire(file=trim(base_dir), exist=exists)
-        if (exists) then
-            write(output_unit, '(A)') 'Removing directory: ' // trim(base_dir)
-            cmd = "rm -rf " // trim(base_dir)
+        call repo_manager%initialize(base_dir)
+
+        do i = 1, repo_manager%n_repos
+            repo_path = repo_manager%get_repo_path(extract_repo_name(repo_manager%repositories(i)%url))
+            inquire(file=trim(repo_path), exist=exists)
+            if (.not. exists) cycle
+
+            write(output_unit, '(A)') 'Removing directory: ' // trim(repo_path)
+            cmd = "rm -rf " // trim(repo_path)
             call execute_command_line(trim(cmd), exitstat=stat)
-            
+
             if (stat /= 0) then
-                write(error_unit, '(A)') 'Failed to remove directory'
+                write(error_unit, '(A)') 'Failed to remove directory: ' // trim(repo_path)
+                call repo_manager%finalize()
                 return
             end if
-        else
-            write(output_unit, '(A)') 'Directory does not exist: ' // trim(base_dir)
+        end do
+
+        repo_path = trim(base_dir) // "/jVMEC"
+        inquire(file=trim(repo_path), exist=exists)
+        if (exists) then
+            write(output_unit, '(A)') 'Removing directory: ' // trim(repo_path)
+            cmd = "rm -rf " // trim(repo_path)
+            call execute_command_line(trim(cmd), exitstat=stat)
+
+            if (stat /= 0) then
+                write(error_unit, '(A)') 'Failed to remove directory: ' // trim(repo_path)
+                call repo_manager%finalize()
+                return
+            end if
         end if
+
+        call repo_manager%finalize()
         
         write(output_unit, '(A)') 'Hard reset complete'
         write(output_unit, '(A)') 'Run "vmec-benchmark setup" to reinitialize repositories'

@@ -20,7 +20,7 @@ program vmec_build
     version_text = [character(len=80) :: &
         'vmec-build version 1.0.0                                               ']
     
-    call set_args('--base-dir "./vmec_repos" --force F --verbose F --help F --version F', &
+    call set_args('--base-dir ".." --force F --verbose F --help F --version F', &
                   help_text, version_text)
     
     ! Get command line arguments
@@ -37,7 +37,7 @@ program vmec_build
         write(output_unit, '(A)') '   vmec-build [OPTIONS]'
         write(output_unit, '(A)') ''
         write(output_unit, '(A)') 'OPTIONS'
-        write(output_unit, '(A)') '   --base-dir DIR      Base directory for repositories (default: ./vmec_repos)'
+        write(output_unit, '(A)') '   --base-dir DIR      Base directory for repositories (default: ..)'
         write(output_unit, '(A)') '   --force             Force rebuild even if already built'
         write(output_unit, '(A)') '   --verbose           Enable verbose output'
         write(output_unit, '(A)') '   --help              Show this help message'
@@ -118,7 +118,7 @@ contains
         end if
         
         ! jVMEC (check for directory presence)
-        repo_path = trim(repo_manager%base_path) // "/jvmec"
+        repo_path = trim(repo_manager%base_path) // "/jVMEC"
         inquire(file=trim(repo_path), exist=exists)
         if (exists) then
             n_total = n_total + 1

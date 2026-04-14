@@ -14,8 +14,8 @@ program jvmec_test
     logical :: success
     
     ! Initialize implementations
-    call jvmec%initialize("jVMEC", "./vmec_repos/jvmec")
-    call edu_vmec%initialize("Educational VMEC", "./vmec_repos/educational_VMEC")
+    call jvmec%initialize("jVMEC", "../jVMEC")
+    call edu_vmec%initialize("Educational VMEC", "../educational_VMEC")
     
     impl_names(1) = "jVMEC"
     impl_names(2) = "Educational VMEC"

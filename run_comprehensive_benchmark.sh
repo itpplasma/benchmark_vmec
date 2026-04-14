@@ -198,9 +198,9 @@ The benchmark suite includes advanced quantitative analysis specifically designe
 EOF
 
 # Count files by repository
-echo "- **VMEC++**: $(find ../vmec_repos/vmecpp -name 'input*' | wc -l) test cases" >> "$RESULTS_DIR/$SUMMARY_FILE"
-echo "- **Educational VMEC**: $(find ../vmec_repos/educational_VMEC -name 'input*' | wc -l) test cases" >> "$RESULTS_DIR/$SUMMARY_FILE"
-echo "- **VMEC2000**: $(find ../vmec_repos/VMEC2000 -name 'input*' | wc -l) test cases" >> "$RESULTS_DIR/$SUMMARY_FILE"
+echo "- **VMEC++**: $(find ../vmecpp -name 'input*' | wc -l) test cases" >> "$RESULTS_DIR/$SUMMARY_FILE"
+echo "- **Educational VMEC**: $(find ../educational_VMEC -name 'input*' | wc -l) test cases" >> "$RESULTS_DIR/$SUMMARY_FILE"
+echo "- **VMEC2000**: $(find ../VMEC2000 -name 'input*' | wc -l) test cases" >> "$RESULTS_DIR/$SUMMARY_FILE"
 
 # Add physics analysis
 cat >> "$RESULTS_DIR/$SUMMARY_FILE" << 'EOF'

@@ -95,7 +95,7 @@ contains
         end if
         
         ! jVMEC (check for directory presence)
-        repo_path = trim(this%repo_manager%base_path) // "/jvmec"
+        repo_path = trim(this%repo_manager%base_path) // "/jVMEC"
         inquire(file=trim(repo_path), exist=exists)
         if (exists) then
             allocate(jvmec)
@@ -197,10 +197,10 @@ contains
         class(benchmark_runner_t), intent(inout) :: this
         integer, intent(in) :: max_cases
         logical, intent(in), optional :: symmetric_only
-        character(len=:), allocatable :: cmd
+        character(len=:), allocatable :: cmd, search_roots, repo_path
         character(len=256) :: line, env_value
         integer :: stat, unit, env_stat
-        logical :: include_jvmec, filter_symmetric
+        logical :: include_jvmec, filter_symmetric, exists
         
         ! Check if jVMEC tests should be included
         call get_environment_variable("BENCHMARK_INCLUDE_JVMEC", env_value, status=env_stat)
@@ -210,17 +210,53 @@ contains
         filter_symmetric = .false.
         if (present(symmetric_only)) filter_symmetric = symmetric_only
         
-        ! Search for input files in test directories and root directories of repositories
+        search_roots = ""
+
+        if (this%repo_manager%is_cloned("educational_VMEC")) then
+            repo_path = this%repo_manager%get_repo_path("educational_VMEC")
+            search_roots = trim(repo_path)
+        end if
+
+        if (this%repo_manager%is_cloned("VMEC2000")) then
+            repo_path = this%repo_manager%get_repo_path("VMEC2000")
+            if (len_trim(search_roots) == 0) then
+                search_roots = trim(repo_path)
+            else
+                search_roots = trim(search_roots) // " " // trim(repo_path)
+            end if
+        end if
+
+        if (this%repo_manager%is_cloned("vmecpp")) then
+            repo_path = this%repo_manager%get_repo_path("vmecpp")
+            if (len_trim(search_roots) == 0) then
+                search_roots = trim(repo_path)
+            else
+                search_roots = trim(search_roots) // " " // trim(repo_path)
+            end if
+        end if
+
         if (include_jvmec) then
-            ! First get clean VMEC input files from test directories
-            cmd = "find " // trim(this%repo_manager%base_path) // " -follow -name 'input.*' -type f 2>/dev/null | " // &
-                  "grep -E '/(tests?|examples?)/' | grep -v results | grep -v debug | grep -v bazel"
+            repo_path = trim(this%repo_manager%base_path) // "/jVMEC"
+            inquire(file=trim(repo_path), exist=exists)
+            if (exists) then
+                if (len_trim(search_roots) == 0) then
+                    search_roots = trim(repo_path)
+                else
+                    search_roots = trim(search_roots) // " " // trim(repo_path)
+                end if
+            end if
             write(output_unit, '(A)') "  (Including jVMEC test cases)"
         else
-            cmd = "find " // trim(this%repo_manager%base_path) // " -path '*/jvmec' -prune -o -name 'input.*' " // &
-                  "-type f -print 2>/dev/null | grep -E '/(tests?|examples?)/' | grep -v results | grep -v debug"
             write(output_unit, '(A)') "  (Excluding jVMEC test cases - set BENCHMARK_INCLUDE_JVMEC=1 to include)"
         end if
+
+        if (len_trim(search_roots) == 0) then
+            write(output_unit, '(A)') "  No repository directories available for test discovery"
+            return
+        end if
+
+        cmd = "find " // trim(search_roots) // " -follow -name 'input.*' -type f 2>/dev/null | " // &
+              "grep -E '/(tests?|examples?)/' | grep -v results | grep -v debug | grep -v bazel"
         call execute_command_line(trim(cmd) // " > test_files.tmp", exitstat=stat)
         
         if (stat == 0) then

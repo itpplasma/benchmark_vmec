@@ -87,7 +87,7 @@ This is a Fortran package that benchmarks multiple VMEC (Variational Moments Equ
 - `run_case()`: Execute a single test case
 - `extract_results()`: Parse output files into standardized format
 
-**Repository Management**: The `repository_manager` automatically clones and manages external VMEC repositories in `vmec_repos/` directory.
+**Repository Management**: The `repository_manager` automatically clones and manages external VMEC repositories as sibling directories one level above `benchmark_vmec`.
 
 ### Key Modules
 
@@ -160,7 +160,7 @@ Results are saved to `benchmark_results/` with per-implementation subdirectories
 
 ## Important Notes
 
-- The system manages external repositories automatically - avoid manual modification of `vmec_repos/`
+- The system manages sibling repositories automatically - avoid manual modification while benchmarks are running
 - Build and run phases are intentionally separated for reliability
 - Each implementation handles its own input format requirements
 - Output comparison focuses on physics quantities (MHD energy, beta values, etc.)
