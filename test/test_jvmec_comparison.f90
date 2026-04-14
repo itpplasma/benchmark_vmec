@@ -4,6 +4,9 @@ program test_jvmec_comparison
     use jvmec_comparison, only: generate_jvmec_quantitative_summary, &
                                 compare_fourier_modes
     implicit none
+
+    character(len=*), parameter :: summary_file = "/tmp/benchmark_vmec_test_jvmec_summary.md"
+    character(len=*), parameter :: fourier_file = "/tmp/benchmark_vmec_test_fourier_comparison.txt"
     
     call test_quantitative_summary()
     call test_fourier_comparison()
@@ -50,7 +53,7 @@ contains
         
         ! Test the summary generation
         call generate_jvmec_quantitative_summary(results, impl_names, &
-                                                 "test_jvmec_summary.md")
+                                                 summary_file)
         
         ! Cleanup
         do i = 1, 3
@@ -86,7 +89,7 @@ contains
         test_result%zmns = 0.502_real64  ! Small difference
         
         ! Test comparison
-        open(newunit=unit, file="test_fourier_comparison.txt", &
+        open(newunit=unit, file=fourier_file, &
              status='replace', action='write')
         
         call compare_fourier_modes(ref_result, test_result, unit, "test_impl")

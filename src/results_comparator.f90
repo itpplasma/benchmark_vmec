@@ -17,6 +17,7 @@ module results_comparator
     type :: results_comparator_t
         type(case_results_t), allocatable :: case_results(:)
         integer :: n_cases = 0
+        character(len=:), allocatable :: output_dir
         character(len=32), dimension(6) :: key_quantities = [ &
             "wb              ", &
             "betatotal       ", &
@@ -40,12 +41,20 @@ module results_comparator
 
 contains
 
-    subroutine results_comparator_initialize(this, max_cases)
+    subroutine results_comparator_initialize(this, max_cases, output_dir)
         class(results_comparator_t), intent(inout) :: this
         integer, intent(in) :: max_cases
+        character(len=*), intent(in), optional :: output_dir
+        integer :: stat
         
         allocate(this%case_results(max_cases))
         this%n_cases = 0
+        if (present(output_dir)) then
+            this%output_dir = trim(output_dir)
+        else
+            this%output_dir = "benchmark_results"
+        end if
+        call execute_command_line("mkdir -p " // trim(this%output_dir), exitstat=stat)
     end subroutine results_comparator_initialize
 
     subroutine results_comparator_add_result(this, case_name, impl_name, result)
@@ -112,8 +121,7 @@ contains
             ! Data rows
             do j = 1, this%case_results(i)%n_impls
                 if (this%case_results(i)%results(j)%success) then
-                    write(unit, '(A,A14)', advance='no') "| ", &
-                        this%case_results(i)%impl_names(j)(1:min(14,len_trim(this%case_results(i)%impl_names(j))))
+                    write(unit, '(A,A)', advance='no') "| ", trim(this%case_results(i)%impl_names(j))
                     write(unit, '(A,ES14.6)', advance='no') " | ", &
                         this%case_results(i)%results(j)%wb
                     write(unit, '(A,ES14.6)', advance='no') " | ", &
@@ -127,8 +135,8 @@ contains
                     write(unit, '(A,ES14.6,A)') " | ", &
                         this%case_results(i)%results(j)%iotaf_edge, " |"
                 else
-                    write(unit, '(A,A14,A)') "| ", &
-                        this%case_results(i)%impl_names(j)(1:min(14,len_trim(this%case_results(i)%impl_names(j)))), &
+                    write(unit, '(A,A,A)') "| ", &
+                        trim(this%case_results(i)%impl_names(j)), &
                         " | Failed | Failed | Failed | Failed | Failed | Failed |"
                 end if
             end do
@@ -143,31 +151,41 @@ contains
         integer, intent(in) :: unit
         integer :: i, j, ref_idx
         real(real64) :: ref_val, impl_val, rel_diff
-        logical :: ref_found
+        logical :: has_reference_section
         
         write(unit, '(A)') "## Relative Differences"
         write(unit, '(A)') ""
-        write(unit, '(A)') "Using " // trim(reference_impl) // " as reference implementation"
+        write(unit, '(A)') "Preferred reference implementation: " // trim(reference_impl)
         write(unit, '(A)') ""
+
+        has_reference_section = .false.
         
         do i = 1, this%n_cases
-            ! Find reference implementation
-            ref_found = .false.
             ref_idx = 0
             do j = 1, this%case_results(i)%n_impls
-                if (this%case_results(i)%impl_names(j) == reference_impl) then
-                    ref_found = .true.
+                if (this%case_results(i)%impl_names(j) == reference_impl .and. &
+                    this%case_results(i)%results(j)%success) then
                     ref_idx = j
                     exit
                 end if
             end do
             
-            if (.not. ref_found .or. &
-                .not. this%case_results(i)%results(ref_idx)%success) then
-                cycle
+            if (ref_idx == 0) then
+                do j = 1, this%case_results(i)%n_impls
+                    if (this%case_results(i)%results(j)%success) then
+                        ref_idx = j
+                        exit
+                    end if
+                end do
             end if
+
+            if (ref_idx == 0) cycle
+            has_reference_section = .true.
             
             write(unit, '(A)') "### " // trim(this%case_results(i)%case_name)
+            write(unit, '(A)') ""
+            write(unit, '(A)') "Reference implementation: " // &
+                               trim(this%case_results(i)%impl_names(ref_idx))
             write(unit, '(A)') ""
             
             do j = 1, this%case_results(i)%n_impls
@@ -194,50 +212,73 @@ contains
                 write(unit, '(A)') ""
             end do
         end do
+
+        if (.not. has_reference_section) then
+            write(unit, '(A)') "No successful implementations were available for relative differences."
+            write(unit, '(A)') ""
+        end if
     end subroutine results_comparator_calculate_relative_differences
 
     subroutine results_comparator_get_convergence_summary(this, unit)
         class(results_comparator_t), intent(in) :: this
         integer, intent(in) :: unit
-        integer :: i, j
+        integer :: i, j, k, n_headers
+        character(len=64) :: headers(20)
+        logical :: already_present
         
         write(unit, '(A)') "## Convergence Summary"
         write(unit, '(A)') ""
+
+        headers = ""
+        n_headers = 0
+        do i = 1, this%n_cases
+            do j = 1, this%case_results(i)%n_impls
+                already_present = .false.
+                do k = 1, n_headers
+                    if (trim(headers(k)) == trim(this%case_results(i)%impl_names(j))) then
+                        already_present = .true.
+                        exit
+                    end if
+                end do
+                if (.not. already_present) then
+                    n_headers = n_headers + 1
+                    headers(n_headers) = trim(this%case_results(i)%impl_names(j))
+                end if
+            end do
+        end do
         
         ! Table header
         write(unit, '(A)', advance='no') "| Case "
-        
-        ! Get unique implementation names
-        do i = 1, this%n_cases
-            do j = 1, this%case_results(i)%n_impls
-                write(unit, '(A,A14,A)', advance='no') "| ", &
-                    this%case_results(i)%impl_names(j)(1:min(14,len_trim(this%case_results(i)%impl_names(j)))), &
-                    " "
-            end do
-            exit  ! Just need first case for headers
+        do i = 1, n_headers
+            write(unit, '(A,A,A)', advance='no') "| ", trim(headers(i)), " "
         end do
         write(unit, '(A)') "|"
         
         ! Separator
         write(unit, '(A)', advance='no') "|------|"
-        do i = 1, this%n_cases
-            do j = 1, this%case_results(i)%n_impls
-                write(unit, '(A)', advance='no') "----------------|"
-            end do
-            exit
+        do i = 1, n_headers
+            write(unit, '(A)', advance='no') "----------------|"
         end do
         write(unit, '(A)') ""
         
         ! Data rows
         do i = 1, this%n_cases
             write(unit, '(A,A)', advance='no') "| ", &
-                this%case_results(i)%case_name(1:min(64,len_trim(this%case_results(i)%case_name)))
+                trim(this%case_results(i)%case_name)
             
-            do j = 1, this%case_results(i)%n_impls
-                if (this%case_results(i)%results(j)%success) then
-                    write(unit, '(A)', advance='no') "| ✓ "
-                else
-                    write(unit, '(A)', advance='no') "| ✗ "
+            do j = 1, n_headers
+                do k = 1, this%case_results(i)%n_impls
+                    if (trim(this%case_results(i)%impl_names(k)) == trim(headers(j))) then
+                        if (this%case_results(i)%results(k)%success) then
+                            write(unit, '(A)', advance='no') "| ✓ "
+                        else
+                            write(unit, '(A)', advance='no') "| ✗ "
+                        end if
+                        exit
+                    end if
+                end do
+                if (k > this%case_results(i)%n_impls) then
+                    write(unit, '(A)', advance='no') "| - "
                 end if
             end do
             write(unit, '(A)') "|"
@@ -271,7 +312,7 @@ contains
         ! Relative differences (if we have at least one implementation)
         if (this%n_cases > 0 .and. this%case_results(1)%n_impls > 0) then
             call this%calculate_relative_differences( &
-                this%case_results(1)%impl_names(1), unit)
+                choose_preferred_reference(this), unit)
         end if
         
         ! Fourier coefficient summary
@@ -394,13 +435,21 @@ contains
 
     subroutine generate_jvmec_reports(this)
         class(results_comparator_t), intent(in) :: this
-        integer :: i
-        character(len=:), allocatable :: jvmec_report_file
+        integer :: i, stat
+        character(len=:), allocatable :: jvmec_report_dir, jvmec_report_file
+
+        jvmec_report_dir = trim(this%output_dir) // "/jvmec_reports"
+        call execute_command_line("mkdir -p " // trim(jvmec_report_dir), exitstat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to create jVMEC report directory: " // &
+                                     trim(jvmec_report_dir)
+            return
+        end if
         
         do i = 1, this%n_cases
             if (this%case_results(i)%n_impls > 0) then
-                jvmec_report_file = "benchmark_results/jvmec_quantitative_" // &
-                                   trim(this%case_results(i)%case_name) // ".md"
+                jvmec_report_file = trim(jvmec_report_dir) // "/jvmec_quantitative_" // &
+                                   sanitize_filename(this%case_results(i)%case_name) // ".md"
                 
                 call generate_jvmec_quantitative_summary( &
                     this%case_results(i)%results(1:this%case_results(i)%n_impls), &
@@ -426,8 +475,52 @@ contains
             end do
             deallocate(this%case_results)
         end if
+        if (allocated(this%output_dir)) deallocate(this%output_dir)
         
         this%n_cases = 0
     end subroutine results_comparator_finalize
+
+    function sanitize_filename(name) result(filename)
+        character(len=*), intent(in) :: name
+        character(len=:), allocatable :: filename
+        integer :: i
+        character(len=1) :: ch
+
+        filename = ""
+        do i = 1, len_trim(name)
+            ch = name(i:i)
+            select case (ch)
+            case ('A':'Z', 'a':'z', '0':'9', '-', '_', '.')
+                filename = filename // ch
+            case ('/')
+                filename = filename // "__"
+            case default
+                filename = filename // "_"
+            end select
+        end do
+    end function sanitize_filename
+
+    function choose_preferred_reference(this) result(reference_impl)
+        class(results_comparator_t), intent(in) :: this
+        character(len=:), allocatable :: reference_impl
+        integer :: i, j
+        character(len=*), parameter :: priority(4) = [ &
+            "jvmec           ", &
+            "vmec2000        ", &
+            "educational_vmec", &
+            "vmecpp          " &
+        ]
+
+        do i = 1, size(priority)
+            do j = 1, this%n_cases
+                if (any(this%case_results(j)%impl_names(1:this%case_results(j)%n_impls) == priority(i))) then
+                    reference_impl = trim(priority(i))
+                    return
+                end if
+            end do
+        end do
+
+        reference_impl = "educational_vmec"
+    end function choose_preferred_reference
 
 end module results_comparator

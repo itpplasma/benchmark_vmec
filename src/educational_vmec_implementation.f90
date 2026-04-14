@@ -147,7 +147,7 @@ contains
         integer, intent(in), optional :: timeout
         logical :: success
         character(len=:), allocatable :: indata_file, local_input, cmd
-        integer :: stat, unit, timeout_val
+        integer :: stat, timeout_val
         logical :: is_json
         
         success = .false.
@@ -190,7 +190,16 @@ contains
         call execute_command_line(trim(cmd), exitstat=stat)
         
         if (stat == 0) then
-            success = .true.
+            call execute_command_line( &
+                "find " // trim(output_dir) // " -maxdepth 1 -name 'wout_*.nc' -print -quit | grep -q .", &
+                exitstat=stat &
+            )
+            if (stat == 0) then
+                success = .true.
+            else
+                write(error_unit, '(A)') "Educational VMEC completed without a wout file for " // &
+                                          get_basename(input_file)
+            end if
         else if (stat == 124) then
             write(error_unit, '(A)') "Educational VMEC timed out for " // get_basename(input_file)
         else
@@ -398,9 +407,12 @@ contains
         logical :: success
         integer :: input_unit, output_unit, stat
         character(len=1000) :: line
-        logical :: skip_line
+        logical :: skip_line, skipping_unsupported_block
+        logical :: has_niter_array
         
         success = .false.
+        has_niter_array = .false.
+        skipping_unsupported_block = .false.
         
         ! Open input and output files
         open(newunit=input_unit, file=input_file, status='old', action='read', iostat=stat)
@@ -408,6 +420,13 @@ contains
             write(error_unit, '(A)') "Failed to open input file: " // trim(input_file)
             return
         end if
+
+        do
+            read(input_unit, '(A)', iostat=stat) line
+            if (stat /= 0) exit
+            if (index(adjustl(line), 'NITER_ARRAY') == 1) has_niter_array = .true.
+        end do
+        rewind(input_unit)
         
         open(newunit=output_unit, file=output_file, status='replace', action='write', iostat=stat)
         if (stat /= 0) then
@@ -422,6 +441,13 @@ contains
             if (stat /= 0) exit  ! End of file or error
             
             skip_line = .false.
+
+            if (skipping_unsupported_block) then
+                if (index(adjustl(line), '=') == 0 .and. trim(line) /= "/" .and. trim(line) /= "&END") then
+                    cycle
+                end if
+                skipping_unsupported_block = .false.
+            end if
             
             ! Remove parameters that Educational VMEC doesn't understand
             if (index(adjustl(line), 'LOPTIM') > 0) skip_line = .true.
@@ -431,6 +457,38 @@ contains
             if (index(adjustl(line), 'LWOUTTXT') > 0) skip_line = .true.
             if (index(adjustl(line), 'LMAC') > 0) skip_line = .true.
             if (index(adjustl(line), 'LPRINT_ERRORS') > 0) skip_line = .true.
+            if (index(adjustl(line), 'PRECON_TYPE') == 1) skip_line = .true.
+            if (index(adjustl(line), 'PREC2D_THRESHOLD') == 1) skip_line = .true.
+            if (index(adjustl(line), 'BCRIT') == 1) skip_line = .true.
+            if (index(adjustl(line), 'PT_TYPE') == 1) skip_line = .true.
+            if (index(adjustl(line), 'PH_TYPE') == 1) skip_line = .true.
+            if (index(adjustl(line), 'AT =') == 1) then
+                skip_line = .true.
+                skipping_unsupported_block = .true.
+            end if
+            if (index(adjustl(line), 'AH =') == 1) then
+                skip_line = .true.
+                skipping_unsupported_block = .true.
+            end if
+
+            if (index(adjustl(line), 'NITER =') == 1) then
+                if (has_niter_array) then
+                    skip_line = .true.
+                else
+                    line = line(:index(line, 'NITER =') - 1) // 'NITER_ARRAY =' // &
+                           line(index(line, 'NITER =') + len('NITER ='):)
+                end if
+            end if
+
+            if (index(adjustl(line), 'RAXIS =') == 1) then
+                line = line(:index(line, 'RAXIS =') - 1) // 'RAXIS_CC =' // &
+                       line(index(line, 'RAXIS =') + len('RAXIS ='):)
+            end if
+
+            if (index(adjustl(line), 'ZAXIS =') == 1) then
+                line = line(:index(line, 'ZAXIS =') - 1) // 'ZAXIS_CS =' // &
+                       line(index(line, 'ZAXIS =') + len('ZAXIS ='):)
+            end if
             
             ! Write line to output if not skipped
             if (.not. skip_line) then

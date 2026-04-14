@@ -3,42 +3,56 @@
 [![CI](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml/badge.svg)](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/itpplasma/benchmark_vmec/branch/main/graph/badge.svg)](https://codecov.io/gh/itpplasma/benchmark_vmec)
 
-A Fortran package built with fpm for automated comparison of multiple VMEC implementations.
+A Fortran package built with `fpm` for comparing VMEC implementations from sibling repositories.
 
 ## Overview
 
-This benchmark suite uses sibling repositories one directory above `benchmark_vmec`, builds them as needed, and compares multiple VMEC implementations:
+The active purpose of this repository is narrow:
 
-- **VMEC++** (https://github.com/itpplasma/vmecpp.git) - Modern C++ implementation with enhanced algorithms
-- **Educational VMEC** (https://github.com/itpplasma/educational_VMEC.git) - Reference Fortran implementation
-- **VMEC2000** (https://github.com/itpplasma/VMEC2000.git) - SIMSOPT-style Python interface to VMEC
-- **jVMEC** - Java implementation (not publicly available)
+- run the same stellarator and tokamak inputs across `vmecpp`, `educational_VMEC`, `VMEC2000`, and `jVMEC`
+- collect a comparable subset of outputs
+- provide focused tooling for regression checks and cross-code investigation
+
+The suite expects the repositories to live one directory above `benchmark_vmec`:
+
+- `../vmecpp`
+- `../educational_VMEC`
+- `../VMEC2000`
+- `../jVMEC`
+
+`jVMEC` is optional but strongly recommended when working on asymmetric or tokamak behavior because it is the current reference implementation for those cases in this workspace.
 
 ## Quick Start
 
 ```bash
-# Build the package
+# Build the tool
 fpm build
 
-# Run benchmarks
-fpm run vmec-benchmark
-
-# Build VMEC repositories
+# Build the sibling repositories that the benchmark can manage directly
 fpm run vmec-build
 
-# Run tests
+# Run the benchmark driver
+fpm run vmec-benchmark -- run
+
+# Run only symmetric cases
+fpm run vmec-benchmark -- run --symmetric-only
+
+# Run the unit tests for this repo
 fpm test
 ```
 
-## Features
+## Main Commands
 
-- **Modern Fortran**: Built with modern Fortran standards and fpm
-- **Automatic Setup**: Auto-clones and builds missing VMEC repositories
-- **Cross-Platform**: Works on Linux/macOS with standard Fortran build tools
-- **Comprehensive Testing**: Runs all available test cases from implementations
-- **Detailed Analysis**: Compares global quantities, force calculations, and convergence
-- **Structured Output**: JSON results, comparison reports, and analysis data
-- **Type Safety**: Strongly typed Fortran implementation with proper error handling
+- `vmec-benchmark setup`
+  Clones `educational_VMEC`, `VMEC2000`, and `vmecpp` into the sibling directory if they are missing.
+- `vmec-benchmark run`
+  Discovers input files from sibling repos, runs available implementations, and writes results under `benchmark_results/`.
+- `vmec-benchmark list-repos`
+  Shows which sibling repos are available.
+- `vmec-benchmark list-cases`
+  Shows discovered benchmark inputs.
+- `vmec-build`
+  Builds the implementations that this repo knows how to build directly.
 
 ## Requirements
 
@@ -49,175 +63,61 @@ fpm test
 - CMake (for building VMEC implementations)
 - Make/GCC (for building VMEC implementations)
 - Maven + Java 8+ (for jVMEC, optional)
+- Python 3 with an importable `vmecpp` package for the VMEC++ runner
 
 ### Installation
 ```bash
-# Install fpm (if not already installed)
-# See https://fpm.fortran-lang.org/install/index.html
-
-# Build the benchmark suite
 fpm build
 ```
 
-## Usage Examples
+## Typical Workflows
 
-### Build and run benchmarks:
+### 1. Check repository wiring
 ```bash
-# Build the package
-fpm build
-
-# Run the benchmark suite
-fpm run vmec-benchmark
-
-# Build VMEC repositories
-fpm run vmec-build
+fpm run vmec-benchmark -- list-repos
+fpm run vmec-benchmark -- list-cases --limit 20
 ```
 
-### Run tests:
+### 2. Run a focused comparison pass
 ```bash
-# Run all tests
-fpm test
-
-# Run specific test
-fpm test test_vmec_types
-fpm test test_repository_manager
+fpm run vmec-benchmark -- run --limit 5
+fpm run vmec-benchmark -- run --symmetric-only --limit 10
 ```
 
-### Development workflow:
+### 3. Manual debug comparisons
 ```bash
-# Build in debug mode
-fpm build --profile debug
-
-# Run with custom arguments (if supported)
-fpm run vmec-benchmark -- --help
+./compare_symmetric_debug.sh
+./compare_asymmetric_debug.sh
 ```
 
-## Output Structure
+These scripts create timestamped debug directories locally. They are intentionally ignored by git.
+
+## Repository Layout
 
 ```
-benchmark_results/
-├── comparison_report.md           # Main summary report
-├── comparison_table.csv           # Numerical comparison data
-├── raw_results.json              # Complete raw results
-└── {test_case}/                  # Per-case detailed results
-    ├── vmecpp/
-    │   ├── vmecpp_results.json
-    │   └── vmecpp.log
-    ├── educational_vmec/
-    │   ├── wout_*.nc
-    │   ├── jxbout_*.nc
-    │   └── educational_vmec.log
-    ├── vmec2000/
-    │   ├── wout_*.nc
-    │   └── vmec2000.log
-    └── jvmec/
-        └── jvmec.log
+app/                 CLI entry points
+src/                 benchmark runner and implementation wrappers
+test/                unit tests for repo management and comparison logic
+design/              persistent implementation-analysis notes
+compare_*.sh         manual symmetric and asymmetric debug workflows
+create_inputs_dir.sh regenerate the input inventory in inputs.md
 ```
 
-Output files are generated in structured formats compatible with the Fortran benchmark suite.
+## Generated Output
 
-## What Gets Compared
+Generated benchmark results are written under `benchmark_results/`. Manual debug runs create `symmetric_debug_*` or `asymmetric_debug_*` directories in the repo root. None of those outputs should be committed.
 
-### Global Equilibrium Quantities
-- MHD Energy (wb)
-- Beta values (betatotal)
-- Aspect ratio
-- Magnetic axis position (raxis_cc)
-- Plasma volume (volume_p)
-- Edge rotational transform (iotaf_edge)
+## Documentation
 
-### Force-Related Quantities
-- Average force (avforce)
-- J·B current-field alignment (jdotb)
-- B·∇v field-velocity coupling (bdotgradv)
+- [`design/index.md`](design/index.md) maps the asymmetric-implementation analysis notes.
+- [`doc/README.md`](doc/README.md) gives a short documentation index for the repo itself.
+- `inputs.md` is a generated inventory of benchmark inputs from the sibling repositories.
 
-### Geometric Properties
-- Flux surface shapes via Fourier coefficients (rmnc, zmns)
-- Mode numbers (xm, xn)
-- Toroidal flux profile (phi)
+## Current Boundaries
 
-## Implementation Details
-
-### Repository Management
-The Fortran benchmark suite includes a repository manager that handles:
-
-- **VMEC++**: `git clone git@github.com:itpplasma/vmecpp.git`
-- **Educational VMEC**: `git clone git@github.com:itpplasma/educational_VMEC.git`
-- **VMEC2000**: `git clone git@github.com:itpplasma/VMEC2000.git`
-- **jVMEC**: expected as sibling directory `../jVMEC`
-
-Repository management is handled through the `repository_manager` module with proper error handling and status reporting.
-
-### Build Process
-The Fortran benchmark suite automatically manages the build process for different VMEC implementations:
-- **VMEC++**: Python package with C++ backend
-- **Educational VMEC**: CMake + Make (Fortran)
-- **VMEC2000**: Python package with Fortran backend
-- **jVMEC**: Maven compile (Java)
-
-Use `fpm run vmec-build` to automatically clone and build all available implementations.
-
-### Input Format Handling
-The Fortran benchmark suite handles input format conversion between different VMEC implementations:
-- JSON format (VMEC++)
-- INDATA format (Educational VMEC, VMEC2000)
-- Input parameter conversion and validation
-- Boundary coefficient handling (RBC, ZBS, RBS, ZBC)
-- Profile data management (pressure, current, iota)
-
-## Error Handling
-
-- **Missing Dependencies**: Clear error messages with installation instructions
-- **Build Failures**: Detailed build logs saved to output directory
-- **Runtime Errors**: 5-minute timeout per test case with graceful continuation
-- **Missing Repositories**: Auto-clone if enabled, skip if disabled
-
-## Validation Use Cases
-
-### Algorithm Development
-Compare enhanced algorithms against reference implementations to verify:
-- Physics accuracy (global quantities should match)
-- Numerical improvements (better convergence, robustness)
-- Force calculation consistency
-
-### Regression Testing
-Ensure code changes don't break core functionality:
-- Run before/after major changes
-- Automated CI/CD integration possible
-- Cross-implementation verification
-
-### Research Validation
-Verify new physics models or numerical methods:
-- Compare against established implementations
-- Quantify improvements in accuracy/stability
-- Generate publication-ready comparison data
-
-## Example Results
-
-The system generates tables like:
-
-| case | implementation | wb | aspect | raxis_cc |
-|------|---------------|----|---------|---------| 
-| solovev | vmecpp | 1.234e-03 | 6.107 | 9.997e-01 |
-| solovev | educational | 1.234e-03 | 6.107 | 9.997e-01 |
-| solovev | vmec2000 | 1.234e-03 | 6.107 | 9.997e-01 |
-
-And detailed analysis of relative differences, convergence properties, and error conditions.
-
-## Development
-
-### Package Structure
-```
-app/              # Executable sources
-├── main.f90      # Main benchmark application
-└── vmec-build.f90 # VMEC repository builder
-
-src/              # Library sources
-├── vmec_benchmark_types.f90       # Core data types
-├── vmec_implementation_base.f90   # Base class for implementations
-├── educational_vmec_implementation.f90
-├── vmec2000_implementation.f90
-├── vmecpp_implementation.f90
+- This repo is for orchestration, comparison, and investigation support.
+- The implementation-specific fixes belong in the sibling repositories.
+- The design notes are worth keeping, but generated run output and mock summaries are not.
 ├── jvmec_implementation.f90
 ├── repository_manager.f90         # Repository management
 ├── benchmark_runner.f90           # Benchmark execution

@@ -1,169 +1,132 @@
-# VMEC++ Asymmetric Mode Implementation Analysis
+# VMEC Benchmark Design Index
 
-This directory contains detailed analysis of the asymmetric mode implementation in VMEC++, comparing it with educational_VMEC and jVMEC to ensure consistency and correctness.
+This directory keeps durable analysis notes for the VMEC++ asymmetric and tokamak work. The goal is not to preserve every debug artifact. The goal is to preserve the reasoning, the comparison points, and the places where the implementation diverges or still needs attention.
 
-## Modified Functions and Classes
+## Current Working Picture
 
-### New Core Algorithm Files
+As of the current benchmark cleanup pass:
 
-1. [Fourier Transform Asymmetric](fourier_asymmetric.md) - NEW FILE - Force computation for asymmetric equilibria
-   - **Files**: `fourier_asymmetric.cc`, `fourier_asymmetric.h`
-   - **New Functions**:
-     - `FourierToReal3DAsymmFastPoloidal()` - Transform Fourier to real space (3D)
-     - `FourierToReal2DAsymmFastPoloidal()` - Transform Fourier to real space (2D/axisymmetric)
-     - `SymmetrizeRealSpaceGeometry()` - Apply symmetry operations
-     - `RealToFourier3DAsymmFastPoloidal()` - Transform forces to Fourier (3D)
-     - `RealToFourier2DAsymmFastPoloidal()` - Transform forces to Fourier (2D)
-     - `SymmetrizeForces()` - Apply symmetry to forces
-   - **Status**: 🔄 To be analyzed
+- The benchmark harness can run `educational_VMEC`, `jVMEC`, `VMEC2000`, and `vmecpp` from sibling repositories.
+- `educational_VMEC` needed benchmark-side input normalization for newer namelist variants. That is now in place.
+- `jVMEC` now fails cleanly when it does not produce `wout`, instead of masking solver failure with a Java null-pointer during output writing.
+- `VMEC2000` results now carry Fourier arrays into the benchmark report instead of looking artificially empty.
+- In the focused slice used during cleanup, the remaining `vmecpp` runtime failures are:
+  - `educational_VMEC/from_booz_xform/LandremanSenguptaPlunk_section5p3`
+  - `educational_VMEC/from_booz_xform/up_down_asymmetric_tokamak`
+- In the same slice, `jVMEC` still does not converge on some stellarator cases such as `li383_low_res`, `li383_vacuum`, and `li383_1.4m`. That is solver behavior, not just harness noise.
 
-### Modified Core Algorithm Functions
+## How To Read These Notes
 
-2. [Magnetic Axis Recovery](guess_axis.md) - Grid search algorithm for fixing BAD_JACOBIAN conditions
-   - **File**: `guess_magnetic_axis.cc`
-   - **Modified**: `RecomputeMagneticAxisToFixJacobianSign()` - Debug output added
-   - **Status**: ✅ Verified against educational_VMEC and jVMEC
+Read them in this order if you need orientation first:
 
-3. [Ideal MHD Model](ideal_mhd_model.md) - Integration of asymmetric force calculations
-   - **Files**: `ideal_mhd_model.cc`, `ideal_mhd_model.h`
-   - **Modified Functions**:
-     - `IdealMhdModel::IdealMhdModel()` - Added asymmetric array allocation
-     - `geometryFromFourier()` - Added asymmetric DFT calls
-     - `forcesToFourier()` - Added asymmetric force handling
-   - **New Functions**:
-     - `dft_FourierToReal_3d_asymm()` - Asymmetric 3D DFT
-     - `dft_FourierToReal_2d_asymm()` - Asymmetric 2D DFT
-     - `symrzl()` - Symmetrization operation
-   - **Status**: 🔄 To be analyzed
+1. `guess_axis.md`
+   The most grounded analysis of a specific asymmetric fix. This is the clearest validated comparison point today.
+2. `fourier_asymmetric.md`
+   The core note for the new asymmetric transform path in `vmecpp`.
+3. `ideal_mhd_model.md`
+   The top-level integration note for how asymmetric handling was threaded into the solver.
+4. `vmec_indata.md` and `vmec_indata_pywrapper.md`
+   Input-shape and Python-API notes. These matter for reproducing cases and for the tokamak branch.
+5. `output_quantities.md`
+   Important when the solver converges but reported quantities still disagree.
 
-### Modified Support Infrastructure
+Use the remaining files as supporting detail, not as the first entry point.
 
-4. [Boundaries](boundaries.md) - Boundary condition handling
-   - **Files**: `boundaries.cc`, `boundaries.h`
-   - **New Functions**:
-     - `checkSignOfJacobianOriginal()` - Original Jacobian check
-     - `checkSignOfJacobianPolygonArea()` - Polygon-based Jacobian check
-   - **Modified**: `RecomputeMagneticAxisToFixJacobianSign()` - Debug output
-   - **Status**: 🔄 To be analyzed
+## Document Groups
 
-5. [Fourier Coefficients](fourier_coefficients.md) - Handling of asymmetric Fourier arrays
-   - **File**: `fourier_coefficients.cc`
-   - **Modified**: `FourierCoeffs::FourierCoeffs()` - Zero initialization for arrays
-   - **Status**: 🔄 To be analyzed
+### 1. Core VMEC++ asymmetric implementation notes
 
-6. [Handover Storage](handover_storage.md) - Memory management for asymmetric arrays
-   - **Files**: `handover_storage.cc`, `handover_storage.h`
-   - **Modified**: `allocate()` - Added asymmetric array allocation
-   - **New Arrays**: `rmnsc_i/o`, `rmncs_i/o`, `zmncc_i/o`, `zmnss_i/o`, `lmncc_i/o`, `lmnss_i/o`
-   - **Status**: 🔄 To be analyzed
+- `fourier_asymmetric.md`
+  Dedicated note for the asymmetric Fourier transforms and force terms.
+- `ideal_mhd_model.md`
+  Where the asymmetric pieces enter the main force-evaluation flow.
+- `boundaries.md`
+  Boundary handling and Jacobian sign logic.
+- `guess_axis.md`
+  Magnetic-axis recovery and BAD_JACOBIAN handling.
+- `fourier_coefficients.md`
+  Fourier-array ownership and initialization.
+- `handover_storage.md`
+  Storage layout for asymmetric arrays.
+- `output_quantities.md`
+  Post-processing and derived quantities.
+- `vmec_main.md`
+  High-level solver integration.
 
-7. [Output Quantities](output_quantities.md) - Computing quantities for asymmetric equilibria
-   - **File**: `output_quantities.cc`
-   - **Modified Functions**:
-     - `DecomposeCovariantBBySymmetry()` - Asymmetric array indexing
-     - `LowPassFilterCovariantB()` - Asymmetric component handling
-   - **Status**: 🔄 To be analyzed
+### 2. Input and interface notes
 
-### Modified Input/Output Handling
+- `vmec_indata.md`
+  Input semantics for asymmetric boundary and axis coefficients.
+- `vmec_indata_pywrapper.md`
+  Python wrapper behavior and array sizing.
+- `VMEC_INPUT_OUTPUT_COMPARISON.md`
+  Cross-code view of input and output formats. Useful when debugging benchmark ingestion or conversion logic.
 
-8. [VMEC Input Data](vmec_indata.md) - Parsing asymmetric input parameters
-   - **File**: `vmec_indata.cc`
-   - **Modified**: Logic in `FromJson()` and `IsConsistent()` for asymmetric boundaries
-   - **Status**: 🔄 To be analyzed
+### 3. jVMEC-specific comparison notes
 
-9. [Python Wrapper](vmec_indata_pywrapper.md) - Python interface for asymmetric arrays
-   - **File**: `vmec_indata_pywrapper.cc`
-   - **Modified Functions**:
-     - `VmecINDATAPyWrapper()` constructor - Asymmetric array initialization
-     - `SetMpolNtor()` - Asymmetric array setup
-   - **Status**: 🔄 To be analyzed
+- `jvmec_netcdf_comparison.md`
+  What jVMEC does and does not write to NetCDF, and why direct comparisons used to fail.
+- `jvmec_compatible_results.md`
+  Notes from the phase where comparison was restricted to quantities jVMEC actually exposed.
 
-### Main Integration
+### 4. Historical branch archaeology
 
-10. [VMEC Main](vmec_main.md) - Asymmetric mode integration in main solver
-    - **File**: `vmec.cc`
-    - **Status**: 🔄 To be analyzed (no function signature changes detected)
+These are still worth keeping, but they are not source-of-truth design docs:
 
-## Analysis Methodology
+- `PR.md`
+  Comparison of earlier upstream PR states.
+- `REVERT.md`
+  Audit trail of questionable changes and temporary debugging edits.
 
-For each function/class, we analyze:
-1. **Purpose**: What the function does in the context of asymmetric equilibria
-2. **Algorithm**: Step-by-step breakdown of the implementation
-3. **Comparison**: How it differs between educational_VMEC, jVMEC, and VMEC++
-4. **Key Variables**: Important arrays and parameters specific to asymmetric mode
-5. **Verification**: Status of testing and validation
+Treat both as historical context. Re-check against the current code before acting on them.
 
-## Force Computation Architecture Analysis
+## Status Markers For The Core Notes
 
-### Educational_VMEC Architecture
+Use this reading of the current status labels, regardless of what an older document may say internally:
 
-In educational_VMEC, the force computation flow for asymmetric mode is integrated into the main routines:
+- `Verified`
+  Confirmed against current benchmark evidence or direct code comparison.
+- `Useful but stale`
+  The reasoning still helps, but implementation details need re-checking against the current branch.
+- `Historical`
+  Keep for context, not for direct decision-making.
 
-1. **funct3d.f90** - Main force evaluation routine
-   - Calls `totzsps` for symmetric geometry transformation
-   - Calls `totzspa` for asymmetric geometry transformation (if lasym=true)
-   - Computes forces in real space
-   - Calls `tomnsps` for symmetric force transformation back to Fourier
-   - Calls `tomnspa` for asymmetric force transformation (if lasym=true)
+Current rough classification:
 
-2. **totzsp.f90** - Contains both `totzsps` and `totzspa`
-   - Transforms Fourier coefficients to real space
-   - Handles both symmetric and asymmetric components
+- `guess_axis.md`: Verified
+- `VMEC_INPUT_OUTPUT_COMPARISON.md`: Verified at the structural level, but refresh specific benchmark examples when used
+- `jvmec_netcdf_comparison.md`: Verified for the original observation, now partly superseded by benchmark-side extraction fixes
+- `jvmec_compatible_results.md`: Useful but stale
+- `fourier_asymmetric.md`: Useful but stale
+- `ideal_mhd_model.md`: Useful but stale
+- `boundaries.md`: Useful but stale
+- `fourier_coefficients.md`: Useful but stale
+- `handover_storage.md`: Useful but stale
+- `output_quantities.md`: Useful but stale
+- `vmec_indata.md`: Useful but stale
+- `vmec_indata_pywrapper.md`: Useful but stale
+- `vmec_main.md`: Useful but stale
+- `PR.md`: Historical
+- `REVERT.md`: Historical
 
-3. **tomnsp.f90** - Contains both `tomnsps` and `tomnspa`
-   - Transforms real-space forces back to Fourier space
-   - Handles both symmetric and asymmetric components
+## About Debug Output
 
-### VMEC++ Architecture
+Some branches and notes refer to extensive debug output in `vmecpp`. That output was not random churn. It was added to localize:
 
-VMEC++ has split the functionality into separate files:
+- initial Jacobian sign changes
+- magnetic-axis recovery behavior
+- asymmetric real-space symmetrization
+- early-iteration solver failure in tokamak and asymmetric cases
 
-1. **ideal_mhd_model.cc** - Main force evaluation orchestrator
-   - Calls symmetric force computation (existing code)
-   - Calls `FourierToReal3DAsymmFastPoloidal` from `fourier_asymmetric.cc`
-   - Computes forces in real space (unified logic)
-   - Calls `RealToFourier3DAsymmFastPoloidal` from `fourier_asymmetric.cc`
+Until the remaining `vmecpp` failures above are understood, those debug traces still serve a purpose. They should only be removed once the specific failure modes they illuminate are either fixed or captured in cleaner diagnostics.
 
-2. **fourier_asymmetric.cc** - NEW FILE containing:
-   - `FourierToReal3DAsymmFastPoloidal` ≈ educational_VMEC's `totzspa`
-   - `RealToFourier3DAsymmFastPoloidal` ≈ educational_VMEC's `tomnspa`
-   - `FourierToReal2DAsymmFastPoloidal` (axisymmetric case)
-   - `RealToFourier2DAsymmFastPoloidal` (axisymmetric case)
+## What Still Needs Fresh Analysis
 
-### Key Architectural Differences
+The highest-value follow-up analysis is now narrower than before:
 
-1. **File Organization**:
-   - educational_VMEC: Monolithic files with symmetric/asymmetric routines together
-   - VMEC++: Separate file for asymmetric transformations
+1. Why `vmecpp` still fails on `LandremanSenguptaPlunk_section5p3`.
+2. Why `vmecpp` still fails on `up_down_asymmetric_tokamak`.
+3. Whether the disagreement between `jVMEC` and the Fortran/C++ codes on tokamak-derived quantities is a physics difference, an output-definition mismatch, or a remaining extraction inconsistency.
+4. Whether the non-convergent `jVMEC` stellarator cases can be improved with input cleaning alone, or whether they need solver-side work.
 
-2. **Function Calls**:
-   - educational_VMEC: Conditional calls based on `lasym` flag
-   - VMEC++: Always creates asymmetric geometry structures, conditionally fills them
-
-3. **Memory Management**:
-   - educational_VMEC: Arrays allocated based on `lasym` at startup
-   - VMEC++: All arrays pre-allocated in HandoverStorage
-
-### Equivalence Verification Needed
-
-1. **Transform Functions**: Verify `FourierToReal3DAsymmFastPoloidal` matches `totzspa`
-2. **Force Integration**: Ensure force calculations use asymmetric geometry correctly
-3. **Back Transform**: Verify `RealToFourier3DAsymmFastPoloidal` matches `tomnspa`
-4. **Array Mapping**: Confirm array indices and memory layout match
-
-## Priority Order
-
-Based on impact and dependencies:
-1. ✅ Magnetic Axis Recovery (completed)
-2. 🔴 Fourier Transform Asymmetric (critical - new file)
-3. 🔴 Ideal MHD Model (critical - force integration)
-4. 🟡 Fourier Coefficients (important - array handling)
-5. 🟡 Output Quantities (important - results)
-6. 🟢 Others (supporting infrastructure)
-
-## Legend
-- ✅ Fully analyzed and verified
-- 🔄 To be analyzed
-- 🔴 Critical for asymmetric convergence
-- 🟡 Important for correctness
-- 🟢 Supporting functionality
+That is the shortest path back to productive development and benchmarking without drowning in old branch churn.

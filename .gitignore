@@ -32,11 +32,19 @@ vmec_repos/
 *_results/
 benchmark_results/
 test_vmec/
+symmetric_debug_*/
+asymmetric_debug_*/
+jvmec_test_results/
 *.log
 *.nc
 *.json
 !fpm.toml
 !*.f90
+test_files.tmp
+input_files_list.tmp
+test_jvmec_summary.md
+test_fourier_comparison.txt
+demo_jvmec_comparison_*.md
 
 # Python
 __pycache__/

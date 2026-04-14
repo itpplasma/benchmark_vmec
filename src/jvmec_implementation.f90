@@ -227,37 +227,47 @@ contains
             ! Read Fourier coefficients
             stat = nf90_inq_varid(ncid, "rmnc", varid)
             if (stat == NF90_NOERR) then
-                stat = nf90_get_var(ncid, varid, results%rmnc, start=[1,1], count=[ns,mnmax])
-                if (stat /= NF90_NOERR) then
-                    write(error_unit, '(A)') "Warning: Failed to read rmnc: " // trim(nf90_strerror(stat))
-                    ! Try reading single values for the axis and edge
-                    stat = nf90_get_var(ncid, varid, results%raxis_cc, start=[1,1])
+                block
+                    real(real64), allocatable :: rmnc_temp(:,:)
+                    allocate(rmnc_temp(mnmax, ns))
+                    stat = nf90_get_var(ncid, varid, rmnc_temp, start=[1,1], count=[mnmax,ns])
                     if (stat == NF90_NOERR) then
-                        write(output_unit, '(A,F12.6)') "Successfully read raxis_cc directly: ", results%raxis_cc
+                        results%rmnc = transpose(rmnc_temp)
+                    else
+                        write(error_unit, '(A)') "Warning: Failed to read rmnc: " // trim(nf90_strerror(stat))
                     end if
-                    
-                    ! Also read the edge value for aspect ratio
-                    stat = nf90_get_var(ncid, varid, results%rmajor_p, start=[ns,1])
-                    if (stat == NF90_NOERR) then
-                        write(output_unit, '(A,F12.6)') "Successfully read rmajor_p directly: ", results%rmajor_p
-                    end if
-                end if
+                    deallocate(rmnc_temp)
+                end block
             end if
             
             stat = nf90_inq_varid(ncid, "zmns", varid)
             if (stat == NF90_NOERR) then
-                stat = nf90_get_var(ncid, varid, results%zmns, start=[1,1], count=[ns,mnmax])
-                if (stat /= NF90_NOERR) then
-                    write(error_unit, '(A)') "Warning: Failed to read zmns: " // trim(nf90_strerror(stat))
-                end if
+                block
+                    real(real64), allocatable :: zmns_temp(:,:)
+                    allocate(zmns_temp(mnmax, ns))
+                    stat = nf90_get_var(ncid, varid, zmns_temp, start=[1,1], count=[mnmax,ns])
+                    if (stat == NF90_NOERR) then
+                        results%zmns = transpose(zmns_temp)
+                    else
+                        write(error_unit, '(A)') "Warning: Failed to read zmns: " // trim(nf90_strerror(stat))
+                    end if
+                    deallocate(zmns_temp)
+                end block
             end if
             
             stat = nf90_inq_varid(ncid, "lmns", varid)
             if (stat == NF90_NOERR) then
-                stat = nf90_get_var(ncid, varid, results%lmns, start=[1,1], count=[ns,mnmax])
-                if (stat /= NF90_NOERR) then
-                    write(error_unit, '(A)') "Warning: Failed to read lmns: " // trim(nf90_strerror(stat))
-                end if
+                block
+                    real(real64), allocatable :: lmns_temp(:,:)
+                    allocate(lmns_temp(mnmax, ns))
+                    stat = nf90_get_var(ncid, varid, lmns_temp, start=[1,1], count=[mnmax,ns])
+                    if (stat == NF90_NOERR) then
+                        results%lmns = transpose(lmns_temp)
+                    else
+                        write(error_unit, '(A)') "Warning: Failed to read lmns: " // trim(nf90_strerror(stat))
+                    end if
+                    deallocate(lmns_temp)
+                end block
             end if
             
             ! Read mode numbers (convert from integer to real) - use actual xm dimension 

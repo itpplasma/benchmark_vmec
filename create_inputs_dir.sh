@@ -2,9 +2,11 @@
 
 # Create VMEC Input Files Directory
 echo "Creating VMEC Input Files Directory..."
+tmp_file="$(mktemp /tmp/benchmark_vmec_input_files.XXXXXX)"
+trap 'rm -f "$tmp_file"' EXIT
 
 # Find all input files from sibling repositories excluding jVMEC
-find ../educational_VMEC ../VMEC2000 ../vmecpp -name 'input*' -type f -print > input_files_list.tmp
+find ../educational_VMEC ../VMEC2000 ../vmecpp -name 'input*' -type f -print | sort > "$tmp_file"
 
 echo "# VMEC Input Files Directory" > inputs.md
 echo "" >> inputs.md
@@ -107,10 +109,7 @@ while IFS= read -r file; do
         # Write the row
         echo "| $filename | $file | $lasym | $nfp | $mpol | $ntor | $ns | $phiedge | $notes |" >> inputs.md
     fi
-done < input_files_list.tmp
-
-# Cleanup
-rm -f input_files_list.tmp
+done < "$tmp_file"
 
 echo "Input directory saved to inputs.md"
 

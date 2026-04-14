@@ -197,7 +197,7 @@ contains
         class(benchmark_runner_t), intent(inout) :: this
         integer, intent(in) :: max_cases
         logical, intent(in), optional :: symmetric_only
-        character(len=:), allocatable :: cmd, search_roots, repo_path
+        character(len=:), allocatable :: cmd, search_roots, repo_path, temp_file
         character(len=256) :: line, env_value
         integer :: stat, unit, env_stat
         logical :: include_jvmec, filter_symmetric, exists
@@ -255,12 +255,13 @@ contains
             return
         end if
 
+        temp_file = "/tmp/benchmark_vmec_test_files.tmp"
         cmd = "find " // trim(search_roots) // " -follow -name 'input.*' -type f 2>/dev/null | " // &
               "grep -E '/(tests?|examples?)/' | grep -v results | grep -v debug | grep -v bazel"
-        call execute_command_line(trim(cmd) // " > test_files.tmp", exitstat=stat)
+        call execute_command_line(trim(cmd) // " > " // trim(temp_file), exitstat=stat)
         
         if (stat == 0) then
-            open(newunit=unit, file="test_files.tmp", status="old", action="read", iostat=stat)
+            open(newunit=unit, file=trim(temp_file), status="old", action="read", iostat=stat)
             if (stat == 0) then
                 do
                     read(unit, '(A)', iostat=stat) line
@@ -288,7 +289,7 @@ contains
             end if
         end if
         
-        call execute_command_line("rm -f test_files.tmp")
+        call execute_command_line("rm -f " // trim(temp_file))
     end subroutine discover_from_all_repos
 
     function benchmark_runner_run_single_case(this, test_case_idx, impl_idx, timeout) result(results)
@@ -297,7 +298,7 @@ contains
         integer, intent(in) :: impl_idx
         integer, intent(in), optional :: timeout
         type(vmec_result_t) :: results
-        character(len=:), allocatable :: case_name, output_dir
+        character(len=:), allocatable :: case_name, case_slug, output_dir
         logical :: success
         
         call results%clear()
@@ -313,7 +314,8 @@ contains
         end if
         
         case_name = get_case_name(this%test_cases(test_case_idx)%str)
-        output_dir = trim(this%output_dir) // "/" // trim(case_name) // "/" // &
+        case_slug = get_case_slug(this%test_cases(test_case_idx)%str)
+        output_dir = trim(this%output_dir) // "/" // trim(case_slug) // "/" // &
                     trim(this%implementations(impl_idx)%key)
         
         write(output_unit, '(A)') "Running " // trim(case_name) // " on " // &
@@ -371,7 +373,7 @@ contains
 
     function benchmark_runner_get_test_case_names(this) result(names)
         class(benchmark_runner_t), intent(in) :: this
-        character(len=64), allocatable :: names(:)
+        character(len=256), allocatable :: names(:)
         integer :: i
         
         allocate(names(this%n_test_cases))
@@ -497,26 +499,135 @@ contains
     function get_case_name(filepath) result(name)
         character(len=*), intent(in) :: filepath
         character(len=:), allocatable :: name
+        character(len=:), allocatable :: repo_name, relative_path
+        character(len=:), allocatable :: directory_name, basename
         integer :: last_slash, last_dot
-        
-        last_slash = index(filepath, '/', back=.true.)
+
+        call split_case_path(filepath, repo_name, relative_path)
+
+        last_slash = index(relative_path, '/', back=.true.)
         if (last_slash > 0) then
-            name = filepath(last_slash+1:)
+            directory_name = relative_path(1:last_slash-1)
+            basename = relative_path(last_slash+1:)
         else
-            name = filepath
+            directory_name = ""
+            basename = relative_path
         end if
-        
-        ! Remove extension
-        last_dot = index(name, '.', back=.true.)
+
+        if (index(basename, "input.") == 1) then
+            basename = basename(7:)
+        else
+            last_dot = index(basename, '.', back=.true.)
+            if (last_dot > 0) then
+                basename = basename(1:last_dot-1)
+            end if
+        end if
+
+        last_dot = index(basename, '.', back=.true.)
         if (last_dot > 0) then
-            name = name(1:last_dot-1)
+            select case (basename(last_dot:))
+            case (".json", ".vmec", ".txt", ".namelist")
+                basename = basename(1:last_dot-1)
+            end select
         end if
-        
-        ! Remove "input." prefix if present
-        if (index(name, "input.") == 1) then
-            name = name(7:)
+
+        if (len_trim(repo_name) > 0) then
+            if (len_trim(directory_name) > 0) then
+                name = trim(repo_name) // "/" // trim(directory_name) // "/" // trim(basename)
+            else
+                name = trim(repo_name) // "/" // trim(basename)
+            end if
+        else if (len_trim(directory_name) > 0) then
+            name = trim(directory_name) // "/" // trim(basename)
+        else
+            name = trim(basename)
         end if
     end function get_case_name
+
+    function get_case_slug(filepath) result(slug)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: slug
+        character(len=:), allocatable :: case_name
+        integer :: i
+        character(len=1) :: ch
+
+        case_name = get_case_name(filepath)
+        slug = ""
+        do i = 1, len_trim(case_name)
+            ch = case_name(i:i)
+            select case (ch)
+            case ('A':'Z', 'a':'z', '0':'9', '-', '_', '.')
+                slug = slug // ch
+            case ('/')
+                slug = slug // "__"
+            case default
+                slug = slug // "_"
+            end select
+        end do
+    end function get_case_slug
+
+    subroutine split_case_path(filepath, repo_name, relative_path)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable, intent(out) :: repo_name, relative_path
+
+        call extract_repo_relative_path(filepath, repo_name, relative_path)
+        call trim_case_root(relative_path)
+    end subroutine split_case_path
+
+    subroutine extract_repo_relative_path(filepath, repo_name, relative_path)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable, intent(out) :: repo_name, relative_path
+        integer :: marker_pos
+
+        repo_name = ""
+        relative_path = trim(filepath)
+
+        marker_pos = index(filepath, "/educational_VMEC/")
+        if (marker_pos > 0) then
+            repo_name = "educational_VMEC"
+            relative_path = filepath(marker_pos + len("/educational_VMEC/"):)
+            return
+        end if
+
+        marker_pos = index(filepath, "/VMEC2000/")
+        if (marker_pos > 0) then
+            repo_name = "VMEC2000"
+            relative_path = filepath(marker_pos + len("/VMEC2000/"):)
+            return
+        end if
+
+        marker_pos = index(filepath, "/vmecpp/")
+        if (marker_pos > 0) then
+            repo_name = "vmecpp"
+            relative_path = filepath(marker_pos + len("/vmecpp/"):)
+            return
+        end if
+
+        marker_pos = index(filepath, "/jVMEC/")
+        if (marker_pos > 0) then
+            repo_name = "jVMEC"
+            relative_path = filepath(marker_pos + len("/jVMEC/"):)
+        end if
+    end subroutine extract_repo_relative_path
+
+    subroutine trim_case_root(relative_path)
+        character(len=:), allocatable, intent(inout) :: relative_path
+
+        call remove_prefix(relative_path, "src/test/resources/")
+        call remove_prefix(relative_path, "tests/")
+        call remove_prefix(relative_path, "test/")
+        call remove_prefix(relative_path, "examples/")
+        call remove_prefix(relative_path, "example/")
+    end subroutine trim_case_root
+
+    subroutine remove_prefix(text, prefix)
+        character(len=:), allocatable, intent(inout) :: text
+        character(len=*), intent(in) :: prefix
+
+        if (index(text, prefix) == 1) then
+            text = text(len_trim(prefix)+1:)
+        end if
+    end subroutine remove_prefix
     
     ! Convert string to uppercase
     subroutine to_upper(str)

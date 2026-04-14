@@ -100,7 +100,7 @@ program vmec_benchmark
     case ('list-repos')
         call cmd_list_repos(base_dir)
     case ('list-cases')
-        call cmd_list_cases(base_dir)
+        call cmd_list_cases(base_dir, limit, symmetric_only)
     case default
         write(error_unit, '(A)') 'Unknown command: ' // trim(command)
         write(error_unit, '(A)') 'Run "vmec-benchmark --help" for usage information'
@@ -163,7 +163,7 @@ contains
         write(output_unit, '(A,I0,A)') 'Found ', runner%n_test_cases, ' test cases'
         
         ! Initialize comparator before running benchmarks
-        call comparator%initialize(100)
+        call comparator%initialize(100, output_dir)
         
         ! Run benchmarks
         call runner%run_all_cases(comparator, timeout)
@@ -223,26 +223,31 @@ contains
         call repo_manager%finalize()
     end subroutine cmd_list_repos
 
-    subroutine cmd_list_cases(base_dir)
+    subroutine cmd_list_cases(base_dir, limit, symmetric_only)
         character(len=*), intent(in) :: base_dir
+        integer, intent(in) :: limit
+        logical, intent(in) :: symmetric_only
         type(repository_manager_t) :: repo_manager
         type(benchmark_runner_t) :: runner
-        character(len=64), allocatable :: case_names(:)
-        integer :: i
+        character(len=256), allocatable :: case_names(:)
+        integer :: i, display_count
         
         call repo_manager%initialize(base_dir)
         call runner%initialize("temp", repo_manager)
-        call runner%discover_test_cases()
+        call runner%discover_test_cases(limit, symmetric_only)
         
         write(output_unit, '(A)') 'Available test cases:'
         
         case_names = runner%get_test_case_names()
-        do i = 1, min(10, size(case_names))
+        display_count = size(case_names)
+        if (limit <= 0) display_count = min(10, size(case_names))
+
+        do i = 1, display_count
             write(output_unit, '(A)') '  - ' // trim(case_names(i))
         end do
         
-        if (size(case_names) > 10) then
-            write(output_unit, '(A,I0,A)') '  ... and ', size(case_names) - 10, ' more'
+        if (display_count < size(case_names)) then
+            write(output_unit, '(A,I0,A)') '  ... and ', size(case_names) - display_count, ' more'
         end if
         
         call runner%finalize()
