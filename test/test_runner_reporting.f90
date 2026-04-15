@@ -15,6 +15,7 @@ program test_runner_reporting
 
     call test_case_name_normalization(n_tests, n_passed)
     call test_case_match_filter(n_tests, n_passed)
+    call test_empty_case_match_does_not_filter(n_tests, n_passed)
     call test_custom_output_dir_for_jvmec_reports(n_tests, n_passed)
     call test_report_uses_successful_reference(n_tests, n_passed)
 
@@ -90,6 +91,45 @@ contains
         call repo_manager%finalize()
         call execute_command_line("rm -rf " // base_dir, exitstat=stat)
     end subroutine test_case_match_filter
+
+    subroutine test_empty_case_match_does_not_filter(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        type(repository_manager_t) :: repo_manager
+        type(benchmark_runner_t) :: runner
+        character(len=256), allocatable :: names(:)
+        character(len=*), parameter :: base_dir = "/tmp/benchmark_vmec_empty_match"
+        integer :: stat
+
+        n_tests = n_tests + 1
+
+        call execute_command_line("rm -rf " // base_dir, exitstat=stat)
+        call execute_command_line("mkdir -p " // base_dir // "/educational_VMEC/.git", exitstat=stat)
+        call execute_command_line("mkdir -p " // base_dir // "/educational_VMEC/test/examples", exitstat=stat)
+        call execute_command_line("mkdir -p " // base_dir // "/VMEC2000/.git", exitstat=stat)
+        call execute_command_line("mkdir -p " // base_dir // "/VMEC2000/test/examples", exitstat=stat)
+        call execute_command_line("touch " // base_dir // &
+                                  "/educational_VMEC/test/examples/input.circular_tokamak", exitstat=stat)
+        call execute_command_line("touch " // base_dir // &
+                                  "/VMEC2000/test/examples/input.li383_low_res", exitstat=stat)
+
+        call repo_manager%initialize(base_dir)
+        call runner%initialize(base_dir // "/results", repo_manager)
+        call runner%discover_test_cases(case_match="")
+        names = runner%get_test_case_names()
+
+        if (size(names) == 2 .and. &
+            trim(names(1)) == "educational_VMEC/circular_tokamak" .and. &
+            trim(names(2)) == "VMEC2000/li383_low_res") then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_empty_case_match_does_not_filter"
+        else
+            write(error_unit, '(A)') "✗ test_empty_case_match_does_not_filter"
+        end if
+
+        call runner%finalize()
+        call repo_manager%finalize()
+        call execute_command_line("rm -rf " // base_dir, exitstat=stat)
+    end subroutine test_empty_case_match_does_not_filter
 
     subroutine test_custom_output_dir_for_jvmec_reports(n_tests, n_passed)
         integer, intent(inout) :: n_tests, n_passed
