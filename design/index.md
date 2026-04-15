@@ -4,16 +4,29 @@ This directory keeps durable analysis notes for the VMEC++ asymmetric and tokama
 
 ## Current Working Picture
 
-As of the current benchmark cleanup pass:
+As of the 2026-04-15 cleanup pass:
 
 - The benchmark harness can run `educational_VMEC`, `jVMEC`, `VMEC2000`, and `vmecpp` from sibling repositories.
-- `educational_VMEC` needed benchmark-side input normalization for newer namelist variants. That is now in place.
+- `educational_VMEC` input normalization is in place for newer namelist variants that previously broke cross-code runs.
 - `jVMEC` now fails cleanly when it does not produce `wout`, instead of masking solver failure with a Java null-pointer during output writing.
 - `VMEC2000` results now carry Fourier arrays into the benchmark report instead of looking artificially empty.
-- In the focused slice used during cleanup, the remaining `vmecpp` runtime failures are:
+- The focused 6-case slice now completes in `vmecpp`, including:
   - `educational_VMEC/from_booz_xform/LandremanSenguptaPlunk_section5p3`
   - `educational_VMEC/from_booz_xform/up_down_asymmetric_tokamak`
-- In the same slice, `jVMEC` still does not converge on some stellarator cases such as `li383_low_res`, `li383_vacuum`, and `li383_1.4m`. That is solver behavior, not just harness noise.
+  - `educational_VMEC/from_booz_xform/circular_tokamak`
+- The remaining visible failures in that slice are `jVMEC` non-convergence on some stellarator cases such as:
+  - `educational_VMEC/from_vmec_multiple_readin/li383_low_res`
+  - `educational_VMEC/from_quasisymmetry/li383_vacuum`
+  - `educational_VMEC/from_booz_xform/li383_1.4m`
+- The remaining `vmecpp` work in that slice is now quantitative, not runtime:
+  - edge-iota and axis drift on `li383_vacuum`
+  - axis and edge-iota drift on `LandremanSenguptaPlunk_section5p3`
+  - small axis drift on `up_down_asymmetric_tokamak`
+- The general benchmark report now prefers Fortran references case-by-case:
+  - `educational_VMEC`
+  - then `VMEC2000`
+  - then `jVMEC`
+  - then `vmecpp`
 
 ## How To Read These Notes
 
@@ -124,9 +137,9 @@ Until the remaining `vmecpp` failures above are understood, those debug traces s
 
 The highest-value follow-up analysis is now narrower than before:
 
-1. Why `vmecpp` still fails on `LandremanSenguptaPlunk_section5p3`.
-2. Why `vmecpp` still fails on `up_down_asymmetric_tokamak`.
-3. Whether the disagreement between `jVMEC` and the Fortran/C++ codes on tokamak-derived quantities is a physics difference, an output-definition mismatch, or a remaining extraction inconsistency.
+1. Why `vmecpp` still lands on a different axis and edge iota on `li383_vacuum`.
+2. Why `vmecpp` still shows axis and edge-iota drift on `LandremanSenguptaPlunk_section5p3` after the runtime fix.
+3. Whether the disagreement between `jVMEC` and the Fortran/C++ codes on tokamak-derived scalar quantities is a physics difference, an output-definition mismatch, or a remaining extraction inconsistency.
 4. Whether the non-convergent `jVMEC` stellarator cases can be improved with input cleaning alone, or whether they need solver-side work.
 
 That is the shortest path back to productive development and benchmarking without drowning in old branch churn.

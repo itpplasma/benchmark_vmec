@@ -20,7 +20,7 @@ The suite expects the repositories to live one directory above `benchmark_vmec`:
 - `../VMEC2000`
 - `../jVMEC`
 
-`jVMEC` is optional but strongly recommended when working on asymmetric or tokamak behavior because it is the current reference implementation for those cases in this workspace.
+`jVMEC` is optional but strongly recommended when working on asymmetric or tokamak behavior because it is a useful independent cross-check for geometry and coefficient handling in this workspace.
 
 ## Quick Start
 
