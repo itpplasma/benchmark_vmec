@@ -210,7 +210,9 @@ contains
         if (present(symmetric_only)) filter_symmetric = symmetric_only
 
         filter_match = present(case_match)
-        if (filter_match) filter_match = len_trim(case_match) > 0
+        if (filter_match) then
+            filter_match = len_trim(case_match) > 0 .and. trim(case_match) /= '""'
+        end if
         
         search_roots = ""
 

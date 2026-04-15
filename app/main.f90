@@ -66,6 +66,7 @@ program vmec_benchmark
     limit = iget('limit')
     symmetric_only = lget('symmetric-only')
     case_match = sget('match')
+    if (.not. specified('match')) case_match = ''
     show_version = lget('version')
     show_help = lget('help')
     
