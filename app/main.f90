@@ -8,7 +8,7 @@ program vmec_benchmark
 
     character(len=:), allocatable :: help_text(:)
     character(len=:), allocatable :: version_text(:)
-    character(len=256) :: base_dir, output_dir
+    character(len=256) :: base_dir, output_dir, case_match
     logical :: force_clone, show_version, show_help, symmetric_only
     integer :: timeout, limit, i
     character(len=32) :: command
@@ -36,6 +36,7 @@ program vmec_benchmark
         '   --timeout SECONDS   Timeout per case in seconds (default: 300)     ', &
         '   --limit N           Limit number of test cases                      ', &
         '   --symmetric-only    Only run symmetric cases (lasym=F)              ', &
+        '   --match TEXT        Only include cases whose path contains TEXT     ', &
         '   --version           Show version information                        ', &
         '   --help              Show this help message                          ', &
         '                                                                        ', &
@@ -43,6 +44,7 @@ program vmec_benchmark
         '   vmec-benchmark setup                                                 ', &
         '   vmec-benchmark run --limit 5                                         ', &
         '   vmec-benchmark run --symmetric-only                                  ', &
+        '   vmec-benchmark run --match tokamak                                   ', &
         '   vmec-benchmark hard-reset                                            ', &
         '   vmec-benchmark list-cases                                            ', &
         '']
@@ -54,7 +56,7 @@ program vmec_benchmark
 
     ! Parse command line arguments
     call set_args('--base-dir ".." --output-dir "./benchmark_results" &
-                  &--force F --timeout 300 --limit 0 --symmetric-only F --version F --help F', &
+                  &--force F --timeout 300 --limit 0 --symmetric-only F --match "" --version F --help F', &
                   help_text, version_text)
     
     base_dir = sget('base-dir')
@@ -63,6 +65,7 @@ program vmec_benchmark
     timeout = iget('timeout')
     limit = iget('limit')
     symmetric_only = lget('symmetric-only')
+    case_match = sget('match')
     show_version = lget('version')
     show_help = lget('help')
     
@@ -92,7 +95,7 @@ program vmec_benchmark
     case ('setup')
         call cmd_setup(base_dir, force_clone)
     case ('run')
-        call cmd_run(base_dir, output_dir, timeout, limit, symmetric_only)
+        call cmd_run(base_dir, output_dir, timeout, limit, symmetric_only, case_match)
     case ('update')
         call cmd_update(base_dir)
     case ('hard-reset')
@@ -100,7 +103,7 @@ program vmec_benchmark
     case ('list-repos')
         call cmd_list_repos(base_dir)
     case ('list-cases')
-        call cmd_list_cases(base_dir, limit, symmetric_only)
+        call cmd_list_cases(base_dir, limit, symmetric_only, case_match)
     case default
         write(error_unit, '(A)') 'Unknown command: ' // trim(command)
         write(error_unit, '(A)') 'Run "vmec-benchmark --help" for usage information'
@@ -123,12 +126,13 @@ contains
         call repo_manager%finalize()
     end subroutine cmd_setup
 
-    subroutine cmd_run(base_dir, output_dir, timeout, limit, symmetric_only)
+    subroutine cmd_run(base_dir, output_dir, timeout, limit, symmetric_only, case_match)
         character(len=*), intent(in) :: base_dir
         character(len=*), intent(in) :: output_dir
         integer, intent(in) :: timeout
         integer, intent(in) :: limit
         logical, intent(in) :: symmetric_only
+        character(len=*), intent(in) :: case_match
         type(repository_manager_t) :: repo_manager
         type(benchmark_runner_t) :: runner
         type(results_comparator_t) :: comparator
@@ -153,7 +157,7 @@ contains
             runner%n_implementations, ' found'
         
         ! Discover test cases
-        call runner%discover_test_cases(limit, symmetric_only)
+        call runner%discover_test_cases(limit, symmetric_only, case_match)
         
         if (runner%n_test_cases == 0) then
             write(error_unit, '(A)') 'No test cases found!'
@@ -223,10 +227,11 @@ contains
         call repo_manager%finalize()
     end subroutine cmd_list_repos
 
-    subroutine cmd_list_cases(base_dir, limit, symmetric_only)
+    subroutine cmd_list_cases(base_dir, limit, symmetric_only, case_match)
         character(len=*), intent(in) :: base_dir
         integer, intent(in) :: limit
         logical, intent(in) :: symmetric_only
+        character(len=*), intent(in) :: case_match
         type(repository_manager_t) :: repo_manager
         type(benchmark_runner_t) :: runner
         character(len=256), allocatable :: case_names(:)
@@ -234,7 +239,7 @@ contains
         
         call repo_manager%initialize(base_dir)
         call runner%initialize("temp", repo_manager)
-        call runner%discover_test_cases(limit, symmetric_only)
+        call runner%discover_test_cases(limit, symmetric_only, case_match)
         
         write(output_unit, '(A)') 'Available test cases:'
         

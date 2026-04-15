@@ -37,6 +37,9 @@ fpm run vmec-benchmark -- run
 # Run only symmetric cases
 fpm run vmec-benchmark -- run --symmetric-only
 
+# Run one named family of cases
+fpm run vmec-benchmark -- run --match tokamak
+
 # Run the unit tests for this repo
 fpm test
 ```
@@ -82,6 +85,8 @@ fpm run vmec-benchmark -- list-cases --limit 20
 ```bash
 fpm run vmec-benchmark -- run --limit 5
 fpm run vmec-benchmark -- run --symmetric-only --limit 10
+fpm run vmec-benchmark -- run --match up_down_asymmetric_tokamak
+fpm run vmec-benchmark -- list-cases --match tokamak
 ```
 
 ### 3. Manual debug comparisons
@@ -118,15 +123,6 @@ Generated benchmark results are written under `benchmark_results/`. Manual debug
 - This repo is for orchestration, comparison, and investigation support.
 - The implementation-specific fixes belong in the sibling repositories.
 - The design notes are worth keeping, but generated run output and mock summaries are not.
-├── jvmec_implementation.f90
-├── repository_manager.f90         # Repository management
-├── benchmark_runner.f90           # Benchmark execution
-└── results_comparator.f90         # Result analysis
-
-test/             # Test sources
-├── test_vmec_types.f90
-└── test_repository_manager.f90
-```
 
 ### Adding New VMEC Implementations
 

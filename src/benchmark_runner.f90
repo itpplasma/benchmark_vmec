@@ -167,14 +167,12 @@ contains
         end if
     end subroutine benchmark_runner_setup_implementations
 
-    subroutine benchmark_runner_discover_test_cases(this, limit, symmetric_only)
+    subroutine benchmark_runner_discover_test_cases(this, limit, symmetric_only, case_match)
         class(benchmark_runner_t), intent(inout) :: this
         integer, intent(in), optional :: limit
         logical, intent(in), optional :: symmetric_only
-        character(len=:), allocatable :: test_path, cmd, file_list
-        character(len=256) :: line
-        integer :: stat, unit, n_found, max_cases
-        logical :: exists
+        character(len=*), intent(in), optional :: case_match
+        integer :: max_cases
         
         write(output_unit, '(A)') "Discovering test cases..."
         
@@ -188,19 +186,20 @@ contains
         this%n_test_cases = 0
         
         ! Discover test cases from all available repositories
-        call this%discover_from_all_repos(max_cases, symmetric_only)
+        call this%discover_from_all_repos(max_cases, symmetric_only, case_match)
         
         write(output_unit, '(A,I0)') "Total test cases found: ", this%n_test_cases
     end subroutine benchmark_runner_discover_test_cases
 
-    subroutine discover_from_all_repos(this, max_cases, symmetric_only)
+    subroutine discover_from_all_repos(this, max_cases, symmetric_only, case_match)
         class(benchmark_runner_t), intent(inout) :: this
         integer, intent(in) :: max_cases
         logical, intent(in), optional :: symmetric_only
+        character(len=*), intent(in), optional :: case_match
         character(len=:), allocatable :: cmd, search_roots, repo_path, temp_file
         character(len=256) :: line, env_value
         integer :: stat, unit, env_stat
-        logical :: include_jvmec, filter_symmetric, exists
+        logical :: include_jvmec, filter_symmetric, exists, filter_match
         
         ! Check if jVMEC tests should be included
         call get_environment_variable("BENCHMARK_INCLUDE_JVMEC", env_value, status=env_stat)
@@ -209,6 +208,8 @@ contains
         ! Check if symmetric-only filtering is requested
         filter_symmetric = .false.
         if (present(symmetric_only)) filter_symmetric = symmetric_only
+
+        filter_match = present(case_match)
         
         search_roots = ""
 
@@ -277,6 +278,10 @@ contains
                     if (filter_symmetric .and. .not. this%is_symmetric_case(trim(line))) then
                         write(output_unit, '(A)') "  Skipping asymmetric case: " // trim(line)
                         cycle
+                    end if
+
+                    if (filter_match) then
+                        if (index(trim(line), trim(case_match)) == 0) cycle
                     end if
                     
                     if (this%n_test_cases < max_cases) then
