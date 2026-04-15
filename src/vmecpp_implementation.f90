@@ -6,7 +6,7 @@ module vmecpp_implementation
     implicit none
     private
 
-    public :: vmecpp_t
+    public :: vmecpp_t, write_vmecpp_runner_script
 
     type, extends(vmec_implementation_t) :: vmecpp_t
     contains
@@ -156,22 +156,7 @@ contains
 
         ! Create a Python script to run VMEC++
         open(newunit=unit, file=trim(output_dir) // "/run_vmecpp.py", status="replace", action="write")
-        write(unit, '(A)') "#!/usr/bin/env python3"
-        write(unit, '(A)') "import vmecpp"
-        write(unit, '(A)') "import sys"
-        write(unit, '(A)') "try:"
-        write(unit, '(A)') "    # VMEC++ can load INDATA files directly"
-        write(unit, '(A)') "    vmec_input = vmecpp.VmecInput.from_file('" // get_basename(local_input) // "')"
-        write(unit, '(A)') "    # Allow non-converged results for benchmarking"
-        write(unit, '(A)') "    vmec_input.return_outputs_even_if_not_converged = True"
-        write(unit, '(A)') "    output = vmecpp.run(vmec_input)"
-        write(unit, '(A)') "    output.wout.save('wout_" // get_basename_without_ext(local_input) // ".nc')"
-        write(unit, '(A)') "    print('VMEC++ completed')"
-        write(unit, '(A)') "except Exception as e:"
-        write(unit, '(A)') "    print(f'VMEC++ Error: {e}')"
-        write(unit, '(A)') "    import traceback"
-        write(unit, '(A)') "    traceback.print_exc()"
-        write(unit, '(A)') "    sys.exit(1)"
+        call write_vmecpp_runner_script(unit, get_basename(local_input))
         close(unit)
         
         ! Run the Python script
@@ -190,6 +175,31 @@ contains
             write(error_unit, '(A)') "VMEC++ failed for " // get_basename(input_file)
         end if
     end function vmecpp_run_case
+
+    subroutine write_vmecpp_runner_script(unit, input_basename)
+        integer, intent(in) :: unit
+        character(len=*), intent(in) :: input_basename
+        character(len=:), allocatable :: wout_name
+
+        wout_name = "wout_" // get_basename_without_ext(input_basename) // ".nc"
+
+        write(unit, '(A)') "#!/usr/bin/env python3"
+        write(unit, '(A)') "import vmecpp"
+        write(unit, '(A)') "import sys"
+        write(unit, '(A)') "try:"
+        write(unit, '(A)') "    # VMEC++ can load INDATA files directly"
+        write(unit, '(A)') "    vmec_input = vmecpp.VmecInput.from_file('" // trim(input_basename) // "')"
+        write(unit, '(A)') "    # Allow non-converged results for benchmarking"
+        write(unit, '(A)') "    vmec_input.return_outputs_even_if_not_converged = True"
+        write(unit, '(A)') "    output = vmecpp.run(vmec_input, max_threads=1, verbose=False)"
+        write(unit, '(A)') "    output.wout.save('" // trim(wout_name) // "')"
+        write(unit, '(A)') "    print('VMEC++ completed')"
+        write(unit, '(A)') "except Exception as e:"
+        write(unit, '(A)') "    print(f'VMEC++ Error: {e}')"
+        write(unit, '(A)') "    import traceback"
+        write(unit, '(A)') "    traceback.print_exc()"
+        write(unit, '(A)') "    sys.exit(1)"
+    end subroutine write_vmecpp_runner_script
 
     subroutine vmecpp_extract_results(this, output_dir, results)
         class(vmecpp_t), intent(in) :: this
