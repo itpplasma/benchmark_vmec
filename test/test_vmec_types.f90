@@ -1,6 +1,7 @@
 program test_vmec_types
     use iso_fortran_env, only: int32, real64, error_unit, output_unit
     use vmec_benchmark_types, only: repository_config_t, vmec_result_t, string_t
+    use vmec_implementation_base, only: select_python_command
     implicit none
     
     integer :: n_tests, n_passed
@@ -13,6 +14,7 @@ program test_vmec_types
     call test_repository_config_initialize(n_tests, n_passed)
     call test_vmec_result_clear(n_tests, n_passed)
     call test_string_type(n_tests, n_passed)
+    call test_select_python_command_prefers_repo_venv(n_tests, n_passed)
     
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
     
@@ -92,5 +94,29 @@ contains
             write(error_unit, '(A)') "✗ test_string_type"
         end if
     end subroutine test_string_type
+
+    subroutine test_select_python_command_prefers_repo_venv(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        character(len=:), allocatable :: python_cmd
+        character(len=*), parameter :: repo_dir = "/tmp/benchmark_vmec_python_repo"
+        integer :: stat
+
+        n_tests = n_tests + 1
+
+        call execute_command_line("rm -rf " // repo_dir, exitstat=stat)
+        call execute_command_line("mkdir -p " // repo_dir // "/.venv/bin", exitstat=stat)
+        call execute_command_line("touch " // repo_dir // "/.venv/bin/python", exitstat=stat)
+
+        python_cmd = select_python_command(repo_dir)
+
+        if (trim(python_cmd) == repo_dir // "/.venv/bin/python") then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_select_python_command_prefers_repo_venv"
+        else
+            write(error_unit, '(A)') "✗ test_select_python_command_prefers_repo_venv"
+        end if
+
+        call execute_command_line("rm -rf " // repo_dir, exitstat=stat)
+    end subroutine test_select_python_command_prefers_repo_venv
 
 end program test_vmec_types

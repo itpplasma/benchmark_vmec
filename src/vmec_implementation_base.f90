@@ -4,7 +4,7 @@ module vmec_implementation_base
     implicit none
     private
 
-    public :: vmec_implementation_t
+    public :: vmec_implementation_t, select_python_command
 
     type, abstract :: vmec_implementation_t
         character(len=:), allocatable :: name
@@ -47,6 +47,32 @@ module vmec_implementation_base
     end interface
 
 contains
+
+    function select_python_command(repo_path) result(python_cmd)
+        character(len=*), intent(in) :: repo_path
+        character(len=:), allocatable :: python_cmd
+        character(len=512) :: env_python
+        integer :: env_status, env_length
+        logical :: exists
+
+        call get_environment_variable("VMEC_BENCHMARK_PYTHON", env_python, &
+                                      length=env_length, status=env_status)
+        if (env_status == 0 .and. env_length > 0) then
+            inquire(file=trim(env_python(1:env_length)), exist=exists)
+            if (exists) then
+                python_cmd = trim(env_python(1:env_length))
+                return
+            end if
+        end if
+
+        inquire(file=trim(repo_path) // "/.venv/bin/python", exist=exists)
+        if (exists) then
+            python_cmd = trim(repo_path) // "/.venv/bin/python"
+            return
+        end if
+
+        python_cmd = "python3"
+    end function select_python_command
 
     subroutine vmec_implementation_initialize(this, name, path)
         class(vmec_implementation_t), intent(inout) :: this

@@ -1,6 +1,6 @@
 module vmecpp_implementation
     use iso_fortran_env, only: int32, real64, error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
@@ -20,7 +20,7 @@ contains
     function vmecpp_build(this) result(success)
         class(vmecpp_t), intent(inout) :: this
         logical :: success
-        character(len=:), allocatable :: cmd, build_dir
+        character(len=:), allocatable :: cmd, build_dir, python_cmd
         character(len=1000) :: temp_path
         integer :: stat, i, unit
         logical :: exists
@@ -34,6 +34,7 @@ contains
         end if
         
         build_dir = trim(this%path) // "/build"
+        python_cmd = select_python_command(this%path)
         
         ! Store absolute path
         call execute_command_line("realpath " // trim(build_dir) // " > /tmp/vmecpp_build_path.tmp", exitstat=stat)
@@ -53,6 +54,18 @@ contains
         ! Check if already built
         inquire(file=trim(this%executable), exist=exists)
         if (exists) then
+            cmd = 'cd ' // trim(this%path) // ' && ' // trim(python_cmd) // &
+                  ' -c "import vmecpp; print(''VMEC++ available'')"'
+            call execute_command_line(trim(cmd), exitstat=stat)
+            if (stat /= 0) then
+                write(output_unit, '(A)') "Installing VMEC++ Python package into " // trim(python_cmd)
+                cmd = 'cd ' // trim(this%path) // ' && ' // trim(python_cmd) // ' -m pip install --no-deps -e .'
+                call execute_command_line(trim(cmd), exitstat=stat)
+                if (stat /= 0) then
+                    write(error_unit, '(A)') "Failed to install VMEC++ Python package"
+                    return
+                end if
+            end if
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "VMEC++ already built at " // trim(this%executable)
@@ -95,6 +108,12 @@ contains
                     this%executable = trim(adjustl(temp_path))
                 end if
             end if
+            cmd = 'cd ' // trim(this%path) // ' && ' // trim(python_cmd) // ' -m pip install --no-deps -e .'
+            call execute_command_line(trim(cmd), exitstat=stat)
+            if (stat /= 0) then
+                write(error_unit, '(A)') "Failed to install VMEC++ Python package"
+                return
+            end if
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "Successfully built VMEC++ standalone at " // trim(this%executable)
@@ -109,7 +128,7 @@ contains
         character(len=*), intent(in) :: output_dir
         integer, intent(in), optional :: timeout
         logical :: success
-        character(len=:), allocatable :: local_input, cmd
+        character(len=:), allocatable :: local_input, cmd, python_cmd
         integer :: stat, timeout_val, unit
         logical :: exists
 
@@ -124,6 +143,7 @@ contains
 
         timeout_val = 300
         if (present(timeout)) timeout_val = timeout
+        python_cmd = select_python_command(this%path)
 
         ! Copy input file (JSON or INDATA) to output directory
         local_input = trim(output_dir) // "/" // get_basename(input_file)
@@ -156,7 +176,7 @@ contains
         
         ! Run the Python script
         cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // &
-              " python3 run_vmecpp.py > vmecpp.log 2>&1"
+              " " // trim(python_cmd) // " run_vmecpp.py > vmecpp.log 2>&1"
 
         write(output_unit, '(A)') "DEBUG: Running command: " // trim(cmd)
         

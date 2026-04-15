@@ -1,6 +1,6 @@
 module vmec2000_implementation
     use iso_fortran_env, only: int32, real64, error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
@@ -20,7 +20,7 @@ contains
     function vmec2000_build(this) result(success)
         class(vmec2000_t), intent(inout) :: this
         logical :: success
-        character(len=:), allocatable :: cmd
+        character(len=:), allocatable :: cmd, python_cmd
         integer :: stat
         logical :: exists
 
@@ -32,12 +32,15 @@ contains
             return
         end if
         
+        python_cmd = select_python_command(this%path)
+
         ! Check if already built by testing if vmec module can be imported
-        cmd = 'cd ' // trim(this%path) // ' && python -c "import vmec; print(''VMEC2000 available'')"'
+        cmd = 'cd ' // trim(this%path) // ' && ' // trim(python_cmd) // &
+              ' -c "import vmec; print(''VMEC2000 available'')"'
         call execute_command_line(trim(cmd), exitstat=stat)
         if (stat == 0) then
             ! Already built
-            this%executable = 'python -c "import vmec; print(''VMEC2000 ready'')"'
+            this%executable = trim(python_cmd)
             this%available = .true.
             success = .true.
             write(output_unit, '(A)') "VMEC2000 already built (Python module available)"
@@ -47,7 +50,7 @@ contains
         write(output_unit, '(A)') "Building VMEC2000 with pip install"
 
         ! Install dependencies first
-        cmd = "pip install numpy mpi4py"
+        cmd = trim(python_cmd) // " -m pip install numpy mpi4py"
         call execute_command_line(trim(cmd), exitstat=stat)
         
         if (stat /= 0) then
@@ -63,7 +66,7 @@ contains
               "sed -i 's|/usr/lib64/openmpi/bin/mpifort|/usr/bin/mpifort|g' cmake_config_file.json && " // &
               "sed -i 's|/usr/include/openmpi-x86_64|/usr/include|g' cmake_config_file.json && " // &
               "sed -i 's|/usr/lib64/openmpi/lib|/usr/lib|g' cmake_config_file.json; fi && " // &
-              "pip install ."
+              trim(python_cmd) // " -m pip install ."
         call execute_command_line(trim(cmd), exitstat=stat)
 
         if (stat /= 0) then
@@ -71,7 +74,7 @@ contains
             return
         end if
 
-        this%executable = 'python -c "import vmec; print(''VMEC2000 ready'')"'
+        this%executable = trim(python_cmd)
         this%available = .true.
         success = .true.
         write(output_unit, '(A)') "Successfully built VMEC2000 Python extension"
@@ -83,7 +86,7 @@ contains
         character(len=*), intent(in) :: output_dir
         integer, intent(in), optional :: timeout
         logical :: success
-        character(len=:), allocatable :: local_input, cmd, python_script
+        character(len=:), allocatable :: local_input, cmd, python_script, python_cmd
         integer :: stat, timeout_val, unit
 
         success = .false.
@@ -97,6 +100,7 @@ contains
 
         timeout_val = 300
         if (present(timeout)) timeout_val = timeout
+        python_cmd = select_python_command(this%path)
 
         local_input = trim(output_dir) // "/" // get_basename(input_file)
         cmd = "cp " // trim(input_file) // " " // trim(local_input)
@@ -138,7 +142,7 @@ contains
         close(unit)
 
         cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // &
-              " python " // get_basename(python_script) // " > vmec2000.log 2>&1"
+              " " // trim(python_cmd) // " " // get_basename(python_script) // " > vmec2000.log 2>&1"
 
         call execute_command_line(trim(cmd), exitstat=stat)
 
