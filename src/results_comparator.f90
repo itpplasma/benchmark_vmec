@@ -145,9 +145,8 @@ contains
         end do
     end subroutine results_comparator_create_comparison_table
 
-    subroutine results_comparator_calculate_relative_differences(this, reference_impl, unit)
+    subroutine results_comparator_calculate_relative_differences(this, unit)
         class(results_comparator_t), intent(in) :: this
-        character(len=*), intent(in) :: reference_impl
         integer, intent(in) :: unit
         integer :: i, j, ref_idx
         real(real64) :: ref_val, impl_val, rel_diff
@@ -155,29 +154,13 @@ contains
         
         write(unit, '(A)') "## Relative Differences"
         write(unit, '(A)') ""
-        write(unit, '(A)') "Preferred reference implementation: " // trim(reference_impl)
+        write(unit, '(A)') "Reference priority: educational_vmec, vmec2000, jvmec, vmecpp"
         write(unit, '(A)') ""
 
         has_reference_section = .false.
         
         do i = 1, this%n_cases
-            ref_idx = 0
-            do j = 1, this%case_results(i)%n_impls
-                if (this%case_results(i)%impl_names(j) == reference_impl .and. &
-                    this%case_results(i)%results(j)%success) then
-                    ref_idx = j
-                    exit
-                end if
-            end do
-            
-            if (ref_idx == 0) then
-                do j = 1, this%case_results(i)%n_impls
-                    if (this%case_results(i)%results(j)%success) then
-                        ref_idx = j
-                        exit
-                    end if
-                end do
-            end if
+            ref_idx = choose_case_reference(this%case_results(i))
 
             if (ref_idx == 0) cycle
             has_reference_section = .true.
@@ -311,8 +294,7 @@ contains
         
         ! Relative differences (if we have at least one implementation)
         if (this%n_cases > 0 .and. this%case_results(1)%n_impls > 0) then
-            call this%calculate_relative_differences( &
-                choose_preferred_reference(this), unit)
+            call this%calculate_relative_differences(unit)
         end if
         
         ! Fourier coefficient summary
@@ -500,27 +482,33 @@ contains
         end do
     end function sanitize_filename
 
-    function choose_preferred_reference(this) result(reference_impl)
-        class(results_comparator_t), intent(in) :: this
-        character(len=:), allocatable :: reference_impl
+    integer function choose_case_reference(case_result) result(reference_idx)
+        type(case_results_t), intent(in) :: case_result
         integer :: i, j
         character(len=*), parameter :: priority(4) = [ &
-            "jvmec           ", &
-            "vmec2000        ", &
             "educational_vmec", &
+            "vmec2000        ", &
+            "jvmec           ", &
             "vmecpp          " &
         ]
 
         do i = 1, size(priority)
-            do j = 1, this%n_cases
-                if (any(this%case_results(j)%impl_names(1:this%case_results(j)%n_impls) == priority(i))) then
-                    reference_impl = trim(priority(i))
+            do j = 1, case_result%n_impls
+                if (trim(case_result%impl_names(j)) == trim(priority(i)) .and. &
+                    case_result%results(j)%success) then
+                    reference_idx = j
                     return
                 end if
             end do
         end do
 
-        reference_impl = "educational_vmec"
-    end function choose_preferred_reference
+        reference_idx = 0
+        do j = 1, case_result%n_impls
+            if (case_result%results(j)%success) then
+                reference_idx = j
+                return
+            end if
+        end do
+    end function choose_case_reference
 
 end module results_comparator

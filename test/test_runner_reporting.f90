@@ -19,6 +19,7 @@ program test_runner_reporting
     call test_literal_empty_case_match_does_not_filter(n_tests, n_passed)
     call test_custom_output_dir_for_jvmec_reports(n_tests, n_passed)
     call test_report_uses_successful_reference(n_tests, n_passed)
+    call test_report_prefers_educational_reference_over_jvmec(n_tests, n_passed)
 
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
 
@@ -243,6 +244,51 @@ contains
         call comparator%finalize()
         call execute_command_line("rm -rf " // output_dir, exitstat=stat)
     end subroutine test_report_uses_successful_reference
+
+    subroutine test_report_prefers_educational_reference_over_jvmec(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        type(results_comparator_t) :: comparator
+        type(vmec_result_t) :: educational_result, jvmec_result, vmecpp_result
+        character(len=*), parameter :: output_dir = "/tmp/benchmark_vmec_reporting_priority"
+        character(len=*), parameter :: report_file = output_dir // "/comparison_report.md"
+        character(len=*), parameter :: case_name = &
+            "educational_VMEC/from_booz_xform/up_down_asymmetric_tokamak"
+        integer :: stat
+
+        n_tests = n_tests + 1
+
+        call execute_command_line("rm -rf " // output_dir, exitstat=stat)
+        call comparator%initialize(3, output_dir)
+
+        call educational_result%clear()
+        educational_result%success = .true.
+        educational_result%wb = 10.0_real64
+
+        call jvmec_result%clear()
+        jvmec_result%success = .true.
+        jvmec_result%wb = 11.0_real64
+
+        call vmecpp_result%clear()
+        vmecpp_result%success = .true.
+        vmecpp_result%wb = 10.1_real64
+
+        call comparator%add_result(case_name, "jvmec", jvmec_result)
+        call comparator%add_result(case_name, "educational_vmec", educational_result)
+        call comparator%add_result(case_name, "vmecpp", vmecpp_result)
+        call comparator%generate_report(report_file)
+
+        if (file_contains(report_file, "Reference priority: educational_vmec, vmec2000, jvmec, vmecpp") .and. &
+            file_contains(report_file, "Reference implementation: educational_vmec") .and. &
+            .not. file_contains(report_file, "Reference implementation: jvmec")) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_report_prefers_educational_reference_over_jvmec"
+        else
+            write(error_unit, '(A)') "✗ test_report_prefers_educational_reference_over_jvmec"
+        end if
+
+        call comparator%finalize()
+        call execute_command_line("rm -rf " // output_dir, exitstat=stat)
+    end subroutine test_report_prefers_educational_reference_over_jvmec
 
     logical function file_contains(path, needle)
         character(len=*), intent(in) :: path
