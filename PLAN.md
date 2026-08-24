@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `f3355e4`. Local `fo test` (5/5), Python
+- `main` is pushed through `8146d1f`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
