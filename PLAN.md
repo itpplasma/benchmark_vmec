@@ -31,8 +31,8 @@ project is separate.
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791034/`.
 - GVEC is now explicitly skipped for 1-D profile fixtures: its VMEC converter
   requires nested-surface `iota` data that the 1-D contract intentionally does
-  not provide. The filter is covered by the runner tests and will be used for
-  the corrected focused rerun after the exhaustive job.
+  not provide. The filter is covered by the runner tests and is exercised by
+  the corrected focused rerun chained after the diagnostic job.
 - The GVEC bridge additionally normalizes sparse VMEC `(n,m)` boundary
   assignments into dense `(m,n)` arrays and seeds the ordinary zero-iota
   initialization required by GVEC's fixed-profile path. Current-constrained
