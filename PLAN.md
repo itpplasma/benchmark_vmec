@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `74bf514`. Local `fo test` (5/5), Python
+- `main` is pushed through `92160b6`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
@@ -35,7 +35,9 @@ project is separate.
   the corrected focused rerun after the exhaustive job.
 - The GVEC bridge additionally normalizes sparse VMEC `(n,m)` boundary
   assignments into dense `(m,n)` arrays and seeds the ordinary zero-iota
-  initialization required by GVEC's stage builder. The exhaustive job was
+  initialization required by GVEC's fixed-profile path. Current-constrained
+  inputs now emit TOML so `I_tor` and `picard_current` survive conversion;
+  the exhaustive job was
   already running with the pre-bridge executable when this was diagnosed; its
   early GVEC conversion failures are retained as diagnostic evidence.
 - The SPECTRE bridge accepts legacy VMEC files that contain both `/` and a
@@ -75,14 +77,17 @@ project is separate.
   `surfaces.png`, `runtime.png`, and `runtime.csv`).
 
 - Exhaustive job `1791036` remains stable on `node11`. At the latest check it
-  had started 209 of the 298 discovered cases (166 completion messages) after
-  1:30:41, with no MPI abort; stderr contains only the expected unavailable
+  had started 221 of the 298 discovered cases (176 completion messages) after
+  1:34:09, with no MPI abort; stderr contains only the expected unavailable
   PARVMEC notice and diagnostic failures from the pre-bridge executable that
   was already running before the latest converter fixes.
 
-- Corrected exhaustive rerun `1791080` is submitted with an `afterany:1791036`
-  dependency. It uses the pushed converter fixes and will become the final
-  corpus run after the diagnostic allocation releases its node.
+- Corrected tokamak GVEC rerun `1791111` is submitted with an
+  `afterany:1791036` dependency. It will verify that the TOML/current-profile
+  repair removes the earlier `detJ<0` conversion-induced failure.
+- Corrected exhaustive rerun `1791080` now waits for both `1791036` and
+  `1791111`; it uses the pushed converter fixes and will become the final
+  corpus run after the focused verification releases its node.
 
 - Obsolete pre-fix exhaustive job `1790415` was cancelled after its output was
   preserved; it must not be used as the final benchmark result.
