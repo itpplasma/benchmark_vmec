@@ -8,7 +8,8 @@ Usage::
 The input directory is a Slurm result directory.  The script only uses native
 NetCDF WOUT files that are already present, so incomplete or unsupported rows
 are skipped.  It writes ``surfaces.png`` (phi=0 boundary overlays) and
-``metrics.png`` (available scalar comparisons) to the selected output folder.
+``metrics.png`` (reference dots with available-code ranges) to the selected
+output folder.
 """
 
 from __future__ import annotations
@@ -133,21 +134,54 @@ def plot_metrics(result_root: Path, output_dir: Path) -> Path:
                 }
 
     cases = list(records)
+    reference_order = ("educational_vmec", "vmec2000", "vmex", "desc")
     figure, axes = plt.subplots(len(metrics), 1, figsize=(13, 4 * len(metrics)), squeeze=False)
+    positions = np.arange(len(cases))
+    labels = [case.split("/")[-1] for case in cases]
     for axis, metric in zip(axes[:, 0], metrics):
-        labels = []
-        values = []
-        for case in cases:
-            for implementation, data in records[case].items():
-                if metric in data:
-                    labels.append(f"{case.split('/')[-1]}\n{implementation}")
-                    values.append(data[metric])
-        positions = np.arange(len(values))
-        axis.scatter(positions, values, s=32)
-        axis.set_xticks(positions, labels, rotation=70, ha="right", fontsize=8)
+        references = []
+        lower_errors = []
+        upper_errors = []
+        valid_positions = []
+        for position, case in zip(positions, cases):
+            data = records[case]
+            reference_item = next(
+                (
+                    (name, data[name][metric])
+                    for name in reference_order
+                    if name in data and metric in data[name]
+                ),
+                None,
+            )
+            if reference_item is None:
+                continue
+            reference_name, reference = reference_item
+            alternatives = [
+                values[metric]
+                for name, values in data.items()
+                if name != reference_name and metric in values
+            ]
+            all_values = [reference, *alternatives]
+            valid_positions.append(position)
+            references.append(reference)
+            lower_errors.append(reference - min(all_values))
+            upper_errors.append(max(all_values) - reference)
+        if references:
+            axis.errorbar(
+                valid_positions,
+                references,
+                yerr=[lower_errors, upper_errors],
+                fmt="o",
+                markersize=6,
+                capsize=4,
+                linewidth=1,
+                label="reference dot; whisker = available-code range",
+            )
+        axis.set_xticks(positions, labels, rotation=45, ha="right", fontsize=9)
         axis.set_ylabel(metric)
         axis.grid(axis="y", alpha=0.2)
-    figure.suptitle("Completed benchmark scalar outputs")
+        axis.legend(loc="best", fontsize="small")
+    figure.suptitle("Reference scalar outputs and available-code ranges")
     figure.tight_layout()
     filename = output_dir / "metrics.png"
     figure.savefig(filename, dpi=180)
