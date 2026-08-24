@@ -1,5 +1,5 @@
 module benchmark_runner
-    use iso_fortran_env, only: int32, real64, error_unit, output_unit
+    use iso_fortran_env, only: error_unit, output_unit
     use vmec_benchmark_types, only: vmec_result_t, string_t
     use vmec_implementation_base, only: vmec_implementation_t
     use educational_vmec_implementation, only: educational_vmec_t
@@ -12,7 +12,7 @@ module benchmark_runner
     implicit none
     private
 
-    public :: benchmark_runner_t
+    public :: benchmark_runner_t, freegs_case_supported
 
     type :: implementation_entry_t
         character(len=:), allocatable :: key
@@ -562,7 +562,14 @@ contains
             write(output_unit, '(/,A)') "Running test case: " // trim(case_name)
 
             do j = 1, this%n_implementations
-                results = this%run_single_case(i, j, timeout)
+                if (trim(this%implementations(j)%key) == 'freegs' .and. &
+                    .not. freegs_case_supported(this%test_cases(i)%str)) then
+                    call results%clear()
+                    results%error_message = 'Unsupported: FreeGS is restricted to 2-D Grad-Shafranov cases'
+                    write(output_unit, '(A)') '  - freegs skipped (not a 2-D Grad-Shafranov case)'
+                else
+                    results = this%run_single_case(i, j, timeout)
+                end if
 
                 ! Add results to comparator
                 call comparator%add_result(case_name, &
@@ -825,6 +832,15 @@ contains
             dimension = 3
         end if
     end function case_dimension
+
+    logical function freegs_case_supported(filepath)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: lowered
+
+        lowered = filepath
+        call to_lower(lowered)
+        freegs_case_supported = index(lowered, '/2d') > 0
+    end function freegs_case_supported
 
     subroutine split_case_path(filepath, repo_name, relative_path)
         character(len=*), intent(in) :: filepath

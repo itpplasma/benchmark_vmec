@@ -1,6 +1,6 @@
 program test_runner_reporting
     use iso_fortran_env, only: error_unit, output_unit, real64
-    use benchmark_runner, only: benchmark_runner_t
+    use benchmark_runner, only: benchmark_runner_t, freegs_case_supported
     use repository_manager, only: repository_manager_t
     use results_comparator, only: results_comparator_t
     use vmec_benchmark_types, only: vmec_result_t
@@ -19,6 +19,7 @@ program test_runner_reporting
     call test_gvec_parameter_cases_are_discovered(n_tests, n_passed)
     call test_empty_case_match_does_not_filter(n_tests, n_passed)
     call test_literal_empty_case_match_does_not_filter(n_tests, n_passed)
+    call test_freegs_case_filter(n_tests, n_passed)
     call test_custom_output_dir_for_jvmec_reports(n_tests, n_passed)
     call test_report_uses_successful_reference(n_tests, n_passed)
     call test_report_prefers_educational_reference_over_jvmec(n_tests, n_passed)
@@ -32,6 +33,20 @@ program test_runner_reporting
     end if
 
 contains
+
+    subroutine test_freegs_case_filter(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+
+        n_tests = n_tests + 1
+        if (freegs_case_supported('/repo/cases/analytic/2d_solovev/input.solovev') .and. &
+            .not. freegs_case_supported('/repo/cases/numerical/3d_w7x/input.w7x') .and. &
+            .not. freegs_case_supported('/repo/educational_VMEC/from_DESC/W7X/input.W7X')) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_freegs_case_filter"
+        else
+            write(error_unit, '(A)') "✗ test_freegs_case_filter"
+        end if
+    end subroutine test_freegs_case_filter
 
     subroutine test_case_name_normalization(n_tests, n_passed)
         integer, intent(inout) :: n_tests, n_passed
