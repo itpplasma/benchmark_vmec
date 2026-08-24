@@ -40,10 +40,15 @@ ssh scluster 'sacct -j 1791165 --format=JobID,State,Elapsed,ExitCode'
 ssh scluster 'tail -f /home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/slurm-vmec-benchmark-final-1791165.out'
 ```
 
-The older diagnostic run `1791036` is pre-fix history only and must not be
-used for final plots. Focused corrected tokamak, W7-X, GVEC, and CHEASE smokes
-already pass their format and dimensionality contracts; genuine solver
-non-convergence or timeout rows remain explicit rather than being hidden.
+Plot job `1791174` is queued with `afterany:1791165`; it runs the standard
+`uv run --with netCDF4 --with matplotlib` post-processing command and writes
+the `plots/` directory below the same result root.
+
+The older diagnostic run `1791036` was canceled after its output was preserved;
+it is pre-fix history only and must not be used for final plots. Focused
+corrected tokamak, W7-X, GVEC, and CHEASE smokes already pass their format and
+dimensionality contracts; genuine solver non-convergence or timeout rows remain
+explicit rather than being hidden.
 
 ## Finish checklist
 
