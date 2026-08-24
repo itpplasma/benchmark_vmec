@@ -8,7 +8,7 @@ Usage::
 The input directory is a Slurm result directory.  The script only uses native
 NetCDF WOUT files that are already present, so incomplete or unsupported rows
 are skipped.  It writes ``surfaces.png`` (phi=0 boundary overlays) and
-``metrics.png`` (reference dots with available-code ranges) to the selected
+``metrics.png`` (relative differences from the reference) to the selected
 output folder.
 """
 
@@ -135,11 +135,10 @@ def plot_metrics(result_root: Path, output_dir: Path) -> Path:
 
     cases = list(records)
     reference_order = ("educational_vmec", "vmec2000", "vmex", "desc")
-    figure, axes = plt.subplots(len(metrics), 1, figsize=(13, 4 * len(metrics)), squeeze=False)
+    figure, axes = plt.subplots(len(metrics), 1, figsize=(14, 8), sharex=True, squeeze=False)
     positions = np.arange(len(cases))
     labels = [case.split("/")[-1] for case in cases]
     for axis, metric in zip(axes[:, 0], metrics):
-        references = []
         lower_errors = []
         upper_errors = []
         valid_positions = []
@@ -156,33 +155,43 @@ def plot_metrics(result_root: Path, output_dir: Path) -> Path:
             if reference_item is None:
                 continue
             reference_name, reference = reference_item
-            alternatives = [
-                values[metric]
+            relative_values = [
+                100.0 * (values[metric] - reference) / abs(reference)
                 for name, values in data.items()
-                if name != reference_name and metric in values
+                if name != reference_name and metric in values and reference != 0.0
             ]
-            all_values = [reference, *alternatives]
+            all_values = [0.0, *relative_values]
             valid_positions.append(position)
-            references.append(reference)
-            lower_errors.append(reference - min(all_values))
-            upper_errors.append(max(all_values) - reference)
-        if references:
+            lower_errors.append(-min(all_values))
+            upper_errors.append(max(all_values))
+        if valid_positions:
             axis.errorbar(
                 valid_positions,
-                references,
+                np.zeros(len(valid_positions)),
                 yerr=[lower_errors, upper_errors],
                 fmt="o",
-                markersize=6,
-                capsize=4,
+                color="#111111",
+                ecolor="#3b528b",
+                markersize=4,
+                capsize=3,
                 linewidth=1,
-                label="reference dot; whisker = available-code range",
             )
-        axis.set_xticks(positions, labels, rotation=45, ha="right", fontsize=9)
-        axis.set_ylabel(metric)
+        axis.axhline(0.0, color="#555555", linewidth=0.8)
+        axis.set_ylabel("relative difference (%)")
         axis.grid(axis="y", alpha=0.2)
-        axis.legend(loc="best", fontsize="small")
-    figure.suptitle("Reference scalar outputs and available-code ranges")
-    figure.tight_layout()
+        axis.tick_params(axis="y", labelsize=8)
+    axes[-1, 0].set_xticks(positions, labels, rotation=35, ha="right", fontsize=8)
+    figure.legend(
+        [plt.Line2D([], [], color="#111111", marker="o", linestyle="none", markersize=4),
+         plt.Line2D([], [], color="#3b528b", linewidth=1)],
+        ["reference (0%)", "range of available codes"],
+        loc="upper center",
+        ncol=2,
+        frameon=False,
+        fontsize=8,
+    )
+    figure.suptitle("Relative scalar difference from reference", fontsize=13)
+    figure.subplots_adjust(left=0.08, right=0.99, bottom=0.25, top=0.88, hspace=0.35)
     filename = output_dir / "metrics.png"
     figure.savefig(filename, dpi=180)
     plt.close(figure)
