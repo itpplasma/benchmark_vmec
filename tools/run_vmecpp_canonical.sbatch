@@ -12,7 +12,7 @@
 set -u
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-repo_root=$(cd -- "$script_dir/.." && pwd)
+repo_root=${SLURM_SUBMIT_DIR:-$(cd -- "$script_dir/.." && pwd)}
 base_dir=${BENCHMARK_BASE_DIR:-$(dirname "$repo_root")}
 output_dir=${BENCHMARK_OUTPUT_DIR:-"$repo_root/benchmark_results-vmecpp-canonical-${SLURM_JOB_ID:-local}"}
 timeout_seconds=${BENCHMARK_TIMEOUT:-600}
