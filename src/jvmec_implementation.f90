@@ -23,7 +23,7 @@ contains
         class(jvmec_t), intent(inout) :: this
         logical :: success
         character(len=:), allocatable :: cmd, jar_file
-        character(len=256) :: local_input
+        character(len=2048) :: local_input
         integer :: stat
         logical :: exists
         
@@ -160,7 +160,7 @@ contains
         class(jvmec_t), intent(in) :: this
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
-        character(len=256) :: wout_file, log_file
+        character(len=2048) :: wout_file, log_file
         integer :: stat, ncid, varid, dimid, i, nfp_val
         integer :: ns, mnmax
         real(real64), allocatable :: iotas_temp(:)

@@ -1,5 +1,5 @@
 module vmec2000_implementation
-    use iso_fortran_env, only: int32, real64, error_unit, output_unit
+    use iso_fortran_env, only: error_unit, output_unit
     use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
@@ -166,7 +166,7 @@ contains
         class(vmec2000_t), intent(in) :: this
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
-        character(len=256) :: wout_file
+        character(len=2048) :: wout_file
         type(wout_data_t) :: wout_data
         integer :: stat, unit
         logical :: exists, read_success

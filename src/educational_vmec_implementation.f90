@@ -220,7 +220,7 @@ contains
         class(educational_vmec_t), intent(in) :: this
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
-        character(len=256) :: wout_file
+        character(len=2048) :: wout_file
         type(wout_data_t) :: wout_data
         integer :: stat, unit
         logical :: exists, read_success

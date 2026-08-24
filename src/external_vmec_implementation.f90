@@ -621,7 +621,7 @@ contains
         character(len=*), intent(in) :: path, kind
         character(len=:), allocatable, intent(out) :: executable
         logical, intent(out) :: found
-        character(len=256) :: candidates(8)
+        character(len=2048) :: candidates(8)
         integer :: i
         logical :: exists
 
