@@ -213,8 +213,8 @@ contains
         call results%clear()
 
         ! Look for NetCDF file - use the most recently modified one
-        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1 > /tmp/netcdf_file_vmecpp.tmp", &
-                                exitstat=stat)
+        call execute_command_line("ls -t " // trim(output_dir) // &
+            "/wout_*.nc 2>/dev/null | head -1 > /tmp/netcdf_file_vmecpp.tmp", exitstat=stat)
         if (stat == 0) then
             open(newunit=unit, file="/tmp/netcdf_file_vmecpp.tmp", status="old", action="read")
             read(unit, '(A)', iostat=stat) netcdf_file
