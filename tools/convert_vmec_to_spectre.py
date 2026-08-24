@@ -62,8 +62,12 @@ def convert(source: Path, destination: Path, nvol: int) -> None:
         ) from exc
 
     text = source.read_text(errors="replace")
+    # Older VMEC fixtures close the namelist with both ``/`` and a trailing
+    # ``&END``.  Fortran accepts that legacy spelling, while f90nml treats the
+    # second terminator as a new, unterminated group.
+    parse_text = re.sub(r"(?im)^\s*&END\s*$", "", text)
     try:
-        indata = f90nml.read(str(source))["indata"]
+        indata = f90nml.reads(parse_text)["indata"]
     except Exception as exc:  # pragma: no cover - parser diagnostics are code-specific
         raise SystemExit(f"Could not parse VMEC INDATA {source}: {exc}") from exc
 
