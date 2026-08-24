@@ -511,6 +511,11 @@ contains
                 write(output_unit, '(A)') trim(line)
             end if
         end do
+
+        ! The educational fork's reader expects its historical paired
+        ! terminator.  The shared normalizer removed a duplicate ``&END`` so
+        ! append one canonical marker after the Fortran ``/`` terminator.
+        write(output_unit, '(A)') '&END'
         
         close(input_unit)
         close(output_unit)
