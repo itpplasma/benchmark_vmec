@@ -35,9 +35,9 @@ def _polynomial(coefficients: object, s: float) -> float:
     return sum(_number(coefficient, 0.0) * s**index for index, coefficient in enumerate(coefficients))
 
 
-def _boundary(text: str, field: str) -> dict[str, float]:
+def _boundary(text: str, field: str, mpol: int, ntor: int) -> dict[str, float]:
     pattern = re.compile(
-        rf"(?im)^\s*{field}\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*=\s*"
+        rf"(?im)\b{field}\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*=\s*"
         r"([+\-0-9.eEdD]+)"
     )
     values: dict[str, float] = {}
@@ -46,8 +46,15 @@ def _boundary(text: str, field: str) -> dict[str, float]:
         # Fourier maps use (m, n).  Preserve the physical mode rather than
         # accidentally turning an axisymmetric Solovev boundary into an
         # n=1 toroidal surface.
-        n, m, value = match.groups()
-        values[f"({int(m)}, {int(n)})"] = _number(value.replace("D", "E").replace("d", "e"), 0.0)
+        n, m, value = (int(match.group(1)), int(match.group(2)), match.group(3))
+        # VMEC fixtures can retain coefficients from a higher-resolution
+        # output even after MPOL/NTOR was reduced in the namelist.  SPECTRE
+        # allocates its Fourier arrays from those limits; passing the stale
+        # modes through causes an out-of-bounds access and MPI_ABORT.  VMEC's
+        # valid ranges are m=0..MPOL and n=-NTOR..NTOR.
+        if abs(m) > mpol or abs(n) > ntor:
+            continue
+        values[f"({m}, {n})"] = _number(value.replace("D", "E").replace("d", "e"), 0.0)
     return values
 
 
@@ -100,10 +107,10 @@ def convert(source: Path, destination: Path, nvol: int) -> None:
         "adiabatic": pressure,
         "ivolume": ivolume,
         "isurf": [0.0] * nvol,
-        "rbc": _boundary(text, "RBC"),
-        "zbs": _boundary(text, "ZBS"),
-        "rbs": _boundary(text, "RBS"),
-        "zbc": _boundary(text, "ZBC"),
+        "rbc": _boundary(text, "RBC", mpol, ntor),
+        "zbs": _boundary(text, "ZBS", mpol, ntor),
+        "rbs": _boundary(text, "RBS", mpol, ntor),
+        "zbc": _boundary(text, "ZBC", mpol, ntor),
     }
     params = InputParameters(
         physics=physics,
@@ -115,7 +122,17 @@ def convert(source: Path, destination: Path, nvol: int) -> None:
             "impol": -4,
             "intor": -4,
         },
-        minimization={"max_niter": 200, "max_nfev": 200},
+        # Henneberg's auxiliary representation must fit inside the physical
+        # Fourier grid.  Keeping the historical fixed value of 8 for small
+        # VMEC inputs makes SPECTRE assemble a Jacobian with inconsistent
+        # dimensions (and can end in MPI_ABORT); choose the largest valid
+        # auxiliary grid for this case instead.
+        minimization={
+            "max_niter": 200,
+            "max_nfev": 200,
+            "mmax": max(0, min(8, mpol - 1)),
+            "nmax": max(0, min(8, ntor - 1)) if ntor > 0 else 0,
+        },
     )
     destination.parent.mkdir(parents=True, exist_ok=True)
     write_input_parameters_to_toml(params, str(destination))
