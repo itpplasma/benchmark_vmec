@@ -7,7 +7,7 @@ outside this repository.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `96c8214`. Local `fo check`, `fo test --all`, and
+- `main` is pushed through `a03498d`. Local `fo check`, `fo test --all`, and
   `git diff --check` pass.
 - jVMEC’s private fork is pushed through `c75fb72e`. Its NetCDF writer now
   emits the complete WOUT schema and derives `aspect`, `volume_p`,
