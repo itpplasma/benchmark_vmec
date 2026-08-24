@@ -17,6 +17,10 @@ outside this repository.
   `~/.local/bin`; the previous `fo` binary is retained as
   `~/.local/bin/fo-pre-fix-0.3.2`. With the launcher’s NetCDF/HDF5 runtime
   paths, `fo check` and all five tests pass remotely.
+- The staged VMEC++ checkout also now has a non-editable `uv` installation
+  with valid package metadata and its `indata2json` converter; a direct
+  Solovev post-install run produced `wout_input.nc` successfully. Early rows
+  of job `1790415` predate that repair and retain their explicit failures.
 - Corrected smoke job `1790311` completed successfully. jVMEC reports
   `aspect=3.628662` and `volume_p=94.156026` for analytic 2-D Solovev, and
   the Fourier coefficients match the educational_VMEC reference. The smoke
