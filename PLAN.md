@@ -7,7 +7,7 @@ outside this repository.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `6b6d244`. Local `fo`, `fo test test_runner_reporting`,
+- `main` is pushed through `b6bc561`. Local `fo`, `fo test test_runner_reporting`,
   and `git diff --check` pass. The full pipeline reports only the existing
   array-temporary warning in `app/main.f90`.
   `git diff --check` pass.
