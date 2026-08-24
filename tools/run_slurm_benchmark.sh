@@ -15,6 +15,12 @@ repo_root=$(git rev-parse --show-toplevel)
 base_dir=${BENCHMARK_BASE_DIR:-$(dirname "$repo_root")}
 output_dir=${BENCHMARK_OUTPUT_DIR:-"$repo_root/benchmark_results-slurm-${SLURM_JOB_ID:-local}"}
 timeout_seconds=${BENCHMARK_TIMEOUT:-300}
+case_match=${BENCHMARK_MATCH:-}
+
+case_match_args=()
+if [[ -n "$case_match" ]]; then
+    case_match_args=(--match "$case_match")
+fi
 
 export PATH="$HOME/.local/bin:$PATH"
 # Keep user-local scientific runtimes visible in batch shells.  These paths
@@ -99,14 +105,19 @@ case "$mode" in
     smoke)
         prepare_driver
         run_driver list-repos
-        run_driver list-cases --match 'cases/analytic/2d_solovev' --limit 1
-        run_driver run --match 'cases/analytic/2d_solovev' --limit 1 --timeout "$timeout_seconds"
+        if [[ -n "$case_match" ]]; then
+            run_driver list-cases "${case_match_args[@]}" --limit 1
+            run_driver run "${case_match_args[@]}" --limit 1 --timeout "$timeout_seconds"
+        else
+            run_driver list-cases --match 'cases/analytic/2d_solovev' --limit 1
+            run_driver run --match 'cases/analytic/2d_solovev' --limit 1 --timeout "$timeout_seconds"
+        fi
         ;;
     full)
         prepare_driver
         run_driver list-repos
-        run_driver list-cases
-        run_driver run --timeout "$timeout_seconds"
+        run_driver list-cases "${case_match_args[@]}"
+        run_driver run "${case_match_args[@]}" --timeout "$timeout_seconds"
         ;;
     *)
         printf 'usage: %s {smoke|full}\n' "$0" >&2
