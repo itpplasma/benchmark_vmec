@@ -46,6 +46,9 @@ project is separate.
   submitted with one node, 48 CPUs, 96 GB, a 7-day allocation, and a
   600-second per-case timeout. It started on `node11` and is currently
   progressing through the 298-case corpus.
+- Corrected-checkout numerical tokamak smoke `1791060` is queued with an
+  8-CPU/16-GB one-hour allocation to exercise the new GVEC and SPECTRE
+  bridges; it is pending scheduler priority behind the exhaustive allocation.
   Monitor it with:
 
   ```bash
