@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import re
 from pathlib import Path
 
@@ -105,6 +106,51 @@ def _metric_values(dataset: Dataset, metrics: tuple[str, ...]) -> dict[str, floa
         for metric in metrics
         if values[metric] is not None or metric in derived
     }
+
+
+def _sidecar_metric_values(path: Path, metrics: tuple[str, ...]) -> dict[str, float]:
+    """Read common scalar fields from a retained JSON sidecar.
+
+    GVEC and the Grad--Shafranov adapters do not emit VMEC NetCDF.  Their
+    sidecars are deliberately sparse; only fields that are present are
+    returned, so a missing quantity remains an honest gap in the plot.
+    """
+    try:
+        data = json.loads(path.read_text(errors="replace"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict) or data.get("success") is False:
+        return {}
+    values: dict[str, float] = {}
+    for metric in metrics:
+        value = data.get(metric)
+        if isinstance(value, (int, float)) and np.isfinite(value):
+            values[metric] = float(value)
+    return values
+
+
+def _case_metric_outputs(case_dir: Path, metrics: tuple[str, ...]):
+    """Yield implementation/metric pairs from WOUTs and common sidecars."""
+    for implementation_dir in sorted(p for p in case_dir.iterdir() if p.is_dir()):
+        files = sorted(implementation_dir.glob("wout*.nc"))
+        if files:
+            try:
+                with Dataset(files[-1]) as dataset:
+                    values = _metric_values(dataset, metrics)
+            except (OSError, ValueError):
+                values = {}
+            if values:
+                yield implementation_dir.name, values
+            continue
+
+        for filename in ("gvec_result.json", "freegs_result.json", "chease_result.json"):
+            sidecar = implementation_dir / filename
+            if not sidecar.is_file():
+                continue
+            values = _sidecar_metric_values(sidecar, metrics)
+            if values:
+                yield implementation_dir.name, values
+            break
 
 
 def _surface(dataset: Dataset, radius_index: int = -1, phi: float = 0.0):
@@ -315,15 +361,12 @@ def plot_surfaces(result_root: Path, output_dir: Path) -> Path:
 def plot_metrics(result_root: Path, output_dir: Path) -> Path:
     metrics = ("volume_p", "aspect", "raxis_cc")
     records: dict[str, dict[str, dict[str, float]]] = {}
-    for case_dir, outputs in _case_outputs(result_root):
+    for case_dir in sorted(p for p in result_root.iterdir() if p.is_dir()):
         case_records = records.setdefault(case_dir.name.replace("__", "/"), {})
-        for implementation, filename in outputs:
-            with Dataset(filename) as dataset:
-                values = _metric_values(dataset, metrics)
-            if any(value is not None for value in values.values()):
-                case_records[implementation] = {
-                    key: value for key, value in values.items() if value is not None
-                }
+        for implementation, values in _case_metric_outputs(case_dir, metrics):
+            case_records[implementation] = values
+        if not case_records:
+            records.pop(case_dir.name.replace("__", "/"), None)
 
     cases = list(records)
     reference_order = ("educational_vmec", "vmec2000", "vmex", "desc")
