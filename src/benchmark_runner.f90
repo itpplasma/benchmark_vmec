@@ -345,9 +345,15 @@ contains
         search_roots = ""
 
         ! The benchmark-owned corpus is always discoverable, even when no
-        ! external checkout is installed.  Its path taxonomy encodes the
-        ! analytical/numerical and 1-D/2-D/3-D matrix.
-        repo_path = trim(this%repo_manager%base_path) // "/benchmark_vmec/cases"
+        ! external checkout is installed.  In a staged Slurm checkout the
+        ! active repository name need not be ``benchmark_vmec``; honor the
+        ! launcher-provided root so generated/native fixtures are included.
+        call get_environment_variable("BENCHMARK_REPO_ROOT", env_value, status=env_stat)
+        if (env_stat == 0 .and. len_trim(env_value) > 0) then
+            repo_path = trim(env_value) // "/cases"
+        else
+            repo_path = trim(this%repo_manager%base_path) // "/benchmark_vmec/cases"
+        end if
         search_roots = trim(repo_path)
 
         if (this%repo_manager%is_cloned("educational_VMEC")) then
@@ -950,7 +956,8 @@ contains
     subroutine extract_repo_relative_path(filepath, repo_name, relative_path)
         character(len=*), intent(in) :: filepath
         character(len=:), allocatable, intent(out) :: repo_name, relative_path
-        integer :: marker_pos
+        character(len=512) :: env_value
+        integer :: marker_pos, env_stat
 
         repo_name = ""
         relative_path = trim(filepath)
@@ -1021,6 +1028,16 @@ contains
             repo_name = "SPECTRE"
             relative_path = filepath(marker_pos + len("/SPECTRE/"):)
             return
+        end if
+
+        call get_environment_variable("BENCHMARK_REPO_ROOT", env_value, status=env_stat)
+        if (env_stat == 0 .and. len_trim(env_value) > 0) then
+            marker_pos = index(filepath, trim(env_value) // "/cases/")
+            if (marker_pos > 0) then
+                repo_name = "benchmark_vmec"
+                relative_path = filepath(marker_pos + len(trim(env_value)) + 1:)
+                return
+            end if
         end if
 
         marker_pos = index(filepath, "/benchmark_vmec/cases/")
