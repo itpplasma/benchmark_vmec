@@ -13,6 +13,7 @@ module benchmark_runner
     private
 
     public :: benchmark_runner_t, freegs_case_supported, chease_case_supported, geqdsk_case_supported
+    public :: gvec_case_supported
     public :: spec_case_supported, spectre_case_supported
 
     type :: implementation_entry_t
@@ -576,10 +577,15 @@ contains
                     write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
                         ' skipped (native GEQDSK fixture is CHEASE-only)'
                 else if (trim(this%implementations(j)%key) == 'freegs' .and. &
-                    .not. freegs_case_supported(this%test_cases(i)%str)) then
+                        .not. freegs_case_supported(this%test_cases(i)%str)) then
                     call results%clear()
                     results%error_message = 'Unsupported: FreeGS is restricted to 2-D Grad-Shafranov cases'
                     write(output_unit, '(A)') '  - freegs skipped (not a 2-D Grad-Shafranov case)'
+                else if (trim(this%implementations(j)%key) == 'gvec' .and. &
+                        .not. gvec_case_supported(this%test_cases(i)%str)) then
+                    call results%clear()
+                    results%error_message = 'Unsupported: GVEC requires a 2-D or 3-D VMEC input'
+                    write(output_unit, '(A)') '  - gvec skipped (not a 2-D or 3-D VMEC case)'
                 else if (trim(this%implementations(j)%key) == 'chease' .and. &
                         .not. chease_case_supported(this%test_cases(i)%str)) then
                     call results%clear()
@@ -881,6 +887,18 @@ contains
         call to_lower(lowered)
         freegs_case_supported = index(lowered, '/2d') > 0
     end function freegs_case_supported
+
+    logical function gvec_case_supported(filepath)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: lowered
+
+        lowered = filepath
+        call to_lower(lowered)
+        ! GVEC's VMEC converter requires nested-surface data (notably iota),
+        ! which the benchmark's 1-D profile fixtures intentionally omit.
+        ! Keep the 2-D and 3-D lanes available for ordinary comparisons.
+        gvec_case_supported = index(lowered, '/1d') == 0
+    end function gvec_case_supported
 
     logical function chease_case_supported(filepath)
         character(len=*), intent(in) :: filepath
