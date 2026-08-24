@@ -68,6 +68,12 @@ project is separate.
   therefore passes a non-axisymmetric 3-D case end to end. Results:
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791068/`.
 
+- Plots were regenerated and visually checked for the corrected tokamak and
+  W7-X runs. Each scalar panel has one marker per available code with a shared
+  code legend; runtime plots contain only native solver-reported timings.
+  They are under each result directory's `plots/` folder (`metrics.png`,
+  `surfaces.png`, `runtime.png`, and `runtime.csv`).
+
 - Exhaustive job `1791036` remains stable on `node11`. At the latest check it
   had started 97 of the 298 discovered cases (72 completion messages) after
   41 minutes, with no MPI abort; stderr contains only the expected unavailable
