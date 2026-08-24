@@ -56,6 +56,16 @@ uv run python tools/convert_equilibrium.py --help
 These adapters are deliberately ordinary-format utilities; they do not expose
 automatic differentiation or Jacobian data.
 
+To plot completed Slurm outputs (native WOUT files only):
+
+```bash
+uv run --with netCDF4 --with matplotlib python tools/plot_benchmark_results.py \
+  benchmark_results-slurm-<job-id>
+```
+
+This writes boundary overlays and scalar-comparison plots in the result
+directory's `plots/` folder; incomplete or unsupported rows are skipped.
+
 ## Repository layout
 
 ```
