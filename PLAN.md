@@ -29,15 +29,15 @@ project is separate.
   successfully, and its `chease_result.json` sidecar was written. Results:
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791034/`.
 - The previous exhaustive job `1791025` was canceled before the CHEASE staging
-  and test-isolation fixes landed. A fresh exhaustive submission is the next
-  action after this commit is pulled to the corrected checkout. It uses one
-  node, 48 CPUs, 96 GB, a 7-day allocation, and a 600-second per-case timeout.
-  Monitor the new job with:
+  and test-isolation fixes landed. Fresh exhaustive job `1791036` is now
+  submitted with one node, 48 CPUs, 96 GB, a 7-day allocation, and a
+  600-second per-case timeout. It is currently pending scheduler priority.
+  Monitor it with:
 
   ```bash
-  ssh scluster 'squeue -j <JOBID> -o "%.18i %.12T %.10M %.20R"'
-  ssh scluster 'sacct -j <JOBID> --format=JobID,State,Elapsed,ExitCode'
-  ssh scluster 'tail -f /home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/slurm-vmec-benchmark-<JOBID>.out'
+  ssh scluster 'squeue -j 1791036 -o "%.18i %.12T %.10M %.20R"'
+  ssh scluster 'sacct -j 1791036 --format=JobID,State,Elapsed,ExitCode'
+  ssh scluster 'tail -f /home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/slurm-vmec-benchmark-1791036.out'
   ```
 
 - Obsolete pre-fix exhaustive job `1790415` was cancelled after its output was
@@ -53,7 +53,7 @@ project is separate.
 
 ## Handoff
 
-After the fresh exhaustive job starts, inspect its output for immediate
+After job `1791036` starts, inspect its output for immediate
 adapter/converter errors, then wait for completion. Keep genuine solver
 failures/timeouts as explicit rows; only retry environment or conversion
 defects. Regenerate plots from the final `comparison_table.csv` with
