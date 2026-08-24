@@ -62,6 +62,12 @@ def convert(source: Path, destination: Path) -> None:
         raise SystemExit("GVEC conversion needs the selected GVEC Python environment") from exc
 
     parameters = gvec_util.parameters_from_vmec(_dense_vmec_namelist(source), source.name)
+    # GVEC's current-constrained run path eventually supplies this same seed,
+    # but its automatic-stage construction reads ``iota`` first.  Supplying
+    # the documented zero initial profile keeps I_tor as the physical
+    # constraint while avoiding that ordering defect in the upstream runner.
+    if "I_tor" in parameters and "iota" not in parameters:
+        parameters["iota"] = {"type": "polynomial", "coefs": [0.0]}
     if not gvec_util.check_boundary_direction(parameters):
         parameters = gvec_util.flip_parameters_zeta(parameters)
     if (
