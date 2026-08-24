@@ -395,6 +395,35 @@ contains
             call append_search_root(search_roots, repo_path)
         end if
 
+        ! Native participants contribute their own input inventories.  Keep
+        ! them in discovery as well as registration so SPEC ``.sp`` files,
+        ! SPECTRE TOML examples, and any FreeGS/CHEASE fixtures are not
+        ! silently omitted from the exhaustive matrix.
+        if (this%repo_manager%is_cloned("PARVMEC")) then
+            repo_path = this%repo_manager%get_repo_path("PARVMEC")
+            call append_search_root(search_roots, repo_path)
+        end if
+
+        if (this%repo_manager%is_cloned("SPEC")) then
+            repo_path = this%repo_manager%get_repo_path("SPEC")
+            call append_search_root(search_roots, repo_path)
+        end if
+
+        if (this%repo_manager%is_cloned("SPECTRE")) then
+            repo_path = this%repo_manager%get_repo_path("SPECTRE")
+            call append_search_root(search_roots, repo_path)
+        end if
+
+        if (this%repo_manager%is_cloned("FreeGS")) then
+            repo_path = this%repo_manager%get_repo_path("FreeGS")
+            call append_search_root(search_roots, repo_path)
+        end if
+
+        if (this%repo_manager%is_cloned("CHEASE")) then
+            repo_path = this%repo_manager%get_repo_path("CHEASE")
+            call append_search_root(search_roots, repo_path)
+        end if
+
         if (include_jvmec) then
             repo_path = trim(this%repo_manager%base_path) // "/jVMEC"
             inquire(file=trim(repo_path), exist=exists)
@@ -416,7 +445,10 @@ contains
         end if
 
         temp_file = "/tmp/benchmark_vmec_test_files.tmp"
-        cmd = "find " // trim(search_roots) // " -follow -name 'input.*' -type f 2>/dev/null | " // &
+        cmd = "find " // trim(search_roots) // " -follow \( " // &
+            "-path '*/.git' -o -path '*/.venv' -o -path '*/build' -o " // &
+            "-path '*/__pycache__' -o -path '*/node_modules' \) -prune -o " // &
+            "-name 'input.*' -type f -print 2>/dev/null | " // &
             "grep -E '/(tests?|examples?|cases)/' | grep -v results | grep -v debug | grep -v bazel"
         call execute_command_line(trim(cmd) // " > " // trim(temp_file), exitstat=stat)
 
@@ -452,9 +484,11 @@ contains
         ! files.  Keep them in the same case inventory so the adapter can run
         ! them without pretending that every code consumes the same syntax.
         parameter_temp_file = "/tmp/benchmark_vmec_parameter_files.tmp"
-        cmd = "find " // trim(search_roots) // &
-            " -follow -type f \( -name 'parameter.ini' -o -name 'parameter.toml' -o -name 'parameter.yaml' \) " // &
-            "2>/dev/null | grep -v results"
+        cmd = "find " // trim(search_roots) // " -follow \( " // &
+            "-path '*/.git' -o -path '*/.venv' -o -path '*/build' -o " // &
+            "-path '*/__pycache__' -o -path '*/node_modules' \) -prune -o " // &
+            "-type f \( -name 'parameter.ini' -o -name 'parameter.toml' -o " // &
+            "-name 'parameter.yaml' \) -print 2>/dev/null | grep -v results"
         call execute_command_line(trim(cmd) // " > " // trim(parameter_temp_file), exitstat=stat)
         if (stat == 0) then
             open(newunit=unit, file=trim(parameter_temp_file), status="old", action="read", iostat=stat)
@@ -479,11 +513,16 @@ contains
         call execute_command_line("rm -f " // trim(temp_file))
         call execute_command_line("rm -f " // trim(parameter_temp_file))
 
-        ! SPEC/SPECTRE use native .sp files rather than VMEC INDATA. Keep a
-        ! small native inventory when those repositories are provisioned.
+        ! SPEC uses native .sp files rather than VMEC INDATA.  Keep a small
+        ! native inventory when the repositories are provisioned.  SPECTRE
+        ! also ships a few native .sp tracing inputs; their path is classified
+        ! below so SPEC never receives them accidentally.
         parameter_temp_file = "/tmp/benchmark_vmec_native_files.tmp"
-        cmd = "find " // trim(search_roots) // " -follow -type f -name '*.sp' " // &
-            "2>/dev/null | grep -E '/(ci|examples?|tests?)/' | grep -v results"
+        cmd = "find " // trim(search_roots) // " -follow \( " // &
+            "-path '*/.git' -o -path '*/.venv' -o -path '*/build' -o " // &
+            "-path '*/__pycache__' -o -path '*/node_modules' \) -prune -o " // &
+            "-type f -name '*.sp' -print 2>/dev/null | " // &
+            "grep -E '/(ci|examples?|tests?)/' | grep -v results"
         call execute_command_line(trim(cmd) // " > " // trim(parameter_temp_file), exitstat=stat)
         if (stat == 0) then
             open(newunit=unit, file=trim(parameter_temp_file), status="old", action="read", iostat=stat)
@@ -502,6 +541,38 @@ contains
             end if
         end if
         call execute_command_line("rm -f " // trim(parameter_temp_file))
+
+        ! SPECTRE's native equilibrium inputs are TOML files.  Restrict this
+        ! inventory to the SPECTRE checkout because other sibling projects
+        ! use TOML for unrelated configuration and VMEC profiles.
+        if (this%repo_manager%is_cloned("SPECTRE")) then
+            parameter_temp_file = "/tmp/benchmark_vmec_spectre_toml_files.tmp"
+            repo_path = this%repo_manager%get_repo_path("SPECTRE")
+            cmd = "find " // trim(repo_path) // " -follow \( " // &
+                "-path '*/.git' -o -path '*/.venv' -o -path '*/build' -o " // &
+                "-path '*/__pycache__' -o -path '*/node_modules' \) -prune -o " // &
+                "-type f -name '*.toml' -print 2>/dev/null | " // &
+                "grep -E '/(examples?|tests?)/' | grep -v results"
+            call execute_command_line(trim(cmd) // " > " // trim(parameter_temp_file), exitstat=stat)
+            if (stat == 0) then
+                open(newunit=unit, file=trim(parameter_temp_file), status="old", action="read", iostat=stat)
+                if (stat == 0) then
+                    do
+                        read(unit, '(A)', iostat=stat) line
+                        if (stat /= 0) exit
+                        if (filter_match .and. index(trim(line), trim(case_match)) == 0) cycle
+                        if (.not. this%is_duplicate_case(trim(line)) .and. &
+                                this%n_test_cases < max_cases) then
+                            this%n_test_cases = this%n_test_cases + 1
+                            this%test_cases(this%n_test_cases)%str = trim(line)
+                            write(output_unit, '(A)') "  Found native SPECTRE: " // trim(line)
+                        end if
+                    end do
+                    close(unit)
+                end if
+            end if
+            call execute_command_line("rm -f " // trim(parameter_temp_file))
+        end if
     end subroutine discover_from_all_repos
 
     function benchmark_runner_run_single_case(this, test_case_idx, impl_idx, timeout) result(results)
@@ -928,7 +999,8 @@ contains
 
         lowered = filepath
         call to_lower(lowered)
-        spec_case_supported = path_has_suffix(lowered, '.sp')
+        spec_case_supported = path_has_suffix(lowered, '.sp') .and. &
+            index(lowered, '/spectre/') == 0
     end function spec_case_supported
 
     logical function spectre_case_supported(filepath)
@@ -940,6 +1012,7 @@ contains
         ! Native SPECTRE inputs are TOML files.  VMEC INDATA files are also
         ! accepted because the external adapter converts them before launch.
         spectre_case_supported = path_has_suffix(lowered, '.toml') .or. &
+            (path_has_suffix(lowered, '.sp') .and. index(lowered, '/spectre/') > 0) .or. &
             index(lowered, '/input.') > 0
     end function spectre_case_supported
 
@@ -949,8 +1022,8 @@ contains
 
         lowered = filepath
         call to_lower(lowered)
-        native_spectre_case = path_has_suffix(lowered, '.toml') .and. &
-            index(lowered, '/spectre/') > 0
+        native_spectre_case = (path_has_suffix(lowered, '.toml') .or. &
+            path_has_suffix(lowered, '.sp')) .and. index(lowered, '/spectre/') > 0
     end function native_spectre_case
 
     logical function path_has_suffix(path, suffix)
