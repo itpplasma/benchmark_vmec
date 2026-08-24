@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `8146d1f`. Local `fo test` (5/5), Python
+- `main` is pushed through `a717ca0`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
@@ -94,10 +94,11 @@ project is separate.
   SPECTRE, and FreeGS rows; SPEC and CHEASE were contract-appropriate skips.
   Results:
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791111/`.
-- Corrected exhaustive rerun `1791080` waits for diagnostic completion
-  (`afterany:1791036`) and successful focused verification
-  (`afterok:1791111`); it uses the pushed converter fixes and will become the
-  final corpus run only after the focused check passes.
+- Corrected exhaustive rerun `1791080` started on `node12` after successful
+  focused verification; diagnostic job `1791036` continues independently on
+  `node11` as preserved history. The corrected run discovered all 298 cases,
+  passed the generated CHEASE case and its first six VMEC-family starts, and
+  has no early converter failures.
 - Post-processing job `1791120` is chained with `afterany:1791080` to create
   the final `plots/metrics.png`, `plots/surfaces.png`, `plots/runtime.png`,
   and `plots/runtime.csv` artifacts automatically.
@@ -116,7 +117,7 @@ project is separate.
 ## Remaining work
 
 - Let diagnostic job `1791036` finish; keep its pre-bridge failures as history,
-  not as the final benchmark.
+  not as the final benchmark. It no longer gates the corrected run.
 - Verify corrected exhaustive job `1791080` after its dependency releases,
   fixing only environment or converter defects and preserving genuine solver
   failures/timeouts as explicit rows.
