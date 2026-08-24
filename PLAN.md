@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `da6f9dd`. Local `fo test` (5/5), Python
+- `main` is pushed through `72a678a`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
@@ -95,6 +95,9 @@ project is separate.
   (`afterany:1791036`) and successful focused verification
   (`afterok:1791111`); it uses the pushed converter fixes and will become the
   final corpus run only after the focused check passes.
+- Post-processing job `1791120` is chained with `afterany:1791080` to create
+  the final `plots/metrics.png`, `plots/surfaces.png`, `plots/runtime.png`,
+  and `plots/runtime.csv` artifacts automatically.
 
 - Obsolete pre-fix exhaustive job `1790415` was cancelled after its output was
   preserved; it must not be used as the final benchmark result.
