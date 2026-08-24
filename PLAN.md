@@ -20,8 +20,9 @@ differentiable MHD lane is intentionally not part of this repository.
   discovered cases. Its output is under
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec/benchmark_results-slurm-1788058/`;
   the live files are `slurm-vmec-benchmark-1788058.out` and `.err`.
-- The replacement run has completed jVMEC and VMEC2000 on the first 3-D W7-X
-  case and has entered the second 2-D tokamak case; jVMEC has completed both
+- At the latest check, replacement job `1788058` had started 4/281 cases,
+  completed the first three, and was running VMEC2000 on
+  `analytic/3d_quasisymmetric/qh_analytic`; jVMEC had completed all four
   observed cases. FortFront `fo check` emits known parser noise on the
   cluster gfortran and the launcher falls back to direct `fpm`; this has not
   caused a job failure.
