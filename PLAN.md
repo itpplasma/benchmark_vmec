@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `ba61efe`. Local `fo test` (5/5), Python
+- `main` is pushed through `2f4ee88`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
@@ -38,6 +38,9 @@ project is separate.
   initialization required by GVEC's stage builder. The exhaustive job was
   already running with the pre-bridge executable when this was diagnosed; its
   early GVEC conversion failures are retained as diagnostic evidence.
+- The SPECTRE bridge accepts legacy VMEC files that contain both `/` and a
+  trailing `&END`; corrected conversion smoke reaches SPECTRE initialization
+  for W7X, `input.test.vmec`, and `Ns_2048.M_32` instead of failing in f90nml.
 - The previous exhaustive job `1791025` was canceled before the CHEASE staging
   and test-isolation fixes landed. Fresh exhaustive job `1791036` is now
   submitted with one node, 48 CPUs, 96 GB, a 7-day allocation, and a
