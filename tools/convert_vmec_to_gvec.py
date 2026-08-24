@@ -75,8 +75,14 @@ def convert(source: Path, destination: Path) -> None:
     # iota from I_tor themselves, so leave that path intact.
     if "iota" not in parameters and "I_tor" not in parameters:
         parameters["iota"] = {"type": "polynomial", "coefs": [0.0]}
+    # VMEC and GVEC use opposite toroidal-angle conventions.  Apply that
+    # conversion first, then correct the poloidal orientation if the resulting
+    # cross-section is still left-handed.  Flipping zeta alone cannot change
+    # the signed cross-sectional area and left HELIOTRON-like fixtures would
+    # otherwise reach GVEC with negative Jacobians.
+    parameters = gvec_util.flip_parameters_zeta(parameters)
     if not gvec_util.check_boundary_direction(parameters):
-        parameters = gvec_util.flip_parameters_zeta(parameters)
+        parameters = gvec_util.flip_parameters_theta(parameters)
     if (
         parameters.get("X1_sin_cos") == "_cos_"
         and "X1_b_cos" in parameters
