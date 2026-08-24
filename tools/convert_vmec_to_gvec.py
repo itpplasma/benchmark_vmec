@@ -45,16 +45,13 @@ def _dense_vmec_namelist(source: Path) -> dict:
         dense[field][m][n + ntor] = float(value_text.replace("D", "E").replace("d", "e"))
         found.add(field)
 
-    # Removing f90nml's sparse-array metadata makes GVEC use the dense VMEC
-    # convention: n runs from -NTOR through +NTOR.
+    # Replace f90nml's sparse-array metadata with the dense VMEC convention:
+    # n runs from -NTOR through +NTOR.
     for field in found:
         nml[field] = dense[field]
-    start_index = nml.get("_start_index")
-    if isinstance(start_index, dict):
-        for field in found:
-            start_index.pop(field, None)
-        if not start_index:
-            nml.pop("_start_index", None)
+    start_index = nml.setdefault("_start_index", {})
+    for field in found:
+        start_index[field] = [-ntor, 0]
     return nml
 
 
