@@ -7,7 +7,9 @@ outside this repository.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `51a60eb`. Local `fo check`, `fo test --all`, and
+- `main` is pushed through `0e64bbd`. Local `fo`, `fo test test_runner_reporting`,
+  and `git diff --check` pass. The full pipeline reports only the existing
+  array-temporary warning in `app/main.f90`.
   `git diff --check` pass.
 - jVMEC’s private fork is pushed through `c75fb72e`. Its NetCDF writer now
   emits the complete WOUT schema and derives `aspect`, `volume_p`,
@@ -46,6 +48,14 @@ outside this repository.
   include VMEC++ with GNU `time` wall-clock values. The other native solver
   timings remain code-reported and are not an apples-to-apples end-to-end
   wall-clock benchmark.
+- The exhaustive job's converted `from_DESC/NCSX` lane currently times out in
+  educational_VMEC, jVMEC, VMEC2000, VMEC++, and VMEX at 300 s; DESC completes,
+  while GVEC/SPEC/SPECTRE/CHEASE fail on their native input/solver contracts.
+  Converted `from_DESC/W7X` has the same VMEC-family timeouts and an
+  educational_VMEC `LFULL3D1OUT` input incompatibility. FreeGS is now guarded
+  in the runner and is skipped outside path-qualified 2-D cases; job `1790415`
+  was built before that guard and therefore still prints the old unsupported
+  FreeGS attempts.
 
 ## Handoff
 
