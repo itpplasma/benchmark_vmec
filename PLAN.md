@@ -19,9 +19,9 @@ differentiable MHD lane is intentionally not part of this repository.
   a 7-day limit, and 281 discovered cases. Its output is under
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec/benchmark_results-slurm-1788019/`;
   the live files are `slurm-vmec-benchmark-1788019.out` and `.err`.
-- The full run has entered `numerical/1d_profile/profile_1d` after completing
-  the first two cases; VMEC2000 completed all observed cases and the job is
-  progressing. FortFront `fo check` emits known parser noise on the
+- The full run has entered `analytic/3d_quasisymmetric/qh_analytic` after
+  completing the first three cases; VMEC2000 completed all observed cases and
+  the job is progressing. FortFront `fo check` emits known parser noise on the
   cluster gfortran and the launcher falls back to direct `fpm`; this has not
   caused a job failure.
 
