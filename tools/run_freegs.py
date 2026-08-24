@@ -34,13 +34,21 @@ def main() -> int:
     # low-level writer; this is the common 2-D interchange artifact.
     psi = np.asarray(eq.psi())
     nx, ny = psi.shape
+    axis_index = np.unravel_index(np.argmax(psi), psi.shape)
+    boundary_theta = np.linspace(0.0, 2.0 * np.pi, 129, endpoint=False)
+    rbdry = eq.tokamak.R0 + 0.8 * np.cos(boundary_theta)
+    zbdry = 1.2 * np.sin(boundary_theta)
     psinorm = np.linspace(0.0, 1.0, nx, endpoint=False)
     data = {"nx": nx, "ny": ny, "rdim": eq.Rmax-eq.Rmin, "zdim": eq.Zmax-eq.Zmin,
             "rcentr": eq.tokamak.R0, "rleft": eq.Rmin, "zmid": 0.5*(eq.Zmin+eq.Zmax),
-            "rmagx": eq.R[nx//2, ny//2], "zmagx": eq.Z[nx//2, ny//2], "simagx": 0.0,
-            "sibdry": float(np.max(psi)), "bcentr": eq.fvac()/eq.tokamak.R0,
+            "rmagx": eq.R[axis_index], "zmagx": eq.Z[axis_index],
+            # FreeGS uses psi=0 on the fixed boundary and positive psi on
+            # axis; GEQDSK/CHEASE names those values simagx and sibdry.
+            "simagx": float(np.max(psi)), "sibdry": 0.0,
+            "bcentr": eq.fvac()/eq.tokamak.R0,
             "cpasma": eq.plasmaCurrent(), "fpol": eq.fpol(psinorm), "pres": eq.pressure(psinorm),
-            "psi": psi, "qpsi": np.ones(nx)}
+            "psi": psi, "qpsi": np.ones(nx), "rbdry": rbdry, "zbdry": zbdry,
+            "nbdry": len(rbdry), "nlim": 0}
     with (out / "freegs.geqdsk").open("w") as handle:
         geqdsk.write(data, handle, label="BENCH-FGS")
     metrics = {"success": True, "dimension": 2, "family": "grad_shafranov",

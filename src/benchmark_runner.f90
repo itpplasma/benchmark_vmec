@@ -12,7 +12,8 @@ module benchmark_runner
     implicit none
     private
 
-    public :: benchmark_runner_t, freegs_case_supported
+    public :: benchmark_runner_t, freegs_case_supported, chease_case_supported
+    public :: spec_case_supported, spectre_case_supported
 
     type :: implementation_entry_t
         character(len=:), allocatable :: key
@@ -567,6 +568,33 @@ contains
                     call results%clear()
                     results%error_message = 'Unsupported: FreeGS is restricted to 2-D Grad-Shafranov cases'
                     write(output_unit, '(A)') '  - freegs skipped (not a 2-D Grad-Shafranov case)'
+                else if (trim(this%implementations(j)%key) == 'chease' .and. &
+                        .not. chease_case_supported(this%test_cases(i)%str)) then
+                    call results%clear()
+                    results%error_message = 'Unsupported: CHEASE requires a 2-D GEQDSK input'
+                    write(output_unit, '(A)') '  - chease skipped (not a 2-D GEQDSK case)'
+                else if (trim(this%implementations(j)%key) == 'spec' .and. &
+                        .not. spec_case_supported(this%test_cases(i)%str)) then
+                    call results%clear()
+                    results%error_message = 'Unsupported: SPEC requires a native .sp input'
+                    write(output_unit, '(A)') '  - spec skipped (VMEC input is not a SPEC namelist)'
+                else if (trim(this%implementations(j)%key) == 'spectre' .and. &
+                        .not. spectre_case_supported(this%test_cases(i)%str)) then
+                    call results%clear()
+                    results%error_message = 'Unsupported: SPECTRE requires VMEC input or native TOML'
+                    write(output_unit, '(A)') '  - spectre skipped (input format is not supported)'
+                else if (spec_case_supported(this%test_cases(i)%str) .and. &
+                        trim(this%implementations(j)%key) /= 'spec') then
+                    call results%clear()
+                    results%error_message = 'Unsupported: native SPEC cases are not VMEC inputs'
+                    write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
+                        ' skipped (native SPEC case)'
+                else if (native_spectre_case(this%test_cases(i)%str) .and. &
+                        trim(this%implementations(j)%key) /= 'spectre') then
+                    call results%clear()
+                    results%error_message = 'Unsupported: native SPECTRE cases are not VMEC inputs'
+                    write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
+                        ' skipped (native SPECTRE case)'
                 else
                     results = this%run_single_case(i, j, timeout)
                 end if
@@ -841,6 +869,59 @@ contains
         call to_lower(lowered)
         freegs_case_supported = index(lowered, '/2d') > 0
     end function freegs_case_supported
+
+    logical function chease_case_supported(filepath)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: lowered
+
+        lowered = filepath
+        call to_lower(lowered)
+        ! CHEASE's supported interchange is EQDSK; a VMEC INDATA file is not
+        ! a valid CHEASE input even when it comes from a 2-D directory.
+        chease_case_supported = index(lowered, '/2d') > 0 .and. &
+            (path_has_suffix(lowered, '.geqdsk') .or. path_has_suffix(lowered, '.eqdsk'))
+    end function chease_case_supported
+
+    logical function spec_case_supported(filepath)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: lowered
+
+        lowered = filepath
+        call to_lower(lowered)
+        spec_case_supported = path_has_suffix(lowered, '.sp')
+    end function spec_case_supported
+
+    logical function spectre_case_supported(filepath)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: lowered
+
+        lowered = filepath
+        call to_lower(lowered)
+        ! Native SPECTRE inputs are TOML files.  VMEC INDATA files are also
+        ! accepted because the external adapter converts them before launch.
+        spectre_case_supported = path_has_suffix(lowered, '.toml') .or. &
+            index(lowered, '/input.') > 0
+    end function spectre_case_supported
+
+    logical function native_spectre_case(filepath)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: lowered
+
+        lowered = filepath
+        call to_lower(lowered)
+        native_spectre_case = path_has_suffix(lowered, '.toml') .and. &
+            index(lowered, '/spectre/') > 0
+    end function native_spectre_case
+
+    logical function path_has_suffix(path, suffix)
+        character(len=*), intent(in) :: path, suffix
+        integer :: start
+
+        path_has_suffix = .false.
+        if (len_trim(path) < len_trim(suffix)) return
+        start = len_trim(path) - len_trim(suffix) + 1
+        path_has_suffix = path(start:) == trim(suffix)
+    end function path_has_suffix
 
     subroutine split_case_path(filepath, repo_name, relative_path)
         character(len=*), intent(in) :: filepath

@@ -7,7 +7,7 @@ outside this repository.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `0e64bbd`. Local `fo`, `fo test test_runner_reporting`,
+- `main` is pushed through `6b6d244`. Local `fo`, `fo test test_runner_reporting`,
   and `git diff --check` pass. The full pipeline reports only the existing
   array-temporary warning in `app/main.f90`.
   `git diff --check` pass.
@@ -56,6 +56,18 @@ outside this repository.
   in the runner and is skipped outside path-qualified 2-D cases; job `1790415`
   was built before that guard and therefore still prints the old unsupported
   FreeGS attempts.
+- The input-contract repair is implemented locally: SPEC is invoked only for
+  native `.sp` files (a native SPEC smoke case completed without MPI_ABORT),
+  SPECTRE VMEC inputs are converted to retained TOML through
+  `tools/convert_vmec_to_spectre.py` and run through `tools/run_spectre.py`, and
+  CHEASE is admitted only for 2-D `.geqdsk`/`.eqdsk` inputs. The VMEC boundary
+  index order is transposed correctly in the SPECTRE bridge; a four-volume
+  Solovev conversion and SPECTRE solve produced `spectre_input_res.json` on
+  `scluster`. The educational-VMEC adapter now drops unsupported
+  `LFULL3D1OUT`; a W7-X run reached VMEC iterations rather than failing
+  namelist parsing. Canonical VMEC INDATA is intentionally not passed to
+  CHEASE because its required EQDSK profile/boundary contract is not losslessly
+  reconstructible from that namelist.
 
 ## Handoff
 

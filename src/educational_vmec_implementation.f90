@@ -1,5 +1,5 @@
 module educational_vmec_implementation
-    use iso_fortran_env, only: int32, real64, error_unit, output_unit
+    use iso_fortran_env, only: real64, error_unit, output_unit
     use vmec_implementation_base, only: vmec_implementation_t
     use vmec_benchmark_types, only: vmec_result_t
     use json_module
@@ -457,6 +457,11 @@ contains
             if (index(adjustl(line), 'LWOUTTXT') > 0) skip_line = .true.
             if (index(adjustl(line), 'LMAC') > 0) skip_line = .true.
             if (index(adjustl(line), 'LPRINT_ERRORS') > 0) skip_line = .true.
+            ! VMEC2000's full 3-D output switch is not part of the
+            ! educational fork's INDATA namelist.  It is an output-policy
+            ! option, so dropping it preserves the equilibrium inputs while
+            ! allowing converted W7-X/NCSX cases to parse.
+            if (index(adjustl(line), 'LFULL3D1OUT') > 0) skip_line = .true.
             if (index(adjustl(line), 'PRECON_TYPE') == 1) skip_line = .true.
             if (index(adjustl(line), 'PREC2D_THRESHOLD') == 1) skip_line = .true.
             if (index(adjustl(line), 'BCRIT') == 1) skip_line = .true.

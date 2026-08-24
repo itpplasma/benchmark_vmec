@@ -131,7 +131,7 @@ contains
         character(len=*), intent(in) :: input_file, output_dir
         integer, intent(in), optional :: timeout
         logical :: success
-        character(len=:), allocatable :: local_input, cmd
+        character(len=:), allocatable :: local_input, cmd, python_cmd
         character(len=:), allocatable :: lower_name
         integer :: stat, timeout_val
 
@@ -202,12 +202,49 @@ contains
             end if
             cmd = trim(this%executable) // ' ' // trim(parent_dir(this%path)) // &
                 '/benchmark_vmec/tools/run_freegs.py ' // trim(local_input) // ' ' // trim(output_dir)
-        case ('spec', 'spectre')
+        case ('spec')
+            ! SPEC's executable expects its native .sp namelist.  The runner
+            ! filters VMEC inputs before this point; keeping the command
+            ! literal here prevents an accidental MPI_ABORT from feeding
+            ! ``&INDATA`` to xspec.
             cmd = trim(this%executable) // ' ' // basename(local_input)
+        case ('spectre')
+            python_cmd = select_python_command(this%path)
+            if (index(lowercase(basename(local_input)), '.toml') > 0) then
+                cmd = 'PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
+                    trim(parent_dir(this%path)) // &
+                    '/benchmark_vmec/tools/run_spectre.py ' // basename(local_input)
+            else
+                ! VMEC INDATA is converted to a retained TOML artifact before
+                ! the SPECTRE minimizer is launched.  This is deliberately a
+                ! separate process so converter failures are reported as such
+                ! instead of appearing as a solver syntax error.
+                cmd = 'PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
+                    trim(parent_dir(this%path)) // &
+                    '/benchmark_vmec/tools/convert_vmec_to_spectre.py ' // basename(local_input) // &
+                    ' spectre_input.toml'
+                call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
+                    ' >> spectre.log 2>&1', exitstat=stat)
+                if (stat /= 0) then
+                    write(error_unit, '(A)') 'SPECTRE VMEC-to-TOML conversion failed'
+                    return
+                end if
+                cmd = 'PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
+                    trim(parent_dir(this%path)) // &
+                    '/benchmark_vmec/tools/run_spectre.py spectre_input.toml'
+            end if
         case ('parvmec')
             cmd = trim(this%executable) // ' ' // basename(local_input)
         case ('chease')
-            cmd = trim(this%executable) // ' ' // basename(local_input)
+            if (index(lowercase(basename(local_input)), '.geqdsk') > 0 .or. &
+                index(lowercase(basename(local_input)), '.eqdsk') > 0) then
+                cmd = 'PATH=' // trim(this%path) // '/src-f90:' // trim(this%path) // &
+                    '/scripts_for_bin:$PATH ' // trim(this%path) // &
+                    '/scripts_for_bin/run.chease.eqdsk ' // basename(local_input) // ' . .'
+            else
+                write(error_unit, '(A)') 'CHEASE requires a native GEQDSK input'
+                return
+            end if
         case default
             write(error_unit, '(A)') 'Unknown external VMEC implementation: ' // trim(this%name)
             return
@@ -226,6 +263,9 @@ contains
                 cmd = 'cd ' // trim(output_dir) // ' && ' // trim(select_python_command(this%path)) // &
                     ' desc_to_wout.py >> desc.log 2>&1'
                 call execute_command_line(trim(cmd), exitstat=stat)
+            end if
+            if (trim(lower_name) == 'chease' .and. stat == 0) then
+                call write_chease_sidecar(output_dir, stat)
             end if
             success = (stat == 0)
         else if (stat == 124) then
@@ -247,6 +287,14 @@ contains
         call results%clear()
         if (trim(lowercase(this%name)) == 'freegs') then
             call extract_freegs_results(output_dir, results)
+            return
+        end if
+        if (trim(lowercase(this%name)) == 'spectre') then
+            call extract_spectre_results(output_dir, results)
+            return
+        end if
+        if (trim(lowercase(this%name)) == 'chease') then
+            call extract_chease_results(output_dir, results)
             return
         end if
         call execute_command_line('ls -t ' // trim(output_dir) // &
@@ -340,6 +388,92 @@ contains
         results%success = success_value
         if (.not. success_value) results%error_message = 'FreeGS sidecar reports failure'
     end subroutine extract_freegs_results
+
+    subroutine extract_spectre_results(output_dir, results)
+        character(len=*), intent(in) :: output_dir
+        type(vmec_result_t), intent(inout) :: results
+        integer :: stat, unit
+        character(len=512) :: filename
+        logical :: exists
+
+        call execute_command_line('ls -t ' // trim(output_dir) // &
+            '/*_res.json 2>/dev/null | head -1 > /tmp/spectre_result.tmp', exitstat=stat)
+        if (stat /= 0) then
+            results%error_message = 'SPECTRE produced no result JSON'
+            return
+        end if
+        open(newunit=unit, file='/tmp/spectre_result.tmp', status='old', action='read', iostat=stat)
+        if (stat /= 0) then
+            results%error_message = 'Could not inspect SPECTRE result JSON'
+            return
+        end if
+        read(unit, '(A)', iostat=stat) filename
+        close(unit)
+        filename = trim(adjustl(filename))
+        inquire(file=trim(filename), exist=exists)
+        if (.not. exists) then
+            results%error_message = 'SPECTRE result JSON is missing'
+            return
+        end if
+        results%success = .true.
+        results%dimension = 3
+        results%family = 'spectre_mhd'
+        results%input_format = 'vmec_indata_or_spectre_toml'
+        results%output_format = 'spectre_json'
+    end subroutine extract_spectre_results
+
+    subroutine extract_chease_results(output_dir, results)
+        character(len=*), intent(in) :: output_dir
+        type(vmec_result_t), intent(inout) :: results
+        character(len=:), allocatable :: filename
+        integer :: unit, stat
+        logical :: exists, success_value
+        character(len=512) :: line
+
+        filename = trim(output_dir) // '/chease_result.json'
+        inquire(file=filename, exist=exists)
+        if (.not. exists) then
+            results%error_message = 'CHEASE did not produce chease_result.json'
+            return
+        end if
+        open(newunit=unit, file=filename, status='old', action='read', iostat=stat)
+        if (stat /= 0) then
+            results%error_message = 'Could not read CHEASE result sidecar'
+            return
+        end if
+        success_value = .false.
+        do
+            read(unit, '(A)', iostat=stat) line
+            if (stat /= 0) exit
+            if (index(line, '"success"') > 0) success_value = index(line, 'true') > 0
+        end do
+        close(unit)
+        results%success = success_value
+        results%dimension = 2
+        results%family = 'grad_shafranov'
+        results%input_format = 'vmec_indata_via_geqdsk'
+        results%output_format = 'geqdsk'
+        if (.not. success_value) results%error_message = 'CHEASE sidecar reports failure'
+    end subroutine extract_chease_results
+
+    subroutine write_chease_sidecar(output_dir, status)
+        character(len=*), intent(in) :: output_dir
+        integer, intent(out) :: status
+        integer :: unit
+        logical :: exists
+
+        inquire(file=trim(output_dir) // '/EQDSK_COCOS_02.OUT', exist=exists)
+        if (.not. exists) then
+            status = 1
+            return
+        end if
+        open(newunit=unit, file=trim(output_dir) // '/chease_result.json', status='replace', &
+            action='write', iostat=status)
+        if (status /= 0) return
+        write(unit, '(A)') '{"success": true, "dimension": 2, "output_format": "geqdsk"}'
+        close(unit)
+        status = 0
+    end subroutine write_chease_sidecar
 
     logical function json_number(line, key, value)
         character(len=*), intent(in) :: line, key

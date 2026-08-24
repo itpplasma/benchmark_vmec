@@ -44,13 +44,17 @@ reports plus native output sidecars.
 
 `tools/convert_equilibrium.py` converts VMEC INDATA/JSON to the benchmark's
 canonical JSON metadata and emits documented native templates or summaries for
-GVEC, GEQDSK, and SPEC. `tools/run_freegs.py` runs a 2-D FreeGS case and
+GVEC, GEQDSK, and SPEC. `tools/convert_vmec_to_spectre.py` is the ordinary
+VMEC-to-SPECTRE TOML bridge; `tools/run_spectre.py` retains SPECTRE's native
+JSON result. CHEASE is admitted only for a 2-D GEQDSK input, using its native
+`run.chease.eqdsk` wrapper. `tools/run_freegs.py` runs a 2-D FreeGS case and
 writes GEQDSK plus a JSON sidecar. Use `uv run` for these Python tools, for
 example:
 
 ```bash
 uv run --project ../FreeGS python tools/run_freegs.py cases/analytic/2d_solovev/input.solovev out
 uv run python tools/convert_equilibrium.py --help
+uv run python tools/convert_vmec_to_spectre.py input.example spectre.toml
 ```
 
 These adapters are deliberately ordinary-format utilities; they do not expose
