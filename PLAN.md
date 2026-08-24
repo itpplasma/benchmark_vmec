@@ -74,6 +74,10 @@ project is separate.
   PARVMEC notice and diagnostic failures from the pre-bridge executable that
   was already running before the latest converter fixes.
 
+- Corrected exhaustive rerun `1791080` is submitted with an `afterany:1791036`
+  dependency. It uses the pushed converter fixes and will become the final
+  corpus run after the diagnostic allocation releases its node.
+
 - Obsolete pre-fix exhaustive job `1790415` was cancelled after its output was
   preserved; it must not be used as the final benchmark result.
 
