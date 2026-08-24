@@ -8,9 +8,11 @@ from pathlib import Path
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input")
-    parser.add_argument("output")
+    parser = argparse.ArgumentParser(
+        description="Run the ordinary 2-D FreeGS lane and write GEQDSK plus metrics.",
+    )
+    parser.add_argument("input", help="benchmark case or VMEC INDATA path")
+    parser.add_argument("output", help="directory for freegs.geqdsk and freegs_result.json")
     args = parser.parse_args()
     import freegs
     from freegs import boundary, jtor

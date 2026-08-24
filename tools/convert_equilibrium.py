@@ -121,10 +121,18 @@ def common_to_native_template(common: dict, path: Path, spectre: bool) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("operation", choices=("to-common", "from-common", "vmec-to-gvec", "geqdsk-summary", "spec-summary"))
-    parser.add_argument("source")
-    parser.add_argument("destination", nargs="?")
+    parser = argparse.ArgumentParser(
+        description="Convert ordinary equilibrium files to or from benchmark metadata.",
+        epilog=("Use to-common/from-common for canonical JSON. Optional code-specific "
+                "converters are invoked only when their Python package is installed."),
+    )
+    parser.add_argument(
+        "operation",
+        choices=("to-common", "from-common", "vmec-to-gvec", "geqdsk-summary", "spec-summary"),
+        help="conversion to perform",
+    )
+    parser.add_argument("source", help="input VMEC, GEQDSK, SPEC, or SPECTRE file")
+    parser.add_argument("destination", nargs="?", help="output path (otherwise choose a suffix-based default)")
     args = parser.parse_args()
     source = Path(args.source)
     if args.operation == "to-common":
