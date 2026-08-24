@@ -682,7 +682,7 @@ contains
         ! Keep one portable Fortran namelist terminator and remove any
         ! output-only diagnostics left by legacy mixed-case fixtures.
         call execute_command_line("sed -i -E '/^[[:space:]]*&END[[:space:]]*$/Id; " // &
-                                 "^[[:space:]]*(DUMP_|dump_|LSPECTRUM_DUMP|lspectrum_dump|LDIAGNO|ldiagno)[[:space:]]*=/d' " // &
+                                 "/^[[:space:]]*(DUMP_|dump_|LSPECTRUM_DUMP|lspectrum_dump|LDIAGNO|ldiagno)[[:space:]]*=/d' " // &
                                  trim(output_file), exitstat=stat)
         if (stat /= 0) then
             write(error_unit, '(A)') "Failed to normalize jVMEC namelist"
