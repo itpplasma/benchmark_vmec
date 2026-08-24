@@ -31,6 +31,9 @@ vmec_repos/
 # Benchmark results and test data
 *_results/
 benchmark_results/
+benchmark_results-slurm-*/
+slurm-vmec-benchmark-*.out
+slurm-vmec-benchmark-*.err
 test_vmec/
 symmetric_debug_*/
 asymmetric_debug_*/
