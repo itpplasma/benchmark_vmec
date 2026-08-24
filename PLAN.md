@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `92160b6`. Local `fo test` (5/5), Python
+- `main` is pushed through `ebc2f91`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
@@ -63,6 +63,11 @@ project is separate.
   ssh scluster 'tail -f /home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/slurm-vmec-benchmark-1791036.out'
   ```
 
+- Direct corrected GVEC tokamak check `1791113` completed in 30 seconds with
+  all 7 TOML/current-optimization stages and a final state file. Its log
+  reports RMS delta-iota `1.38e-10`; the only warning is the solver's final
+  force tolerance (`5.97e-7` versus `1e-7`), not a Jacobian-sign abort.
+
 - Corrected-checkout numerical W7-X smoke `1791068` completed with exit 0 in
   5:36. Educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC, GVEC, and
   SPECTRE all completed; SPEC, FreeGS, and CHEASE were excluded by their
@@ -77,8 +82,8 @@ project is separate.
   `surfaces.png`, `runtime.png`, and `runtime.csv`).
 
 - Exhaustive job `1791036` remains stable on `node11`. At the latest check it
-  had started 221 of the 298 discovered cases (176 completion messages) after
-  1:34:09, with no MPI abort; stderr contains only the expected unavailable
+  had started 229 of the 298 discovered cases (181 completion messages) after
+  1:40:50, with no MPI abort; stderr contains only the expected unavailable
   PARVMEC notice and diagnostic failures from the pre-bridge executable that
   was already running before the latest converter fixes.
 
