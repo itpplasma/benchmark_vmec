@@ -19,7 +19,7 @@ import f90nml
 
 _BOUNDARY_FIELDS = ("rbc", "rbs", "zbc", "zbs")
 _BOUNDARY_ASSIGNMENT = re.compile(
-    r"(?im)^\s*(RBC|RBS|ZBC|ZBS)\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*=\s*"
+    r"(?im)(RBC|RBS|ZBC|ZBS)\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*=\s*"
     r"([+\-0-9.eEdD]+)"
 )
 
