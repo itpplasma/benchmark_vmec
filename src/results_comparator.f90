@@ -316,6 +316,8 @@ contains
         character(len=*), intent(in) :: output_dir
         integer :: unit, i, j, iostat
         character(len=:), allocatable :: filename
+        character(len=256) :: case_name, implementation, status, error_text
+        character(len=64) :: family, input_format, output_format
 
         ! Create output directory
         call execute_command_line("mkdir -p " // trim(output_dir))
@@ -332,18 +334,33 @@ contains
             ! Data
             do i = 1, this%n_cases
                 do j = 1, this%case_results(i)%n_impls
+                    case_name = trim(this%case_results(i)%case_name)
+                    implementation = trim(this%case_results(i)%impl_names(j))
+                    if (this%case_results(i)%results(j)%success) then
+                        status = 'success'
+                    else
+                        status = 'failed'
+                    end if
+                    error_text = ''
+                    if (allocated(this%case_results(i)%results(j)%error_message)) then
+                        error_text = trim(this%case_results(i)%results(j)%error_message)
+                    end if
+                    family = ''
+                    if (allocated(this%case_results(i)%results(j)%family)) then
+                        family = trim(this%case_results(i)%results(j)%family)
+                    end if
+                    input_format = ''
+                    if (allocated(this%case_results(i)%results(j)%input_format)) then
+                        input_format = trim(this%case_results(i)%results(j)%input_format)
+                    end if
+                    output_format = ''
+                    if (allocated(this%case_results(i)%results(j)%output_format)) then
+                        output_format = trim(this%case_results(i)%results(j)%output_format)
+                    end if
                     write(unit, '(A,",",A,",",A,",",A,",",I0,",",A,",",A,",",A)', advance='no') &
-                        trim(this%case_results(i)%case_name), trim(this%case_results(i)%impl_names(j)), &
-                        merge('success', 'failed ', this%case_results(i)%results(j)%success), &
-                        merge('', trim(this%case_results(i)%results(j)%error_message), &
-                        allocated(this%case_results(i)%results(j)%error_message)), &
+                        trim(case_name), trim(implementation), trim(status), trim(error_text), &
                         this%case_results(i)%results(j)%dimension, &
-                        merge(trim(this%case_results(i)%results(j)%family), '', &
-                        allocated(this%case_results(i)%results(j)%family)), &
-                        merge(trim(this%case_results(i)%results(j)%input_format), '', &
-                        allocated(this%case_results(i)%results(j)%input_format)), &
-                        merge(trim(this%case_results(i)%results(j)%output_format), '', &
-                        allocated(this%case_results(i)%results(j)%output_format))
+                        trim(family), trim(input_format), trim(output_format)
                     if (this%case_results(i)%results(j)%success) then
                         write(unit, '(8(",",ES14.6))') this%case_results(i)%results(j)%wb, &
                             this%case_results(i)%results(j)%betatotal, this%case_results(i)%results(j)%aspect, &
