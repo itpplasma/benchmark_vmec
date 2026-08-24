@@ -131,7 +131,7 @@ contains
         character(len=*), intent(in) :: input_file, output_dir
         integer, intent(in), optional :: timeout
         logical :: success
-        character(len=:), allocatable :: local_input, cmd, python_cmd
+        character(len=:), allocatable :: local_input, input_basename, cmd, python_cmd
         character(len=:), allocatable :: lower_name
         character(len=1024) :: benchmark_root
         integer :: stat, timeout_val, root_length, root_status
@@ -152,6 +152,7 @@ contains
             benchmark_root = trim(parent_dir(this%path)) // '/benchmark_vmec'
         end if
         local_input = trim(output_dir) // '/' // basename(input_file)
+        input_basename = basename(local_input)
         cmd = 'cp ' // trim(input_file) // ' ' // trim(local_input)
         call execute_command_line(trim(cmd), exitstat=stat)
         if (stat /= 0) then
@@ -276,7 +277,7 @@ contains
                 cmd = 'cd ' // trim(output_dir) // ' && ' // trim(this%executable) // ' ' // &
                     trim(benchmark_root) // &
                     '/tools/convert_gvec_to_common.py ' // &
-                    basename(local_input) // '_State_final.dat gvec_result.json'
+                    input_basename // '_State_final.dat gvec_result.json'
                 call execute_command_line(trim(cmd), exitstat=stat)
             end if
             if (trim(lower_name) == 'chease' .and. stat == 0) then
