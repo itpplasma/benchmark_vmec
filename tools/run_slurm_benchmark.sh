@@ -22,11 +22,26 @@ export PATH="$HOME/.local/bin:$PATH"
 # NetCDF-Fortran without administrator privileges.
 for runtime_lib_dir in \
     "$HOME/.local/openblas/usr/lib/x86_64-linux-gnu/openblas-pthread" \
-    "$HOME/.local/netcdff/usr/lib/x86_64-linux-gnu"; do
+    "$HOME/.local/netcdff/usr/lib/x86_64-linux-gnu" \
+    "/usr/lib/x86_64-linux-gnu/hdf5/serial"; do
     if [[ -d "$runtime_lib_dir" ]]; then
         export LD_LIBRARY_PATH="$runtime_lib_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     fi
 done
+# The user-local NetCDF-Fortran package is staged under ~/.local, while its
+# generated .pc file still carries the administrator prefix (/usr).  Give
+# pkg-config an explicit user-local override so fo sees netcdf.mod and the
+# linker sees the matching library.  This also keeps the fpm fallback usable.
+netcdff_pc="$HOME/.local/netcdff/usr/lib/x86_64-linux-gnu/pkgconfig/netcdf-fortran.pc"
+netcdff_override="$HOME/.local/pkgconfig/netcdf-fortran.pc"
+if [[ -f "$netcdff_pc" ]]; then
+    mkdir -p "$(dirname "$netcdff_override")"
+    if [[ ! -f "$netcdff_override" || "$netcdff_pc" -nt "$netcdff_override" ]]; then
+        sed "s#^prefix=/usr#prefix=$HOME/.local/netcdff/usr#" \
+            "$netcdff_pc" > "$netcdff_override"
+    fi
+    export PKG_CONFIG_PATH="$(dirname "$netcdff_override")${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+fi
 # Include the manually staged Java implementation whenever its checkout is
 # present.  It remains an ordinary (non-differentiable) participant.
 export BENCHMARK_INCLUDE_JVMEC="${BENCHMARK_INCLUDE_JVMEC:-1}"
