@@ -7,8 +7,9 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `25d115c`. Local `fo test test_runner_reporting`,
-  Python byte-compilation of all bridge scripts, and `git diff --check` pass.
+- `main` is pushed through `9d7ad07`. Local `fo test` (5/5), Python
+  byte-compilation of all bridge scripts, Slurm shell syntax checks, and
+  `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
   VMEX, DESC, and GVEC. GVEC's native `*_State_final.dat` is retained and
   converted to `gvec_result.json` for the common scalar comparison.
@@ -31,7 +32,8 @@ project is separate.
 - The previous exhaustive job `1791025` was canceled before the CHEASE staging
   and test-isolation fixes landed. Fresh exhaustive job `1791036` is now
   submitted with one node, 48 CPUs, 96 GB, a 7-day allocation, and a
-  600-second per-case timeout. It is currently pending scheduler priority.
+  600-second per-case timeout. It is currently pending scheduler priority;
+  Slurm estimates a start at `2026-08-25 19:11`.
   Monitor it with:
 
   ```bash
