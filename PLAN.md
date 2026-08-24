@@ -7,7 +7,7 @@ project is separate.
 
 ## Implemented
 
-- `main` is pushed at `821d7d5`. `fo check`, the Fortran tests (5/5), Python
+- `main` is pushed at `966f033`. `fo check`, the Fortran tests (5/5), Python
   byte-compilation, shell syntax checks, and `git diff --check` pass.
 - VMEC-like lanes: educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC,
   and GVEC. The wider inventory also includes SPEC, SPECTRE, FreeGS, and
@@ -24,11 +24,16 @@ project is separate.
   local-MGRID registration fix, and GVEC MPCDF MR
   [!175](https://gitlab.mpcdf.mpg.de/gvec-group/gvec/-/merge_requests/175)
   fixes ragged sparse VMEC boundary conversion with a regression test.
+- SPECTRE MR [!58](https://gitlab.com/spectre-eq/spectre/-/merge_requests/58)
+  fixes the upstream overlap sentinel/Jacobian shape mismatch. The benchmark
+  SPECTRE converter now preserves inline Fourier pairs, filters stale modes,
+  and sizes its auxiliary grid from the VMEC resolution.
 
 ## Active exhaustive run
 
 Corrected full run `1791165` is running on `node20` with a 600-second
-per-case timeout. It discovered 298 cases and writes to:
+per-case timeout. It discovered 298 cases; the latest snapshot is 87 cases
+started, 87 completed, and 9 explicit failures/unsupported rows. It writes to:
 
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791165/`
 
