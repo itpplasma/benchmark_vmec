@@ -16,7 +16,6 @@ base_dir=${BENCHMARK_BASE_DIR:-$(dirname "$repo_root")}
 output_dir=${BENCHMARK_OUTPUT_DIR:-"$repo_root/benchmark_results-slurm-${SLURM_JOB_ID:-local}"}
 timeout_seconds=${BENCHMARK_TIMEOUT:-300}
 case_match=${BENCHMARK_MATCH:-}
-export BENCHMARK_REPO_ROOT="$repo_root"
 
 case_match_args=()
 if [[ -n "$case_match" ]]; then
@@ -113,9 +112,11 @@ prepare_driver() {
 
 run_driver() {
     if [[ "$driver" == fo ]]; then
-        fo run vmec-benchmark -- "$@" --base-dir "$base_dir" --output-dir "$output_dir"
+        BENCHMARK_REPO_ROOT="$repo_root" fo run vmec-benchmark -- "$@" \
+            --base-dir "$base_dir" --output-dir "$output_dir"
     else
-        fpm run --target vmec-benchmark -- "$@" --base-dir "$base_dir" --output-dir "$output_dir"
+        BENCHMARK_REPO_ROOT="$repo_root" fpm run --target vmec-benchmark -- "$@" \
+            --base-dir "$base_dir" --output-dir "$output_dir"
     fi
 }
 
