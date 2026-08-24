@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `2f4ee88`. Local `fo test` (5/5), Python
+- `main` is pushed through `cd4c58c`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
@@ -46,7 +46,7 @@ project is separate.
   submitted with one node, 48 CPUs, 96 GB, a 7-day allocation, and a
   600-second per-case timeout. It started on `node11` and is currently
   progressing through the 298-case corpus.
-- Corrected-checkout numerical tokamak smoke `1791060` is queued with an
+- Corrected-checkout numerical tokamak smoke `1791060` was submitted with an
   8-CPU/16-GB one-hour allocation to exercise the new GVEC and SPECTRE
   bridges; it completed in 4:18 with exit 0. Educational_VMEC, jVMEC,
   VMEC2000, VMEC++, VMEX, DESC, SPECTRE, and FreeGS passed. GVEC reached its
@@ -61,6 +61,19 @@ project is separate.
   ssh scluster 'tail -f /home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/slurm-vmec-benchmark-1791036.out'
   ```
 
+- Corrected-checkout numerical W7-X smoke `1791068` completed with exit 0 in
+  5:36. Educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC, GVEC, and
+  SPECTRE all completed; SPEC, FreeGS, and CHEASE were excluded by their
+  input-format/dimensionality contracts. The corrected GVEC `(n,m)` bridge
+  therefore passes a non-axisymmetric 3-D case end to end. Results:
+  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791068/`.
+
+- Exhaustive job `1791036` remains stable on `node11`. At the latest check it
+  had started 97 of the 298 discovered cases (72 completion messages) after
+  41 minutes, with no MPI abort; stderr contains only the expected unavailable
+  PARVMEC notice and diagnostic failures from the pre-bridge executable that
+  was already running before the latest converter fixes.
+
 - Obsolete pre-fix exhaustive job `1790415` was cancelled after its output was
   preserved; it must not be used as the final benchmark result.
 
@@ -74,8 +87,8 @@ project is separate.
 
 ## Handoff
 
-After job `1791036` starts, inspect its output for immediate
-adapter/converter errors, then wait for completion. Keep genuine solver
-failures/timeouts as explicit rows; only retry environment or conversion
-defects. Regenerate plots from the final `comparison_table.csv` with
+While job `1791036` runs, inspect its output for immediate
+adapter/converter errors and keep genuine solver failures/timeouts as explicit
+rows; only retry environment or conversion defects. After completion,
+regenerate plots from the final `comparison_table.csv` with
 `tools/plot_benchmark_results.py` and record their paths here.
