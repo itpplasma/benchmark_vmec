@@ -237,7 +237,22 @@ _RUNTIME_PATTERNS = {
         re.compile(r"GVEC finished after\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*seconds", re.I),
         "GVEC finished after (s)",
     ),
+    "spectre": (
+        "spectre.log",
+        re.compile(
+            r"Minimization done \(Time elapsed\s+(\d+):(\d+):([0-9]+(?:\.[0-9]*)?)\)",
+            re.I,
+        ),
+        "SPECTRE minimization time (s)",
+    ),
 }
+
+
+def _runtime_seconds(implementation: str, match) -> float:
+    if implementation == "spectre":
+        hours, minutes, seconds = match
+        return 3600.0 * float(hours) + 60.0 * float(minutes) + float(seconds)
+    return float(match)
 
 
 def _runtime_records(result_root: Path):
@@ -258,7 +273,7 @@ def _runtime_records(result_root: Path):
             matches = pattern.findall(log_file.read_text(errors="replace"))
             if not matches:
                 continue
-            seconds = float(matches[-1])
+            seconds = _runtime_seconds(implementation_dir.name, matches[-1])
             if np.isfinite(seconds) and seconds > 0.0:
                 yield case_dir.name.replace("__", "/"), implementation_dir.name, seconds, source
 
