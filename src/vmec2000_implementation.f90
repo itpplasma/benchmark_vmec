@@ -167,8 +167,8 @@ contains
         call results%clear()
 
         ! Look for wout file - use the most recently modified one
-        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1 > /tmp/wout_file_vmec2000.tmp", &
-                                exitstat=stat)
+        call execute_command_line("ls -t " // trim(output_dir) // &
+            "/wout_*.nc 2>/dev/null | head -1 > /tmp/wout_file_vmec2000.tmp", exitstat=stat)
         if (stat == 0) then
             open(newunit=unit, file="/tmp/wout_file_vmec2000.tmp", status="old", action="read")
             read(unit, '(A)', iostat=stat) wout_file
