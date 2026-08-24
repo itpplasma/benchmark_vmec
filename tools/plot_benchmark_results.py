@@ -227,6 +227,26 @@ _RUNTIME_PATTERNS = {
         re.compile(r"TOTAL COMPUTATIONAL TIME \(SEC\)\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)", re.I),
         "total computational time (s)",
     ),
+    "educational_vmec": (
+        "educational_vmec.log",
+        re.compile(r"^real\s+([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*$", re.I | re.M),
+        "GNU time real (s)",
+    ),
+    "desc": (
+        "desc.log",
+        re.compile(r"^real\s+([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*$", re.I | re.M),
+        "GNU time real (s)",
+    ),
+    "freegs": (
+        "freegs.log",
+        re.compile(r"^real\s+([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*$", re.I | re.M),
+        "GNU time real (s)",
+    ),
+    "chease": (
+        "chease.log",
+        re.compile(r"^real\s+([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*$", re.I | re.M),
+        "GNU time real (s)",
+    ),
     "vmec2000": (
         "vmec2000.log",
         re.compile(r"TOTAL COMPUTATIONAL TIME \(SEC\)\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)", re.I),
@@ -249,7 +269,7 @@ _RUNTIME_PATTERNS = {
 
 
 def _runtime_seconds(implementation: str, match) -> float:
-    if implementation == "spectre":
+    if implementation == "spectre" and isinstance(match, tuple):
         hours, minutes, seconds = match
         return 3600.0 * float(hours) + 60.0 * float(minutes) + float(seconds)
     return float(match)
@@ -270,7 +290,14 @@ def _runtime_records(result_root: Path):
             log_file = implementation_dir / log_name
             if not log_file.is_file():
                 continue
-            matches = pattern.findall(log_file.read_text(errors="replace"))
+            text = log_file.read_text(errors="replace")
+            matches = pattern.findall(text)
+            if not matches:
+                matches = re.findall(
+                    r"^real\s+([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*$",
+                    text,
+                    re.I | re.M,
+                )
             if not matches:
                 continue
             seconds = _runtime_seconds(implementation_dir.name, matches[-1])

@@ -265,7 +265,7 @@ contains
             return
         end select
 
-        cmd = 'cd ' // trim(output_dir) // ' && timeout ' // int_to_str(timeout_val) // &
+        cmd = 'cd ' // trim(output_dir) // ' && /usr/bin/time -p timeout ' // int_to_str(timeout_val) // &
             ' ' // trim(cmd) // ' > ' // trim(lower_name) // '.log 2>&1'
         call execute_command_line(trim(cmd), exitstat=stat)
 

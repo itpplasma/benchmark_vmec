@@ -189,7 +189,7 @@ contains
         end if
         
         ! Run Educational VMEC
-        cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // &
+        cmd = "cd " // trim(output_dir) // " && /usr/bin/time -p timeout " // int_to_str(timeout_val) // &
               " " // trim(this%executable) // " " // get_basename(local_input) // &
               " > educational_vmec.log 2>&1"
         

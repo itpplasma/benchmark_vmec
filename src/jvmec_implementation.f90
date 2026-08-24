@@ -138,7 +138,7 @@ contains
         end if
         
         ! Run jVMEC with VmecRunner using the cleaned input file
-        cmd = "cd " // trim(output_dir) // " && timeout " // int_to_str(timeout_val) // " " // &
+        cmd = "cd " // trim(output_dir) // " && /usr/bin/time -p timeout " // int_to_str(timeout_val) // " " // &
               trim(this%executable) // " " // get_basename(local_input) // " ./ > jvmec.log 2>&1"
         
         ! Debug: print the command being run
