@@ -17,6 +17,19 @@ output_dir=${BENCHMARK_OUTPUT_DIR:-"$repo_root/benchmark_results-slurm-${SLURM_J
 timeout_seconds=${BENCHMARK_TIMEOUT:-300}
 
 export PATH="$HOME/.local/bin:$PATH"
+# Keep user-local scientific runtimes visible in batch shells.  These paths
+# are optional; they are used when a staged code was built against OpenBLAS or
+# NetCDF-Fortran without administrator privileges.
+for runtime_lib_dir in \
+    "$HOME/.local/openblas/usr/lib/x86_64-linux-gnu/openblas-pthread" \
+    "$HOME/.local/netcdff/usr/lib/x86_64-linux-gnu"; do
+    if [[ -d "$runtime_lib_dir" ]]; then
+        export LD_LIBRARY_PATH="$runtime_lib_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    fi
+done
+# Include the manually staged Java implementation whenever its checkout is
+# present.  It remains an ordinary (non-differentiable) participant.
+export BENCHMARK_INCLUDE_JVMEC="${BENCHMARK_INCLUDE_JVMEC:-1}"
 # Batch shells do not load the interactive model-runtime environment.  `fo`
 # delegates Fortran builds to any user-local fpm; select a stable installed
 # runtime when fpm is not already on PATH.

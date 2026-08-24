@@ -156,6 +156,21 @@ contains
                 inquire(file=trim(this%base_path) // "/FreeGS", exist=exists)
                 if (exists) path = trim(this%base_path) // "/FreeGS"
             end if
+        else if (trim(lowercase(repo_name)) == "spectre") then
+            ! The GitLab checkout is conventionally staged as `SPECTRE`,
+            ! while URL-based discovery supplies the lower-case basename.
+            inquire(file=trim(path), exist=exists)
+            if (.not. exists) then
+                inquire(file=trim(this%base_path) // "/SPECTRE", exist=exists)
+                if (exists) path = trim(this%base_path) // "/SPECTRE"
+            end if
+        else if (trim(lowercase(repo_name)) == "chease") then
+            ! CHEASE follows the same upper-case checkout convention.
+            inquire(file=trim(path), exist=exists)
+            if (.not. exists) then
+                inquire(file=trim(this%base_path) // "/CHEASE", exist=exists)
+                if (exists) path = trim(this%base_path) // "/CHEASE"
+            end if
         end if
     end function repository_manager_get_repo_path
 
