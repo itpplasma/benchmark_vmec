@@ -34,12 +34,15 @@ def _dense_vmec_namelist(source: Path) -> dict:
         for field in _BOUNDARY_FIELDS
     }
     found: set[str] = set()
-    for field, m_text, n_text, value_text in _BOUNDARY_ASSIGNMENT.findall(
+    for field, n_text, m_text, value_text in _BOUNDARY_ASSIGNMENT.findall(
         source.read_text(errors="replace")
     ):
         field = field.lower()
-        m = int(m_text)
+        # VMEC declares boundary arrays as (n, m), unlike GVEC's (m, n)
+        # maps.  Preserve that convention while placing values in the dense
+        # GVEC array.
         n = int(n_text)
+        m = int(m_text)
         if field not in dense or not (0 <= m < mpol and -ntor <= n <= ntor):
             continue
         dense[field][m][n + ntor] = float(value_text.replace("D", "E").replace("d", "e"))
