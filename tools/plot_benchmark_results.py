@@ -90,6 +90,12 @@ def _case_outputs(result_root: Path):
             yield case_dir, outputs
 
 
+def _short_case_label(case: str) -> str:
+    """Keep the x-axis readable without hiding the case identity entirely."""
+    label = case.split("/")[-1].replace("_", " ")
+    return label if len(label) <= 20 else label[:19] + "…"
+
+
 def plot_surfaces(result_root: Path, output_dir: Path) -> Path:
     cases = list(_case_outputs(result_root))
     columns = 2
@@ -137,7 +143,7 @@ def plot_metrics(result_root: Path, output_dir: Path) -> Path:
     reference_order = ("educational_vmec", "vmec2000", "vmex", "desc")
     figure, axes = plt.subplots(len(metrics), 1, figsize=(14, 8), sharex=True, squeeze=False)
     positions = np.arange(len(cases))
-    labels = [case.split("/")[-1] for case in cases]
+    labels = [_short_case_label(case) for case in cases]
     for axis, metric in zip(axes[:, 0], metrics):
         lower_errors = []
         upper_errors = []
@@ -177,21 +183,22 @@ def plot_metrics(result_root: Path, output_dir: Path) -> Path:
                 linewidth=1,
             )
         axis.axhline(0.0, color="#555555", linewidth=0.8)
-        axis.set_ylabel("relative difference (%)")
+        axis.set_ylabel("relative difference (%)", fontsize=9)
         axis.grid(axis="y", alpha=0.2)
         axis.tick_params(axis="y", labelsize=8)
-    axes[-1, 0].set_xticks(positions, labels, rotation=35, ha="right", fontsize=8)
+    axes[-1, 0].set_xticks(positions, labels, rotation=35, ha="right", fontsize=7)
     figure.legend(
         [plt.Line2D([], [], color="#111111", marker="o", linestyle="none", markersize=4),
          plt.Line2D([], [], color="#3b528b", linewidth=1)],
         ["reference (0%)", "range of available codes"],
         loc="upper center",
+        bbox_to_anchor=(0.5, 0.94),
         ncol=2,
         frameon=False,
         fontsize=8,
     )
-    figure.suptitle("Relative scalar difference from reference", fontsize=13)
-    figure.subplots_adjust(left=0.08, right=0.99, bottom=0.25, top=0.88, hspace=0.35)
+    figure.suptitle("Relative scalar difference from reference", fontsize=13, y=0.985)
+    figure.subplots_adjust(left=0.08, right=0.99, bottom=0.30, top=0.87, hspace=0.35)
     filename = output_dir / "metrics.png"
     figure.savefig(filename, dpi=180)
     plt.close(figure)
