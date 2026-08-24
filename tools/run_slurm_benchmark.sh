@@ -17,6 +17,23 @@ output_dir=${BENCHMARK_OUTPUT_DIR:-"$repo_root/benchmark_results-slurm-${SLURM_J
 timeout_seconds=${BENCHMARK_TIMEOUT:-300}
 
 export PATH="$HOME/.local/bin:$PATH"
+# Batch shells do not load the interactive model-runtime environment.  `fo`
+# delegates Fortran builds to any user-local fpm; select a stable installed
+# runtime when fpm is not already on PATH.
+if ! command -v fpm >/dev/null 2>&1; then
+    for fpm_candidate in "$HOME"/.local/fortbench-runtime-py311/bin/fpm \
+        "$HOME"/.local/fortbench-runtime-*/bin/fpm; do
+        if [[ -x "$fpm_candidate" ]]; then
+            PATH="$(dirname "$fpm_candidate"):$PATH"
+            export PATH
+            break
+        fi
+    done
+fi
+command -v fpm >/dev/null 2>&1 || {
+    printf 'fpm is required by fo but was not found in PATH or ~/.local/fortbench-runtime-*\n' >&2
+    exit 1
+}
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 export OMP_DYNAMIC=false
 export OMP_PLACES=cores
