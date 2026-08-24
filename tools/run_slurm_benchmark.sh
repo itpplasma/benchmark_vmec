@@ -16,6 +16,7 @@ base_dir=${BENCHMARK_BASE_DIR:-$(dirname "$repo_root")}
 output_dir=${BENCHMARK_OUTPUT_DIR:-"$repo_root/benchmark_results-slurm-${SLURM_JOB_ID:-local}"}
 timeout_seconds=${BENCHMARK_TIMEOUT:-300}
 case_match=${BENCHMARK_MATCH:-}
+export BENCHMARK_REPO_ROOT="$repo_root"
 
 case_match_args=()
 if [[ -n "$case_match" ]]; then

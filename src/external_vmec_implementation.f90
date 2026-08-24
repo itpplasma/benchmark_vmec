@@ -133,7 +133,8 @@ contains
         logical :: success
         character(len=:), allocatable :: local_input, cmd, python_cmd
         character(len=:), allocatable :: lower_name
-        integer :: stat, timeout_val
+        character(len=1024) :: benchmark_root
+        integer :: stat, timeout_val, root_length, root_status
 
         success = .false.
         if (.not. this%validate_input(input_file)) return
@@ -145,6 +146,11 @@ contains
 
         timeout_val = 300
         if (present(timeout)) timeout_val = timeout
+        benchmark_root = ''
+        call get_environment_variable('BENCHMARK_REPO_ROOT', benchmark_root, length=root_length, status=root_status)
+        if (root_status /= 0 .or. root_length <= 0) then
+            benchmark_root = trim(parent_dir(this%path)) // '/benchmark_vmec'
+        end if
         local_input = trim(output_dir) // '/' // basename(input_file)
         cmd = 'cp ' // trim(input_file) // ' ' // trim(local_input)
         call execute_command_line(trim(cmd), exitstat=stat)
@@ -200,8 +206,8 @@ contains
                 write(error_unit, '(A)') 'FreeGS supports only the benchmark 2-D Grad-Shafranov lane'
                 return
             end if
-            cmd = trim(this%executable) // ' ' // trim(parent_dir(this%path)) // &
-                '/benchmark_vmec/tools/run_freegs.py ' // trim(local_input) // ' ' // trim(output_dir)
+            cmd = trim(this%executable) // ' ' // trim(benchmark_root) // &
+                '/tools/run_freegs.py ' // trim(local_input) // ' ' // trim(output_dir)
         case ('spec')
             ! SPEC's executable expects its native .sp namelist.  The runner
             ! filters VMEC inputs before this point; keeping the command
@@ -212,16 +218,16 @@ contains
             python_cmd = select_python_command(this%path)
             if (index(lowercase(basename(local_input)), '.toml') > 0) then
                 cmd = 'env PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
-                    trim(parent_dir(this%path)) // &
-                    '/benchmark_vmec/tools/run_spectre.py ' // basename(local_input)
+                    trim(benchmark_root) // &
+                    '/tools/run_spectre.py ' // basename(local_input)
             else
                 ! VMEC INDATA is converted to a retained TOML artifact before
                 ! the SPECTRE minimizer is launched.  This is deliberately a
                 ! separate process so converter failures are reported as such
                 ! instead of appearing as a solver syntax error.
                 cmd = 'env PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
-                    trim(parent_dir(this%path)) // &
-                    '/benchmark_vmec/tools/convert_vmec_to_spectre.py ' // basename(local_input) // &
+                    trim(benchmark_root) // &
+                    '/tools/convert_vmec_to_spectre.py ' // basename(local_input) // &
                     ' spectre_input.toml'
                 call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
                     ' >> spectre.log 2>&1', exitstat=stat)
@@ -230,8 +236,8 @@ contains
                     return
                 end if
                 cmd = 'env PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
-                    trim(parent_dir(this%path)) // &
-                    '/benchmark_vmec/tools/run_spectre.py spectre_input.toml'
+                    trim(benchmark_root) // &
+                    '/tools/run_spectre.py spectre_input.toml'
             end if
         case ('parvmec')
             cmd = trim(this%executable) // ' ' // basename(local_input)
@@ -268,8 +274,8 @@ contains
                 ! GVEC's native state is a text file rather than VMEC NetCDF.
                 ! Retain it and emit the ordinary scalar comparison sidecar.
                 cmd = 'cd ' // trim(output_dir) // ' && ' // trim(this%executable) // ' ' // &
-                    trim(parent_dir(this%path)) // &
-                    '/benchmark_vmec/tools/convert_gvec_to_common.py ' // &
+                    trim(benchmark_root) // &
+                    '/tools/convert_gvec_to_common.py ' // &
                     basename(local_input) // '_State_final.dat gvec_result.json'
                 call execute_command_line(trim(cmd), exitstat=stat)
             end if
