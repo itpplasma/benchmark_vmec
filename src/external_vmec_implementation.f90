@@ -264,6 +264,15 @@ contains
                     ' desc_to_wout.py >> desc.log 2>&1'
                 call execute_command_line(trim(cmd), exitstat=stat)
             end if
+            if (trim(lower_name) == 'gvec' .and. stat == 0) then
+                ! GVEC's native state is a text file rather than VMEC NetCDF.
+                ! Retain it and emit the ordinary scalar comparison sidecar.
+                cmd = 'cd ' // trim(output_dir) // ' && ' // trim(this%executable) // ' ' // &
+                    trim(parent_dir(this%path)) // &
+                    '/benchmark_vmec/tools/convert_gvec_to_common.py ' // &
+                    basename(local_input) // '_State_final.dat gvec_result.json'
+                call execute_command_line(trim(cmd), exitstat=stat)
+            end if
             if (trim(lower_name) == 'chease' .and. stat == 0) then
                 call write_chease_sidecar(output_dir, stat)
             end if
@@ -287,6 +296,10 @@ contains
         call results%clear()
         if (trim(lowercase(this%name)) == 'freegs') then
             call extract_freegs_results(output_dir, results)
+            return
+        end if
+        if (trim(lowercase(this%name)) == 'gvec') then
+            call extract_gvec_results(output_dir, results)
             return
         end if
         if (trim(lowercase(this%name)) == 'spectre') then
@@ -388,6 +401,51 @@ contains
         results%success = success_value
         if (.not. success_value) results%error_message = 'FreeGS sidecar reports failure'
     end subroutine extract_freegs_results
+
+    subroutine extract_gvec_results(output_dir, results)
+        character(len=*), intent(in) :: output_dir
+        type(vmec_result_t), intent(inout) :: results
+        character(len=512) :: line
+        character(len=:), allocatable :: filename
+        integer :: unit, stat
+        logical :: exists, success_value
+        real(real64) :: value
+
+        filename = trim(output_dir) // '/gvec_result.json'
+        inquire(file=filename, exist=exists)
+        if (.not. exists) then
+            results%error_message = 'GVEC did not produce gvec_result.json'
+            return
+        end if
+        open(newunit=unit, file=filename, status='old', action='read', iostat=stat)
+        if (stat /= 0) then
+            results%error_message = 'Could not read GVEC result sidecar'
+            return
+        end if
+        success_value = .false.
+        do
+            read(unit, '(A)', iostat=stat) line
+            if (stat /= 0) exit
+            if (index(line, '"success"') > 0) success_value = index(line, 'true') > 0
+            if (json_number(line, 'pressure_axis', value)) results%pressure_axis = value
+            if (json_number(line, 'plasma_current', value)) results%plasma_current = value
+            if (json_number(line, 'betapol', value)) results%betapol = value
+            if (json_number(line, 'force_residual', value)) results%force_residual = value
+            if (json_number(line, 'aspect', value)) results%aspect = value
+            if (json_number(line, 'raxis_cc', value)) results%raxis_cc = value
+            if (json_number(line, 'volume_p', value)) results%volume_p = value
+            if (json_number(line, 'iotaf_edge', value)) results%iotaf_edge = value
+            if (json_number(line, 'rmajor_p', value)) results%rmajor_p = value
+            if (json_number(line, 'aminor_p', value)) results%aminor_p = value
+        end do
+        close(unit)
+        results%success = success_value
+        results%dimension = 3
+        results%family = 'vmec_family'
+        results%input_format = 'vmec_indata'
+        results%output_format = 'gvec_state'
+        if (.not. success_value) results%error_message = 'GVEC sidecar reports failure'
+    end subroutine extract_gvec_results
 
     subroutine extract_spectre_results(output_dir, results)
         character(len=*), intent(in) :: output_dir
