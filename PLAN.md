@@ -52,7 +52,8 @@ project is separate.
   8-CPU/16-GB one-hour allocation to exercise the new GVEC and SPECTRE
   bridges; it completed in 4:18 with exit 0. Educational_VMEC, jVMEC,
   VMEC2000, VMEC++, VMEX, DESC, SPECTRE, and FreeGS passed. GVEC reached its
-  solver and reported the physical `detJ<0` minimization failure; SPEC and
+  solver and reported `detJ<0` while the old INI bridge had dropped the
+  current constraint; that result is superseded by the TOML repair. SPEC and
   CHEASE were contract-appropriate skips. Results:
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791060/`.
   Monitor it with:
@@ -114,6 +115,8 @@ project is separate.
   failures/timeouts as explicit rows.
 - After `1791080` completes, regenerate scalar, surface, and timing plots from
   its final `comparison_table.csv`, inspect them, and record their paths here.
-- Decide whether the corrected tokamak GVEC `detJ<0` solver failure remains an
-  accepted physical non-convergence or merits a separately tuned case; the
-  corrected non-axisymmetric W7-X GVEC run already passes end to end.
+- Confirm runner-level tokamak job `1791111` records the same successful
+  current-constrained TOML path as direct check `1791113`; the old `1791060`
+  `detJ<0` result is a superseded conversion defect, not an accepted physical
+  non-convergence. The corrected non-axisymmetric W7-X GVEC run already passes
+  end to end.
