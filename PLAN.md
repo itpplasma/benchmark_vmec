@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `72a678a`. Local `fo test` (5/5), Python
+- `main` is pushed through `f3355e4`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
@@ -89,8 +89,11 @@ project is separate.
   was already running before the latest converter fixes.
 
 - Corrected tokamak GVEC rerun `1791111` is submitted with an
-  `afterany:1791036` dependency. It will verify that the TOML/current-profile
-  repair removes the earlier `detJ<0` conversion-induced failure.
+  no dependency and completed with exit 0 in 3:46. The runner recorded
+  successful educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC, GVEC,
+  SPECTRE, and FreeGS rows; SPEC and CHEASE were contract-appropriate skips.
+  Results:
+  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791111/`.
 - Corrected exhaustive rerun `1791080` waits for diagnostic completion
   (`afterany:1791036`) and successful focused verification
   (`afterok:1791111`); it uses the pushed converter fixes and will become the
@@ -119,8 +122,7 @@ project is separate.
   failures/timeouts as explicit rows.
 - After `1791080` completes, regenerate scalar, surface, and timing plots from
   its final `comparison_table.csv`, inspect them, and record their paths here.
-- Confirm runner-level tokamak job `1791111` records the same successful
-  current-constrained TOML path as direct check `1791113`; the old `1791060`
-  `detJ<0` result is a superseded conversion defect, not an accepted physical
-  non-convergence. The corrected non-axisymmetric W7-X GVEC run already passes
-  end to end.
+- The runner-level tokamak check now confirms the direct TOML/current-profile
+  result; the old `1791060` `detJ<0` result is a superseded conversion defect,
+  not an accepted physical non-convergence. The corrected non-axisymmetric
+  W7-X GVEC run also passes end to end.
