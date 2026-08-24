@@ -65,11 +65,10 @@ def convert(source: Path, destination: Path) -> None:
         raise SystemExit("GVEC conversion needs the selected GVEC Python environment") from exc
 
     parameters = gvec_util.parameters_from_vmec(_dense_vmec_namelist(source), source.name)
-    # GVEC's run-stage construction requires an initial iota profile even when
-    # VMEC supplies neither AI nor AC.  For current-constrained inputs its own
-    # runner eventually supplies this same seed; doing it here also keeps the
-    # fixed-profile path explicit without changing the I_tor constraint.
-    if "iota" not in parameters:
+    # GVEC's fixed-profile path requires an initial iota profile when VMEC
+    # supplies neither AI nor AC.  Current-constrained TOML runs initialize
+    # iota from I_tor themselves, so leave that path intact.
+    if "iota" not in parameters and "I_tor" not in parameters:
         parameters["iota"] = {"type": "polynomial", "coefs": [0.0]}
     if not gvec_util.check_boundary_direction(parameters):
         parameters = gvec_util.flip_parameters_zeta(parameters)

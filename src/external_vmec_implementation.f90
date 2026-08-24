@@ -185,17 +185,19 @@ contains
                 ! The upstream converter assumes dense rectangular Fourier
                 ! arrays.  The benchmark bridge first normalizes sparse VMEC
                 ! assignments such as RBC(0,0) and RBC(1,1), then delegates
-                ! to GVEC's ordinary parameter writer.
+                ! to GVEC's TOML writer.  TOML is required here because GVEC's
+                ! legacy INI writer drops I_tor/picard_current for current-
+                ! constrained VMEC inputs.
                 cmd = trim(this%executable) // ' ' // trim(benchmark_root) // &
                     '/tools/convert_vmec_to_gvec.py ' // basename(local_input) // &
-                    ' parameter.ini'
+                    ' parameter.toml'
                 call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
                     ' >> gvec.log 2>&1', exitstat=stat)
                 if (stat /= 0) then
                     write(error_unit, '(A)') 'GVEC VMEC-to-parameter conversion failed'
                     return
                 end if
-                local_input = trim(output_dir) // '/parameter.ini'
+                local_input = trim(output_dir) // '/parameter.toml'
             end if
             if (index(trim(this%executable), 'python') > 0) then
                 cmd = trim(this%executable) // ' -m gvec.scripts.main run ' // basename(local_input)
