@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-"""Plot completed benchmark WOUT outputs.
+"""Plot completed benchmark WOUT outputs and reported runtimes.
 
 Usage::
 
     python tools/plot_benchmark_results.py benchmark_results-slurm-1788058
 
-The input directory is a Slurm result directory.  The script only uses native
-NetCDF WOUT files that are already present, so incomplete or unsupported rows
-are skipped.  It writes ``surfaces.png`` (phi=0 boundary overlays) and
-``metrics.png`` (one relative-difference dot per code and case) to the
-selected output folder.
+The input directory is a Slurm result directory.  Native NetCDF WOUT files
+are used for the surfaces and scalar plots, so incomplete or unsupported rows
+are skipped.  Solver-reported timing lines are used for ``runtime.png`` and
+``runtime.csv``; codes without a machine-readable timing line are omitted from
+that figure rather than silently mixing in a different measurement.  All
+outputs are written to the selected output folder.
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -162,6 +165,118 @@ def _short_case_label(case: str) -> str:
     return label if len(label) <= 20 else label[:19] + "…"
 
 
+_RUNTIME_PATTERNS = {
+    "jvmec": (
+        "jvmec.log",
+        re.compile(r"total execution time:\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*s", re.I),
+        "total execution time (s)",
+    ),
+    "vmex": (
+        "vmex.log",
+        re.compile(r"TOTAL COMPUTATIONAL TIME \(SEC\)\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)", re.I),
+        "total computational time (s)",
+    ),
+    "vmec2000": (
+        "vmec2000.log",
+        re.compile(r"TOTAL COMPUTATIONAL TIME \(SEC\)\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)", re.I),
+        "total computational time (s)",
+    ),
+    "gvec": (
+        "gvec.log",
+        re.compile(r"GVEC finished after\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*seconds", re.I),
+        "GVEC finished after (s)",
+    ),
+}
+
+
+def _runtime_records(result_root: Path):
+    """Yield ``(case, implementation, seconds, source)`` from native logs.
+
+    Timing formats differ between codes.  Keep the patterns explicit so a
+    progress counter or timestamp cannot accidentally be presented as runtime.
+    """
+    for case_dir in sorted(p for p in result_root.iterdir() if p.is_dir()):
+        for implementation_dir in sorted(p for p in case_dir.iterdir() if p.is_dir()):
+            pattern_info = _RUNTIME_PATTERNS.get(implementation_dir.name)
+            if pattern_info is None:
+                continue
+            log_name, pattern, source = pattern_info
+            log_file = implementation_dir / log_name
+            if not log_file.is_file():
+                continue
+            matches = pattern.findall(log_file.read_text(errors="replace"))
+            if not matches:
+                continue
+            seconds = float(matches[-1])
+            if np.isfinite(seconds) and seconds > 0.0:
+                yield case_dir.name.replace("__", "/"), implementation_dir.name, seconds, source
+
+
+def plot_runtime(result_root: Path, output_dir: Path) -> Path:
+    """Plot one native, code-reported runtime marker per code and case."""
+    records = list(_runtime_records(result_root))
+    if not records:
+        raise SystemExit(f"No recognized solver timing lines found below {result_root}")
+
+    csv_filename = output_dir / "runtime.csv"
+    with csv_filename.open("w", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(("case", "implementation", "runtime_seconds", "timing_source"))
+        writer.writerows(records)
+
+    cases = list(dict.fromkeys(case for case, _, _, _ in records))
+    reference_order = ("educational_vmec", "vmec2000", "vmex", "desc", "jvmec", "gvec")
+    codes = []
+    for code in (*reference_order, *sorted({implementation for _, implementation, _, _ in records})):
+        if code not in codes and any(implementation == code for _, implementation, _, _ in records):
+            codes.append(code)
+    markers = ("o", "s", "^", "D", "P", "X", "v", "<", ">", "*", "h")
+    colors = plt.get_cmap("cividis")(np.linspace(0.12, 0.88, max(1, len(codes))))
+    offsets = np.linspace(-0.28, 0.28, max(1, len(codes)))
+    values = {(case, implementation): seconds for case, implementation, seconds, _ in records}
+
+    figure, axis = plt.subplots(figsize=(13, 5.5))
+    positions = np.arange(len(cases))
+    for code_index, code in enumerate(codes):
+        x_values = []
+        y_values = []
+        for position, case in zip(positions, cases):
+            seconds = values.get((case, code))
+            if seconds is not None:
+                x_values.append(position + offsets[code_index])
+                y_values.append(seconds)
+        if x_values:
+            axis.scatter(
+                x_values,
+                y_values,
+                color=colors[code_index],
+                marker=markers[code_index % len(markers)],
+                s=34,
+                linewidths=0.35,
+                edgecolors="#222222",
+                label=code,
+            )
+    axis.set_yscale("log")
+    axis.set_ylabel("reported solver runtime (s)", fontsize=9)
+    axis.set_xticks(positions, [_short_case_label(case) for case in cases], rotation=35, ha="right", fontsize=7)
+    axis.tick_params(axis="y", labelsize=8)
+    axis.grid(axis="y", which="both", alpha=0.2)
+    axis.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=min(5, len(codes)), frameon=False, fontsize=8)
+    axis.set_title("Native solver-reported runtime by case", fontsize=12, pad=34)
+    figure.text(
+        0.01,
+        0.01,
+        "Only recognized timing lines are shown; values are not end-to-end benchmark wall time.",
+        fontsize=7,
+        color="#555555",
+    )
+    figure.subplots_adjust(left=0.08, right=0.99, bottom=0.28, top=0.80)
+    filename = output_dir / "runtime.png"
+    figure.savefig(filename, dpi=180)
+    plt.close(figure)
+    return filename
+
+
 def plot_surfaces(result_root: Path, output_dir: Path) -> Path:
     cases = list(_case_outputs(result_root))
     columns = 2
@@ -285,6 +400,7 @@ def main() -> None:
         raise SystemExit(f"No completed WOUT NetCDF files found below {result_root}")
     print(plot_surfaces(result_root, output_dir))
     print(plot_metrics(result_root, output_dir))
+    print(plot_runtime(result_root, output_dir))
 
 
 if __name__ == "__main__":

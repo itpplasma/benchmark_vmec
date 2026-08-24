@@ -63,8 +63,10 @@ uv run --with netCDF4 --with matplotlib python tools/plot_benchmark_results.py \
   benchmark_results-slurm-<job-id>
 ```
 
-This writes boundary overlays and scalar-comparison plots in the result
-directory's `plots/` folder; incomplete or unsupported rows are skipped.
+This writes boundary overlays, scalar-comparison plots, and (where native log
+timing lines exist) `runtime.png` plus `runtime.csv` in the result directory's
+`plots/` folder. Incomplete or unsupported rows are skipped; the runtime plot
+is explicitly limited to code-reported timings and is not end-to-end wall time.
 
 ## Repository layout
 

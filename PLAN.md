@@ -7,7 +7,7 @@ outside this repository.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `a03498d`. Local `fo check`, `fo test --all`, and
+- `main` is pushed through `51a60eb`. Local `fo check`, `fo test --all`, and
   `git diff --check` pass.
 - jVMEC’s private fork is pushed through `c75fb72e`. Its NetCDF writer now
   emits the complete WOUT schema and derives `aspect`, `volume_p`,
@@ -39,6 +39,14 @@ outside this repository.
 
   Results will be in
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec/benchmark_results-slurm-1790415/`.
+- The completed canonical subset has an interim native-timing plot at
+  `benchmark_vmec_plots/1790415-runtime/runtime.png` (and `runtime.csv`). It
+  contains six cases and timing records for jVMEC, VMEX, and VMEC2000; GVEC has
+  a timing record only for Solovev. Educational_VMEC, DESC, FreeGS, CHEASE,
+  SPEC, SPECTRE, and VMEC++ do not emit a machine-readable timing line in
+  these logs, so they are omitted rather than given a fabricated value. These
+  native solver times are not an apples-to-apples end-to-end wall-clock
+  benchmark.
 
 ## Handoff
 
