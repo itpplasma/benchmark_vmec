@@ -39,20 +39,43 @@ export OMP_DYNAMIC=false
 export OMP_PLACES=cores
 export OMP_PROC_BIND=spread
 
+driver=fo
+prepare_driver() {
+    # Prefer the repository-standard fo checks.  Some older cluster fpm builds
+    # concatenate -pipe with pkg-config include flags; use the same fpm project
+    # directly if that backend-specific failure is encountered.
+    if fo check; then
+        driver=fo
+        if [[ "$mode" == smoke ]]; then
+            fo test --all
+        fi
+    else
+        printf 'fo check failed; retrying the same project through fpm\n' >&2
+        fpm build
+        if [[ "$mode" == smoke ]]; then
+            fpm test
+        fi
+        driver=fpm
+    fi
+}
+
 run_driver() {
-    fo run vmec-benchmark -- "$@" --base-dir "$base_dir" --output-dir "$output_dir"
+    if [[ "$driver" == fo ]]; then
+        fo run vmec-benchmark -- "$@" --base-dir "$base_dir" --output-dir "$output_dir"
+    else
+        fpm run --target vmec-benchmark -- "$@" --base-dir "$base_dir" --output-dir "$output_dir"
+    fi
 }
 
 case "$mode" in
     smoke)
-        fo check
-        fo test --all
+        prepare_driver
         run_driver list-repos
         run_driver list-cases --match 'cases/analytic/2d_solovev' --limit 1
         run_driver run --match 'cases/analytic/2d_solovev' --limit 1 --timeout "$timeout_seconds"
         ;;
     full)
-        fo check
+        prepare_driver
         run_driver list-repos
         run_driver list-cases
         run_driver run --timeout "$timeout_seconds"
