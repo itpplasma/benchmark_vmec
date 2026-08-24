@@ -4,7 +4,7 @@ module vmec_implementation_base
     implicit none
     private
 
-    public :: vmec_implementation_t, select_python_command
+    public :: vmec_implementation_t, select_python_command, prepare_vmec_input
 
     type, abstract :: vmec_implementation_t
         character(len=:), allocatable :: name
@@ -47,6 +47,39 @@ module vmec_implementation_base
     end interface
 
 contains
+
+    logical function prepare_vmec_input(input_file, output_file, implementation_path) result(success)
+        character(len=*), intent(in) :: input_file, output_file, implementation_path
+        character(len=:), allocatable :: benchmark_root, source_dir, python_cmd, cmd
+        character(len=1024) :: root_value
+        integer :: root_length, root_status, last_slash, stat
+
+        success = .false.
+        call get_environment_variable('BENCHMARK_REPO_ROOT', root_value, &
+                                      length=root_length, status=root_status)
+        if (root_status == 0 .and. root_length > 0) then
+            benchmark_root = trim(root_value(1:root_length))
+        else
+            ! Local smoke tests are launched from the benchmark checkout.
+            benchmark_root = '.'
+        end if
+
+        last_slash = index(trim(input_file), '/', back=.true.)
+        if (last_slash > 1) then
+            source_dir = trim(input_file(:last_slash-1))
+        else
+            source_dir = '.'
+        end if
+        python_cmd = select_python_command(implementation_path)
+        cmd = trim(python_cmd) // ' ' // trim(benchmark_root) // &
+              '/tools/prepare_vmec_input.py ' // trim(input_file) // ' ' // &
+              trim(output_file) // ' --search-root ' // trim(source_dir)
+        call execute_command_line(trim(cmd), exitstat=stat)
+        success = (stat == 0)
+        if (.not. success) then
+            write(error_unit, '(A)') 'Failed to prepare VMEC input: ' // trim(input_file)
+        end if
+    end function prepare_vmec_input
 
     function select_python_command(repo_path) result(python_cmd)
         character(len=*), intent(in) :: repo_path

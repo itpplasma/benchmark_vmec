@@ -1,6 +1,6 @@
 module vmec2000_implementation
     use iso_fortran_env, only: int32, real64, error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t, select_python_command
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
@@ -86,7 +86,7 @@ contains
         character(len=*), intent(in) :: output_dir
         integer, intent(in), optional :: timeout
         logical :: success
-        character(len=:), allocatable :: local_input, cmd, python_script, python_cmd
+        character(len=:), allocatable :: local_input, prepared_input, cmd, python_script, python_cmd
         integer :: stat, timeout_val, unit
 
         success = .false.
@@ -103,8 +103,14 @@ contains
         python_cmd = select_python_command(this%path)
 
         local_input = trim(output_dir) // "/" // get_basename(input_file)
-        cmd = "cp " // trim(input_file) // " " // trim(local_input)
+        prepared_input = trim(output_dir) // "/input_prepared.vmec"
+        if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
+        cmd = "cp " // trim(prepared_input) // " " // trim(local_input)
         call execute_command_line(trim(cmd), exitstat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to copy prepared input file to output directory"
+            return
+        end if
 
         python_script = trim(output_dir) // "/run_vmec2000.py"
         open(newunit=unit, file=python_script, status='replace', action='write', iostat=stat)

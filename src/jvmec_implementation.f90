@@ -1,6 +1,6 @@
 module jvmec_implementation
     use iso_fortran_env, only: real64, error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t
+    use vmec_implementation_base, only: vmec_implementation_t, prepare_vmec_input
     use vmec_benchmark_types, only: vmec_result_t
     use json_module
     implicit none
@@ -96,7 +96,7 @@ contains
         character(len=*), intent(in) :: output_dir
         integer, intent(in), optional :: timeout
         logical :: success
-        character(len=:), allocatable :: indata_file, local_input, cmd
+        character(len=:), allocatable :: indata_file, prepared_input, local_input, cmd
         integer :: stat, timeout_val
         logical :: is_json
         
@@ -123,6 +123,12 @@ contains
             ! Copy input file to output directory and clean it for jVMEC
             indata_file = input_file
         end if
+
+        ! Normalize legacy diagnostic switches and stage any referenced MGRID
+        ! fixture before jVMEC's light-weight text cleanup.
+        prepared_input = trim(output_dir) // "/input_prepared.vmec"
+        if (.not. prepare_vmec_input(indata_file, prepared_input, this%path)) return
+        indata_file = prepared_input
         
         ! Create a cleaned version of the input file for jVMEC
         local_input = trim(output_dir) // "/input_cleaned.txt"
@@ -670,6 +676,14 @@ contains
         call execute_command_line("sed -i 's/,$//' " // trim(output_file), exitstat=stat)
         if (stat /= 0) then
             write(error_unit, '(A)') "Failed to remove trailing commas"
+            return
+        end if
+
+        ! Keep one portable Fortran namelist terminator and remove any
+        ! output-only diagnostics left by legacy mixed-case fixtures.
+        call execute_command_line("sed -i -E '/^[[:space:]]*&END[[:space:]]*$/Id; /^[[:space:]]*(DUMP_|dump_|LSPECTRUM_DUMP|lspectrum_dump|LDIAGNO|ldiagno)[[:space:]]*=/d' " // trim(output_file), exitstat=stat)
+        if (stat /= 0) then
+            write(error_unit, '(A)') "Failed to normalize jVMEC namelist"
             return
         end if
         

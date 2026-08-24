@@ -23,6 +23,17 @@ if [[ -n "$case_match" ]]; then
 fi
 
 export PATH="$HOME/.local/bin:$PATH"
+export BENCHMARK_BASE_DIR="$base_dir"
+# Index reusable magnetic-grid fixtures once per allocation.  Several upstream
+# VMEC tests refer to a grid by basename while running in an isolated output
+# directory; adapters use this index to stage the matching file when present.
+mgrid_index="${TMPDIR:-/tmp}/vmec-benchmark-mgrid-${SLURM_JOB_ID:-local}.txt"
+if [[ ! -s "$mgrid_index" ]]; then
+    mgrid_index_tmp="${mgrid_index}.tmp.$$"
+    find "$base_dir" -type f -iname 'mgrid*' -print 2>/dev/null > "$mgrid_index_tmp" || true
+    mv -f "$mgrid_index_tmp" "$mgrid_index"
+fi
+export VMEC_BENCHMARK_MGRID_INDEX="$mgrid_index"
 # Keep user-local scientific runtimes visible in batch shells.  These paths
 # are optional; they are used when a staged code was built against OpenBLAS or
 # NetCDF-Fortran without administrator privileges.

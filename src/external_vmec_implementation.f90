@@ -1,6 +1,6 @@
 module external_vmec_implementation
     use iso_fortran_env, only: error_unit, output_unit, real64
-    use vmec_implementation_base, only: vmec_implementation_t, select_python_command
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
@@ -131,7 +131,7 @@ contains
         character(len=*), intent(in) :: input_file, output_dir
         integer, intent(in), optional :: timeout
         logical :: success
-        character(len=:), allocatable :: local_input, input_basename, cmd, python_cmd
+        character(len=:), allocatable :: local_input, prepared_input, input_basename, cmd, python_cmd
         character(len=:), allocatable :: lower_name
         character(len=1024) :: benchmark_root
         integer :: stat, timeout_val, root_length, root_status
@@ -153,14 +153,20 @@ contains
         end if
         local_input = trim(output_dir) // '/' // basename(input_file)
         input_basename = basename(local_input)
-        cmd = 'cp ' // trim(input_file) // ' ' // trim(local_input)
+        lower_name = lowercase(this%name)
+        if (trim(lower_name) == 'vmex') then
+            prepared_input = trim(output_dir) // '/input_prepared.vmec'
+            if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
+            cmd = 'cp ' // trim(prepared_input) // ' ' // trim(local_input)
+        else
+            cmd = 'cp ' // trim(input_file) // ' ' // trim(local_input)
+        end if
         call execute_command_line(trim(cmd), exitstat=stat)
         if (stat /= 0) then
             write(error_unit, '(A)') 'Failed to copy input for ' // trim(this%name)
             return
         end if
 
-        lower_name = lowercase(this%name)
         select case (trim(lower_name))
         case ('vmex')
             if (index(trim(this%executable), '/python') > 0 .or. &

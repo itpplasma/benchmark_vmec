@@ -1,6 +1,6 @@
 module educational_vmec_implementation
     use iso_fortran_env, only: real64, error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t
+    use vmec_implementation_base, only: vmec_implementation_t, prepare_vmec_input
     use vmec_benchmark_types, only: vmec_result_t
     use json_module
     use wout_reader, only: wout_data_t, read_wout_file
@@ -146,7 +146,7 @@ contains
         character(len=*), intent(in) :: output_dir
         integer, intent(in), optional :: timeout
         logical :: success
-        character(len=:), allocatable :: indata_file, local_input, cmd
+        character(len=:), allocatable :: indata_file, prepared_input, local_input, cmd
         integer :: stat, timeout_val
         logical :: is_json
         
@@ -171,7 +171,13 @@ contains
         else
             indata_file = input_file
         end if
-        
+
+        ! Normalize legacy diagnostic switches and stage any referenced MGRID
+        ! fixture before applying the educational fork's additional aliases.
+        prepared_input = trim(output_dir) // "/input_prepared.vmec"
+        if (.not. prepare_vmec_input(indata_file, prepared_input, this%path)) return
+        indata_file = prepared_input
+
         ! Copy and clean input file to output directory
         local_input = trim(output_dir) // "/" // get_basename(indata_file)
         if (.not. this%clean_input_for_educational_vmec(indata_file, local_input)) then
@@ -462,6 +468,11 @@ contains
             ! option, so dropping it preserves the equilibrium inputs while
             ! allowing converted W7-X/NCSX cases to parse.
             if (index(adjustl(line), 'LFULL3D1OUT') > 0) skip_line = .true.
+            ! Upstream fixtures often enable solver-specific diagnostic dumps.
+            ! They are output policy only and are not understood by the
+            ! educational fork; remove either case spelling before parsing.
+            if (index(adjustl(line), 'DUMP_') > 0) skip_line = .true.
+            if (index(adjustl(line), 'dump_') > 0) skip_line = .true.
             if (index(adjustl(line), 'PRECON_TYPE') == 1) skip_line = .true.
             if (index(adjustl(line), 'PREC2D_THRESHOLD') == 1) skip_line = .true.
             if (index(adjustl(line), 'BCRIT') == 1) skip_line = .true.

@@ -25,7 +25,12 @@ _BOUNDARY_ASSIGNMENT = re.compile(
 
 
 def _dense_vmec_namelist(source: Path) -> dict:
-    parsed = f90nml.read(source)
+    # A number of upstream VMEC fixtures use both ``/`` and a trailing
+    # ``&END``.  Fortran accepts this legacy spelling, while f90nml treats the
+    # second terminator as a new, unterminated namelist group.
+    text = source.read_text(errors="replace")
+    parse_text = re.sub(r"(?im)^\s*&END\s*$", "", text)
+    parsed = f90nml.reads(parse_text)
     nml = parsed["indata"].todict()
     mpol = int(nml.get("mpol", 2))
     ntor = int(nml.get("ntor", 0))
@@ -35,7 +40,7 @@ def _dense_vmec_namelist(source: Path) -> dict:
     }
     found: set[str] = set()
     for field, n_text, m_text, value_text in _BOUNDARY_ASSIGNMENT.findall(
-        source.read_text(errors="replace")
+        text
     ):
         field = field.lower()
         # VMEC declares boundary arrays as (n, m), unlike GVEC's (m, n)
