@@ -39,14 +39,13 @@ outside this repository.
 
   Results will be in
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec/benchmark_results-slurm-1790415/`.
-- The completed canonical subset has an interim native-timing plot at
-  `benchmark_vmec_plots/1790415-runtime/runtime.png` (and `runtime.csv`). It
-  contains six cases and timing records for jVMEC, VMEX, and VMEC2000; GVEC has
-  a timing record only for Solovev. Educational_VMEC, DESC, FreeGS, CHEASE,
-  SPEC, SPECTRE, and VMEC++ do not emit a machine-readable timing line in
-  these logs, so they are omitted rather than given a fabricated value. These
-  native solver times are not an apples-to-apples end-to-end wall-clock
-  benchmark.
+- A dedicated VMEC++ canonical rerun (`1790673`) completed all six cases after
+  the repaired package metadata was installed. Its WOUT files were collected
+  into the local canonical snapshot and the regenerated plots are under
+  `benchmark_vmec_plots/1790415-runtime/`; `runtime.png` and `runtime.csv` now
+  include VMEC++ with GNU `time` wall-clock values. The other native solver
+  timings remain code-reported and are not an apples-to-apples end-to-end
+  wall-clock benchmark.
 
 ## Handoff
 

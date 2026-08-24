@@ -171,6 +171,11 @@ _RUNTIME_PATTERNS = {
         re.compile(r"total execution time:\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*s", re.I),
         "total execution time (s)",
     ),
+    "vmecpp": (
+        "vmecpp.log",
+        re.compile(r"^real\s+([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*$", re.I | re.M),
+        "GNU time real (s)",
+    ),
     "vmex": (
         "vmex.log",
         re.compile(r"TOTAL COMPUTATIONAL TIME \(SEC\)\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)", re.I),
