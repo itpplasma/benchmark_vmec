@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `8690da7`. Local `fo test` (5/5), Python
+- `main` is pushed through `ba61efe`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
@@ -33,11 +33,16 @@ project is separate.
   requires nested-surface `iota` data that the 1-D contract intentionally does
   not provide. The filter is covered by the runner tests and will be used for
   the corrected focused rerun after the exhaustive job.
+- The GVEC bridge additionally normalizes sparse VMEC `(n,m)` boundary
+  assignments into dense `(m,n)` arrays and seeds the ordinary zero-iota
+  initialization required by GVEC's stage builder. The exhaustive job was
+  already running with the pre-bridge executable when this was diagnosed; its
+  early GVEC conversion failures are retained as diagnostic evidence.
 - The previous exhaustive job `1791025` was canceled before the CHEASE staging
   and test-isolation fixes landed. Fresh exhaustive job `1791036` is now
   submitted with one node, 48 CPUs, 96 GB, a 7-day allocation, and a
-  600-second per-case timeout. It is currently pending scheduler priority;
-  Slurm estimates a start at `2026-08-25 19:11`.
+  600-second per-case timeout. It started on `node11` and is currently
+  progressing through the 298-case corpus.
   Monitor it with:
 
   ```bash
