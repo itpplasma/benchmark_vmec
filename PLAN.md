@@ -48,7 +48,11 @@ project is separate.
   progressing through the 298-case corpus.
 - Corrected-checkout numerical tokamak smoke `1791060` is queued with an
   8-CPU/16-GB one-hour allocation to exercise the new GVEC and SPECTRE
-  bridges; it is pending scheduler priority behind the exhaustive allocation.
+  bridges; it completed in 4:18 with exit 0. Educational_VMEC, jVMEC,
+  VMEC2000, VMEC++, VMEX, DESC, SPECTRE, and FreeGS passed. GVEC reached its
+  solver and reported the physical `detJ<0` minimization failure; SPEC and
+  CHEASE were contract-appropriate skips. Results:
+  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791060/`.
   Monitor it with:
 
   ```bash
