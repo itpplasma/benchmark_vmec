@@ -33,7 +33,7 @@ contains
         
         call init_default_repositories(repos)
         
-        if (size(repos) == 3) then
+        if (size(repos) == 11) then
             n_passed = n_passed + 1
             write(output_unit, '(A)') "✓ test_init_default_repositories"
         else
@@ -52,7 +52,7 @@ contains
         call repo_manager%initialize("/tmp/test_vmec_repos")
         
         if (repo_manager%base_path == "/tmp/test_vmec_repos" .and. &
-            repo_manager%n_repos == 3) then
+            repo_manager%n_repos == 11) then
             n_passed = n_passed + 1
             write(output_unit, '(A)') "✓ test_repository_manager_initialize"
         else

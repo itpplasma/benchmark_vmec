@@ -78,9 +78,29 @@ contains
         class(vmec_implementation_t), intent(inout) :: this
         character(len=*), intent(in) :: name
         character(len=*), intent(in) :: path
+        character(len=512) :: resolved_path
+        integer :: stat, unit, io_status
         
         this%name = trim(name)
         this%path = trim(path)
+
+        ! Repository paths are commonly supplied relative to the benchmark
+        ! process.  Runs happen in per-case output directories, so retain an
+        ! absolute path for executables, Python environments, and Java class
+        ! paths used after that directory change.
+        call execute_command_line("realpath -m '" // trim(path) // &
+            "' > /tmp/vmec_implementation_path.tmp", exitstat=stat)
+        if (stat == 0) then
+            open(newunit=unit, file="/tmp/vmec_implementation_path.tmp", &
+                status="old", action="read", iostat=io_status)
+            if (io_status == 0) then
+                read(unit, '(A)', iostat=io_status) resolved_path
+                close(unit)
+                if (io_status == 0 .and. len_trim(resolved_path) > 0) then
+                    this%path = trim(adjustl(resolved_path))
+                end if
+            end if
+        end if
         this%available = .false.
     end subroutine vmec_implementation_initialize
 

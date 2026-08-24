@@ -1,0 +1,21 @@
+&INDATA
+ NFP = 2
+ NCURR = 0
+ MPOL = 3
+ NTOR = 2
+ NSTEP = 30
+ NS_ARRAY = 5 9
+ NITER_ARRAY = 100 200
+ FTOL_ARRAY = 1E-8 1E-8
+ PHIEDGE = 1.0
+ AM = 0.1 -0.1
+ RAXIS_CC = 3.0 0.02
+ ZAXIS_CS = 0.0 0.02
+ RBC(0,0) = 3.0
+ RBC(0,1) = 0.7
+ ZBS(0,1) = 0.7
+ RBC(1,1) = 0.03
+ ZBS(1,1) = -0.03
+ RBC(0,2) = 0.02
+ ZBS(0,2) = 0.01
+/

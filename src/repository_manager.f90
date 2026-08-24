@@ -26,41 +26,97 @@ contains
 
     subroutine init_default_repositories(repos)
         type(repository_config_t), allocatable, intent(out) :: repos(:)
-        
-        allocate(repos(3))
-        
+
+        allocate(repos(11))
+
         call repos(1)%initialize( &
             name="educational_VMEC", &
             url="git@github.com:itpplasma/educational_VMEC.git", &
             branch="master", &
             build_command="cmake", &
             test_data_path="")
-        
+
         call repos(2)%initialize( &
             name="VMEC2000", &
             url="git@github.com:itpplasma/VMEC2000.git", &
             branch="master", &
             build_command="pip", &
             test_data_path="")
-        
+
         call repos(3)%initialize( &
             name="VMEC++", &
-            url="git@github.com:itpplasma/vmecpp.git", &
+            url="https://github.com/itpplasma/vmecpp.git", &
             branch="main", &
             build_command="pip", &
             test_data_path="src/vmecpp/test_data")
+
+        call repos(4)%initialize( &
+            name="VMEX", &
+            url="https://github.com/uwplasma/VMEX.git", &
+            branch="main", &
+            build_command="pip", &
+            test_data_path="tests/data")
+
+        call repos(5)%initialize( &
+            name="DESC", &
+            url="https://github.com/PlasmaControl/DESC.git", &
+            branch="master", &
+            build_command="pip", &
+            test_data_path="tests/inputs")
+
+        call repos(6)%initialize( &
+            name="gvec", &
+            url="https://github.com/gvec-group/gvec.git", &
+            branch="develop", &
+            build_command="pip", &
+            test_data_path="test-CI/examples")
+
+        call repos(7)%initialize( &
+            name="PARVMEC", &
+            url="https://github.com/ORNL-Fusion/PARVMEC.git", &
+            branch="master", &
+            build_command="cmake", &
+            test_data_path="Testing")
+
+        call repos(8)%initialize( &
+            name="SPEC", &
+            url="https://github.com/PrincetonUniversity/SPEC.git", &
+            branch="master", &
+            build_command="cmake", &
+            test_data_path="ci")
+
+        call repos(9)%initialize( &
+            name="SPECTRE", &
+            url="https://gitlab.com/spectre-eq/spectre.git", &
+            branch="main", &
+            build_command="cmake", &
+            test_data_path="examples")
+
+        call repos(10)%initialize( &
+            name="FreeGS", &
+            url="https://github.com/freegs-plasma/freegs.git", &
+            branch="master", &
+            build_command="pip", &
+            test_data_path="")
+
+        call repos(11)%initialize( &
+            name="CHEASE", &
+            url="https://gitlab.epfl.ch/spc/chease.git", &
+            branch="master", &
+            build_command="make", &
+            test_data_path="")
     end subroutine init_default_repositories
 
     subroutine repository_manager_initialize(this, base_path)
         class(repository_manager_t), intent(inout) :: this
         character(len=*), intent(in) :: base_path
         integer :: stat
-        
+
         this%base_path = trim(base_path)
-        
+
         ! Create base directory if it doesn't exist
         call execute_command_line("mkdir -p " // this%base_path, exitstat=stat)
-        
+
         ! Initialize with default repositories
         call init_default_repositories(this%repositories)
         this%n_repos = size(this%repositories)
@@ -70,7 +126,7 @@ contains
         class(repository_manager_t), intent(inout) :: this
         type(repository_config_t), intent(in) :: repo
         type(repository_config_t), allocatable :: temp(:)
-        
+
         if (allocated(this%repositories)) then
             allocate(temp(this%n_repos + 1))
             temp(1:this%n_repos) = this%repositories
@@ -80,7 +136,7 @@ contains
             allocate(this%repositories(1))
             this%repositories(1) = repo
         end if
-        
+
         this%n_repos = this%n_repos + 1
     end subroutine repository_manager_add_repository
 
@@ -88,8 +144,19 @@ contains
         class(repository_manager_t), intent(in) :: this
         character(len=*), intent(in) :: repo_name
         character(len=:), allocatable :: path
-        
+        logical :: exists
+
         path = trim(this%base_path) // "/" // trim(repo_name)
+        ! GitHub's FreeGS project is commonly checked out as either `freegs`
+        ! (the URL basename) or `FreeGS` (the project name). Treat both as the
+        ! same participant while preserving the configured clone target.
+        if (trim(lowercase(repo_name)) == "freegs") then
+            inquire(file=trim(path), exist=exists)
+            if (.not. exists) then
+                inquire(file=trim(this%base_path) // "/FreeGS", exist=exists)
+                if (exists) path = trim(this%base_path) // "/FreeGS"
+            end if
+        end if
     end function repository_manager_get_repo_path
 
     function repository_manager_is_cloned(this, repo_name) result(is_cloned)
@@ -98,13 +165,13 @@ contains
         logical :: is_cloned
         character(len=:), allocatable :: repo_path, git_path
         integer :: stat
-        
+
         repo_path = this%get_repo_path(repo_name)
         git_path = trim(repo_path) // "/.git"
-        
+
         ! Check if directory exists
         inquire(file=trim(repo_path), exist=is_cloned)
-        
+
         if (is_cloned) then
             ! Also check if .git directory exists
             inquire(file=trim(git_path), exist=is_cloned)
@@ -118,40 +185,40 @@ contains
         logical, intent(out) :: success
         character(len=:), allocatable :: repo_path, cmd, repo_name
         integer :: stat
-        
+
         success = .false.
-        
+
         if (repo_index < 1 .or. repo_index > this%n_repos) then
             write(error_unit, *) "Invalid repository index:", repo_index
             return
         end if
-        
+
         ! Extract repository name from URL
         repo_name = extract_repo_name(this%repositories(repo_index)%url)
         repo_path = this%get_repo_path(repo_name)
-        
+
         if (this%is_cloned(repo_name) .and. .not. force) then
             write(*, '(A)') trim(this%repositories(repo_index)%name) // &
                 " already cloned at " // trim(repo_path)
             success = .true.
             return
         end if
-        
+
         if (force) then
             ! Remove existing repository
             cmd = "rm -rf " // trim(repo_path)
             call execute_command_line(trim(cmd), exitstat=stat)
         end if
-        
+
         write(*, '(A)') "Cloning " // trim(this%repositories(repo_index)%name) // &
             " from " // trim(this%repositories(repo_index)%url)
-        
+
         ! Clone the repository with submodules
         cmd = "git clone --recursive --depth 1 -b " // trim(this%repositories(repo_index)%branch) // &
             " " // trim(this%repositories(repo_index)%url) // " " // trim(repo_path)
-        
+
         call execute_command_line(trim(cmd), exitstat=stat)
-        
+
         if (stat == 0) then
             write(*, '(A)') "Successfully cloned " // trim(this%repositories(repo_index)%name)
             success = .true.
@@ -166,28 +233,28 @@ contains
         logical, intent(out) :: success
         character(len=:), allocatable :: repo_path, cmd, repo_name
         integer :: stat
-        
+
         success = .false.
-        
+
         if (repo_index < 1 .or. repo_index > this%n_repos) then
             write(error_unit, *) "Invalid repository index:", repo_index
             return
         end if
-        
+
         repo_name = extract_repo_name(this%repositories(repo_index)%url)
-        
+
         if (.not. this%is_cloned(repo_name)) then
             write(error_unit, '(A)') "Repository " // trim(repo_name) // " is not cloned"
             return
         end if
-        
+
         repo_path = this%get_repo_path(repo_name)
-        
+
         write(*, '(A)') "Updating " // trim(this%repositories(repo_index)%name)
-        
+
         cmd = "cd " // trim(repo_path) // " && git pull"
         call execute_command_line(trim(cmd), exitstat=stat)
-        
+
         if (stat == 0) then
             write(*, '(A)') "Successfully updated " // trim(this%repositories(repo_index)%name)
             success = .true.
@@ -201,10 +268,10 @@ contains
         logical, intent(in), optional :: force
         logical :: force_clone, success
         integer :: i
-        
+
         force_clone = .false.
         if (present(force)) force_clone = force
-        
+
         do i = 1, this%n_repos
             call this%clone_repo(i, force_clone, success)
         end do
@@ -216,16 +283,16 @@ contains
         character(len=:), allocatable :: path
         integer :: i
         logical :: exists
-        
+
         path = ""
-        
+
         ! Find repository by name
         do i = 1, this%n_repos
             if (extract_repo_name(this%repositories(i)%url) == repo_name) then
                 if (len_trim(this%repositories(i)%test_data_path) > 0) then
                     path = trim(this%get_repo_path(repo_name)) // "/" // &
                         trim(this%repositories(i)%test_data_path)
-                    
+
                     ! Check if path exists
                     inquire(file=trim(path), exist=exists)
                     if (.not. exists) path = ""
@@ -237,7 +304,7 @@ contains
 
     subroutine repository_manager_finalize(this)
         class(repository_manager_t), intent(inout) :: this
-        
+
         if (allocated(this%base_path)) deallocate(this%base_path)
         if (allocated(this%repositories)) deallocate(this%repositories)
         this%n_repos = 0
@@ -247,13 +314,13 @@ contains
         character(len=*), intent(in) :: url
         character(len=:), allocatable :: name
         integer :: last_slash, dot_git
-        
+
         ! Find last slash
         last_slash = index(url, '/', back=.true.)
-        
+
         if (last_slash > 0) then
             name = url(last_slash+1:)
-            
+
             ! Remove .git extension if present
             dot_git = index(name, '.git')
             if (dot_git > 0) then
@@ -263,5 +330,18 @@ contains
             name = "unknown"
         end if
     end function extract_repo_name
+
+    function lowercase(text) result(value)
+        character(len=*), intent(in) :: text
+        character(len=:), allocatable :: value
+        integer :: i
+
+        value = text
+        do i = 1, len(value)
+            if (value(i:i) >= 'A' .and. value(i:i) <= 'Z') then
+                value(i:i) = char(ichar(value(i:i)) + 32)
+            end if
+        end do
+    end function lowercase
 
 end module repository_manager

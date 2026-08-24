@@ -15,11 +15,14 @@ program test_runner_reporting
 
     call test_case_name_normalization(n_tests, n_passed)
     call test_case_match_filter(n_tests, n_passed)
+    call test_free_boundary_cases_are_discovered(n_tests, n_passed)
+    call test_gvec_parameter_cases_are_discovered(n_tests, n_passed)
     call test_empty_case_match_does_not_filter(n_tests, n_passed)
     call test_literal_empty_case_match_does_not_filter(n_tests, n_passed)
     call test_custom_output_dir_for_jvmec_reports(n_tests, n_passed)
     call test_report_uses_successful_reference(n_tests, n_passed)
     call test_report_prefers_educational_reference_over_jvmec(n_tests, n_passed)
+    call test_report_separates_physical_domains(n_tests, n_passed)
 
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
 
@@ -72,9 +75,9 @@ contains
         call execute_command_line("mkdir -p " // base_dir // "/VMEC2000/.git", exitstat=stat)
         call execute_command_line("mkdir -p " // base_dir // "/VMEC2000/test/examples", exitstat=stat)
         call execute_command_line("touch " // base_dir // &
-                                  "/educational_VMEC/test/examples/input.circular_tokamak", exitstat=stat)
+            "/educational_VMEC/test/examples/input.circular_tokamak", exitstat=stat)
         call execute_command_line("touch " // base_dir // &
-                                  "/VMEC2000/test/examples/input.li383_low_res", exitstat=stat)
+            "/VMEC2000/test/examples/input.li383_low_res", exitstat=stat)
 
         call repo_manager%initialize(base_dir)
         call runner%initialize(base_dir // "/results", repo_manager)
@@ -94,6 +97,82 @@ contains
         call execute_command_line("rm -rf " // base_dir, exitstat=stat)
     end subroutine test_case_match_filter
 
+    subroutine test_free_boundary_cases_are_discovered(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        type(repository_manager_t) :: repo_manager
+        type(benchmark_runner_t) :: runner
+        character(len=256), allocatable :: names(:)
+        character(len=*), parameter :: base_dir = "/tmp/benchmark_vmec_free_boundary"
+        integer :: stat, unit
+        logical :: case_matches
+
+        n_tests = n_tests + 1
+        call execute_command_line("rm -rf " // base_dir, exitstat=stat)
+        call execute_command_line("mkdir -p " // base_dir // "/VMEX/.git", exitstat=stat)
+        call execute_command_line("mkdir -p " // base_dir // "/VMEX/tests", exitstat=stat)
+        open(newunit=unit, file=base_dir // "/VMEX/tests/input.free_boundary", &
+            status="replace", action="write")
+        write(unit, '(A)') "&INDATA"
+        write(unit, '(A)') "  LFREEB = T"
+        write(unit, '(A)') "/"
+        close(unit)
+
+        call repo_manager%initialize(base_dir)
+        call runner%initialize(base_dir // "/results", repo_manager)
+        call runner%discover_test_cases()
+        names = runner%get_test_case_names()
+
+        case_matches = .false.
+        if (size(names) == 1) case_matches = trim(names(1)) == "VMEX/free_boundary"
+        if (case_matches) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_free_boundary_cases_are_discovered"
+        else
+            write(error_unit, '(A)') "✗ test_free_boundary_cases_are_discovered"
+        end if
+
+        call runner%finalize()
+        call repo_manager%finalize()
+        call execute_command_line("rm -rf " // base_dir, exitstat=stat)
+    end subroutine test_free_boundary_cases_are_discovered
+
+    subroutine test_gvec_parameter_cases_are_discovered(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        type(repository_manager_t) :: repo_manager
+        type(benchmark_runner_t) :: runner
+        character(len=256), allocatable :: names(:)
+        character(len=*), parameter :: base_dir = "/tmp/benchmark_vmec_gvec_cases"
+        integer :: stat, unit
+        logical :: case_matches
+
+        n_tests = n_tests + 1
+        call execute_command_line("rm -rf " // base_dir, exitstat=stat)
+        call execute_command_line("mkdir -p " // base_dir // "/gvec/.git", exitstat=stat)
+        call execute_command_line("mkdir -p " // base_dir // "/gvec/test-CI/examples/case", exitstat=stat)
+        open(newunit=unit, file=base_dir // "/gvec/test-CI/examples/case/parameter.ini", &
+            status="replace", action="write")
+        write(unit, '(A)') "ProjectName = test"
+        close(unit)
+
+        call repo_manager%initialize(base_dir)
+        call runner%initialize(base_dir // "/results", repo_manager)
+        call runner%discover_test_cases()
+        names = runner%get_test_case_names()
+
+        case_matches = .false.
+        if (size(names) == 1) case_matches = trim(names(1)) == "gvec/case/parameter"
+        if (case_matches) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_gvec_parameter_cases_are_discovered"
+        else
+            write(error_unit, '(A)') "✗ test_gvec_parameter_cases_are_discovered"
+        end if
+
+        call runner%finalize()
+        call repo_manager%finalize()
+        call execute_command_line("rm -rf " // base_dir, exitstat=stat)
+    end subroutine test_gvec_parameter_cases_are_discovered
+
     subroutine test_empty_case_match_does_not_filter(n_tests, n_passed)
         integer, intent(inout) :: n_tests, n_passed
         type(repository_manager_t) :: repo_manager
@@ -110,9 +189,9 @@ contains
         call execute_command_line("mkdir -p " // base_dir // "/VMEC2000/.git", exitstat=stat)
         call execute_command_line("mkdir -p " // base_dir // "/VMEC2000/test/examples", exitstat=stat)
         call execute_command_line("touch " // base_dir // &
-                                  "/educational_VMEC/test/examples/input.circular_tokamak", exitstat=stat)
+            "/educational_VMEC/test/examples/input.circular_tokamak", exitstat=stat)
         call execute_command_line("touch " // base_dir // &
-                                  "/VMEC2000/test/examples/input.li383_low_res", exitstat=stat)
+            "/VMEC2000/test/examples/input.li383_low_res", exitstat=stat)
 
         call repo_manager%initialize(base_dir)
         call runner%initialize(base_dir // "/results", repo_manager)
@@ -147,7 +226,7 @@ contains
         call execute_command_line("mkdir -p " // base_dir // "/educational_VMEC/.git", exitstat=stat)
         call execute_command_line("mkdir -p " // base_dir // "/educational_VMEC/test/examples", exitstat=stat)
         call execute_command_line("touch " // base_dir // &
-                                  "/educational_VMEC/test/examples/input.circular_tokamak", exitstat=stat)
+            "/educational_VMEC/test/examples/input.circular_tokamak", exitstat=stat)
 
         call repo_manager%initialize(base_dir)
         call runner%initialize(base_dir // "/results", repo_manager)
@@ -187,7 +266,7 @@ contains
         result%raxis_cc = 1.0_real64
 
         call comparator%add_result("educational_VMEC/from_vmec_multiple_readin/li383_low_res", &
-                                   "educational_vmec", result)
+            "educational_vmec", result)
         call comparator%generate_report(report_file)
 
         inquire(file=report_file, exist=report_exists)
@@ -277,7 +356,7 @@ contains
         call comparator%add_result(case_name, "vmecpp", vmecpp_result)
         call comparator%generate_report(report_file)
 
-        if (file_contains(report_file, "Reference priority: educational_vmec, vmec2000, jvmec, vmecpp") .and. &
+        if (file_contains(report_file, "Reference priority: educational_vmec, vmec2000, vmex, jvmec, vmecpp, desc, gvec") .and. &
             file_contains(report_file, "Reference implementation: educational_vmec") .and. &
             .not. file_contains(report_file, "Reference implementation: jvmec")) then
             n_passed = n_passed + 1
@@ -289,6 +368,45 @@ contains
         call comparator%finalize()
         call execute_command_line("rm -rf " // output_dir, exitstat=stat)
     end subroutine test_report_prefers_educational_reference_over_jvmec
+
+    subroutine test_report_separates_physical_domains(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        type(results_comparator_t) :: comparator
+        type(vmec_result_t) :: vmec_result, freegs_result
+        character(len=*), parameter :: output_dir = "/tmp/benchmark_vmec_reporting_domains"
+        character(len=*), parameter :: report_file = output_dir // "/comparison_report.md"
+        integer :: stat
+
+        n_tests = n_tests + 1
+        call execute_command_line("rm -rf " // output_dir, exitstat=stat)
+        call comparator%initialize(1, output_dir)
+
+        call vmec_result%clear()
+        vmec_result%success = .true.
+        vmec_result%family = "vmec_family"
+        vmec_result%dimension = 3
+        vmec_result%wb = 1.0_real64
+        call freegs_result%clear()
+        freegs_result%success = .true.
+        freegs_result%family = "grad_shafranov"
+        freegs_result%dimension = 2
+        freegs_result%pressure_axis = 1000.0_real64
+
+        call comparator%add_result("cases/analytic/2d_solovev", "educational_vmec", vmec_result)
+        call comparator%add_result("cases/analytic/2d_solovev", "freegs", freegs_result)
+        call comparator%generate_report(report_file)
+
+        if (file_contains(report_file, "freegs | n/a") .and. &
+            .not. file_contains(report_file, "**freegs**:")) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_report_separates_physical_domains"
+        else
+            write(error_unit, '(A)') "✗ test_report_separates_physical_domains"
+        end if
+
+        call comparator%finalize()
+        call execute_command_line("rm -rf " // output_dir, exitstat=stat)
+    end subroutine test_report_separates_physical_domains
 
     logical function file_contains(path, needle)
         character(len=*), intent(in) :: path

@@ -12,18 +12,18 @@ program vmec_benchmark
     logical :: force_clone, show_version, show_help, symmetric_only
     integer :: timeout, limit, i
     character(len=32) :: command
-    
+
     ! Set up help text
     help_text = [character(len=80) :: &
         'NAME                                                                    ', &
-        '   vmec-benchmark - Compare different VMEC implementations             ', &
+        '   vmec-benchmark - Compare equilibrium implementations                ', &
         '                                                                        ', &
         'SYNOPSIS                                                                ', &
         '   vmec-benchmark [COMMAND] [OPTIONS]                                   ', &
         '                                                                        ', &
         'COMMANDS                                                                ', &
         '   setup       Clone and setup VMEC repositories                       ', &
-        '   run         Run benchmarks on VMEC implementations                  ', &
+        '   run         Run ordinary equilibrium benchmarks                     ', &
         '   update      Update all cloned repositories                          ', &
         '   hard-reset  Force delete and reclone all repositories               ', &
         '   list-repos  List available repositories and their status            ', &
@@ -56,9 +56,9 @@ program vmec_benchmark
 
     ! Parse command line arguments
     call set_args('--base-dir ".." --output-dir "./benchmark_results" &
-                  &--force F --timeout 300 --limit 0 --symmetric-only F --match "" --version F --help F', &
-                  help_text, version_text)
-    
+        &--force F --timeout 300 --limit 0 --symmetric-only F --match "" --version F --help F', &
+        help_text, version_text)
+
     base_dir = sget('base-dir')
     output_dir = sget('output-dir')
     force_clone = lget('force')
@@ -69,20 +69,20 @@ program vmec_benchmark
     if (.not. specified('match')) case_match = ''
     show_version = lget('version')
     show_help = lget('help')
-    
+
     ! Get command from unnamed arguments
     if (size(unnamed) > 0) then
         command = unnamed(1)
     else
         command = ""
     end if
-    
+
     ! Show version if requested
     if (show_version) then
         write(output_unit, '(A)') trim(version_text(1))
         stop
     end if
-    
+
     ! Show help if requested or no command given
     if (show_help .or. len_trim(command) == 0) then
         do i = 1, size(help_text)
@@ -90,7 +90,7 @@ program vmec_benchmark
         end do
         stop
     end if
-    
+
     ! Execute command
     select case (trim(command))
     case ('setup')
@@ -117,12 +117,12 @@ contains
         character(len=*), intent(in) :: base_dir
         logical, intent(in) :: force
         type(repository_manager_t) :: repo_manager
-        
+
         write(output_unit, '(A)') 'Setting up repositories in ' // trim(base_dir)
-        
+
         call repo_manager%initialize(base_dir)
         call repo_manager%clone_all(force)
-        
+
         write(output_unit, '(/,A)') 'Repository setup complete'
         call repo_manager%finalize()
     end subroutine cmd_setup
@@ -138,50 +138,50 @@ contains
         type(benchmark_runner_t) :: runner
         type(results_comparator_t) :: comparator
         character(len=:), allocatable :: report_file
-        
+
         write(output_unit, '(A)') 'Starting VMEC benchmark run'
-        
+
         ! Initialize components
         call repo_manager%initialize(base_dir)
         call runner%initialize(output_dir, repo_manager)
-        
+
         ! Setup implementations
         call runner%setup_implementations()
-        
+
         if (runner%n_implementations == 0) then
             write(error_unit, '(A)') 'No implementations available!'
             write(error_unit, '(A)') 'Run "vmec-benchmark setup" first to clone repositories'
             stop 1
         end if
-        
+
         write(output_unit, '(/,A,I0,A)') 'Available implementations: ', &
             runner%n_implementations, ' found'
-        
+
         ! Discover test cases
         call runner%discover_test_cases(limit, symmetric_only, case_match)
-        
+
         if (runner%n_test_cases == 0) then
             write(error_unit, '(A)') 'No test cases found!'
             stop 1
         end if
-        
+
         write(output_unit, '(A,I0,A)') 'Found ', runner%n_test_cases, ' test cases'
-        
+
         ! Initialize comparator before running benchmarks
-        call comparator%initialize(100, output_dir)
-        
+        call comparator%initialize(max(100, runner%n_test_cases), output_dir)
+
         ! Run benchmarks
         call runner%run_all_cases(comparator, timeout)
-        
+
         ! Generate comparison report
         report_file = trim(output_dir) // '/comparison_report.md'
         call comparator%generate_report(report_file)
         call comparator%export_to_csv(output_dir)
-        
+
         write(output_unit, '(/,A)') '✅ Benchmark complete!'
         write(output_unit, '(A)') '📁 Results saved to: ' // trim(output_dir)
         write(output_unit, '(A)') '📖 Read the report: ' // trim(report_file)
-        
+
         call runner%finalize()
         call comparator%finalize()
         call repo_manager%finalize()
@@ -192,15 +192,15 @@ contains
         type(repository_manager_t) :: repo_manager
         integer :: i
         logical :: success
-        
+
         write(output_unit, '(A)') 'Updating repositories in ' // trim(base_dir)
-        
+
         call repo_manager%initialize(base_dir)
-        
+
         do i = 1, repo_manager%n_repos
             call repo_manager%update_repo(i, success)
         end do
-        
+
         write(output_unit, '(A)') 'Update complete'
         call repo_manager%finalize()
     end subroutine cmd_update
@@ -210,9 +210,9 @@ contains
         type(repository_manager_t) :: repo_manager
         integer :: i
         character(len=:), allocatable :: repo_name
-        
+
         call repo_manager%initialize(base_dir)
-        
+
         write(output_unit, '(A)') 'Repository status:'
         do i = 1, repo_manager%n_repos
             repo_name = extract_repo_name(repo_manager%repositories(i)%url)
@@ -224,7 +224,7 @@ contains
             write(output_unit, '(A)') '    Name: ' // trim(repo_manager%repositories(i)%name)
             write(output_unit, '(A)') '    URL: ' // trim(repo_manager%repositories(i)%url)
         end do
-        
+
         call repo_manager%finalize()
     end subroutine cmd_list_repos
 
@@ -237,13 +237,13 @@ contains
         type(benchmark_runner_t) :: runner
         character(len=256), allocatable :: case_names(:)
         integer :: i, display_count
-        
+
         call repo_manager%initialize(base_dir)
         call runner%initialize("temp", repo_manager)
         call runner%discover_test_cases(limit, symmetric_only, case_match)
-        
+
         write(output_unit, '(A)') 'Available test cases:'
-        
+
         case_names = runner%get_test_case_names()
         display_count = size(case_names)
         if (limit <= 0) display_count = min(10, size(case_names))
@@ -251,11 +251,11 @@ contains
         do i = 1, display_count
             write(output_unit, '(A)') '  - ' // trim(case_names(i))
         end do
-        
+
         if (display_count < size(case_names)) then
             write(output_unit, '(A,I0,A)') '  ... and ', size(case_names) - display_count, ' more'
         end if
-        
+
         call runner%finalize()
         call repo_manager%finalize()
     end subroutine cmd_list_cases
@@ -267,7 +267,7 @@ contains
         integer :: stat
         logical :: exists
         integer :: i
-        
+
         write(output_unit, '(A)') 'WARNING: Hard reset will delete ALL repositories and data!'
         write(output_unit, '(A)') 'This includes:'
         write(output_unit, '(A)') '  - All cloned VMEC repositories'
@@ -275,7 +275,7 @@ contains
         write(output_unit, '(A)') '  - Build outputs and intermediate files'
         write(output_unit, '(A)') ''
         write(output_unit, '(A)') 'Proceeding with hard reset...'
-        
+
         call repo_manager%initialize(base_dir)
 
         do i = 1, repo_manager%n_repos
@@ -309,17 +309,17 @@ contains
         end if
 
         call repo_manager%finalize()
-        
+
         write(output_unit, '(A)') 'Hard reset complete'
         write(output_unit, '(A)') 'Run "vmec-benchmark setup" to reinitialize repositories'
-        
+
     end subroutine cmd_hard_reset
 
     function extract_repo_name(url) result(name)
         character(len=*), intent(in) :: url
         character(len=:), allocatable :: name
         integer :: last_slash, dot_git
-        
+
         last_slash = index(url, '/', back=.true.)
         if (last_slash > 0) then
             name = url(last_slash+1:)

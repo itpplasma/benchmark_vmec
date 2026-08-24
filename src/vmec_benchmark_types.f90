@@ -22,6 +22,17 @@ module vmec_benchmark_types
     type :: vmec_result_t
         logical :: success = .false.
         character(len=:), allocatable :: error_message
+        ! Common result metadata.  The scalar WOUT fields remain the
+        ! compatibility surface for VMEC-family solvers; non-VMEC adapters
+        ! populate the common metrics and explicitly identify their format.
+        integer(int32) :: dimension = 3
+        character(len=:), allocatable :: family
+        character(len=:), allocatable :: input_format
+        character(len=:), allocatable :: output_format
+        real(real64) :: energy = 0.0_real64
+        real(real64) :: force_residual = 0.0_real64
+        real(real64) :: pressure_axis = 0.0_real64
+        real(real64) :: plasma_current = 0.0_real64
         real(real64) :: wb = 0.0_real64
         real(real64) :: betatotal = 0.0_real64
         real(real64) :: betapol = 0.0_real64
@@ -59,19 +70,19 @@ contains
 
         this%name = trim(name)
         this%url = trim(url)
-        
+
         if (present(branch)) then
             this%branch = trim(branch)
         else
             this%branch = "main"
         end if
-        
+
         if (present(build_command)) then
             this%build_command = trim(build_command)
         else
             this%build_command = ""
         end if
-        
+
         if (present(test_data_path)) then
             this%test_data_path = trim(test_data_path)
         else
@@ -81,9 +92,17 @@ contains
 
     subroutine vmec_result_clear(this)
         class(vmec_result_t), intent(inout) :: this
-        
+
         this%success = .false.
         if (allocated(this%error_message)) deallocate(this%error_message)
+        this%dimension = 3
+        if (allocated(this%family)) deallocate(this%family)
+        if (allocated(this%input_format)) deallocate(this%input_format)
+        if (allocated(this%output_format)) deallocate(this%output_format)
+        this%energy = 0.0_real64
+        this%force_residual = 0.0_real64
+        this%pressure_axis = 0.0_real64
+        this%plasma_current = 0.0_real64
         this%wb = 0.0_real64
         this%betatotal = 0.0_real64
         this%betapol = 0.0_real64
@@ -96,7 +115,7 @@ contains
         this%b0 = 0.0_real64
         this%rmajor_p = 0.0_real64
         this%aminor_p = 0.0_real64
-        
+
         if (allocated(this%rmnc)) deallocate(this%rmnc)
         if (allocated(this%rmns)) deallocate(this%rmns)
         if (allocated(this%zmnc)) deallocate(this%zmnc)

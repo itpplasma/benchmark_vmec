@@ -3,15 +3,23 @@
 [![CI](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml/badge.svg)](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/itpplasma/benchmark_vmec/branch/main/graph/badge.svg)](https://codecov.io/gh/itpplasma/benchmark_vmec)
 
-A Fortran package built with `fpm` for comparing VMEC implementations from sibling repositories.
+A Fortran package built with `fpm` for comparing equilibrium implementations from
+sibling repositories.  The benchmark driver remains Fortran; Python is used only
+inside the wrappers for codes whose public API is Python.
 
 ## Overview
 
-The active purpose of this repository is narrow:
+The active purpose of this repository is an exhaustive, ordinary (non-
+differentiable) equilibrium comparison:
 
-- run the same stellarator and tokamak inputs across `vmecpp`, `educational_VMEC`, `VMEC2000`, and `jVMEC`
+- run the same inputs across the VMEC family (`vmecpp`, `educational_VMEC`,
+  `VMEC2000`, `jVMEC`, `VMEX`, `PARVMEC`), nested-surface alternatives
+  (`DESC`, `GVEC`), MRxMHD alternatives (`SPEC`, `SPECTRE`), and the requested
+  2-D Grad--Shafranov comparison (`FreeGS`, with `CHEASE` wired when built)
 - collect a comparable subset of outputs
-- provide focused tooling for regression checks and cross-code investigation
+- retain failed/unsupported rows and native output sidecars instead of hiding
+  them, and provide focused tooling for regression checks and cross-code
+  investigation
 
 The suite expects the repositories to live one directory above `benchmark_vmec`:
 
@@ -19,35 +27,54 @@ The suite expects the repositories to live one directory above `benchmark_vmec`:
 - `../educational_VMEC`
 - `../VMEC2000`
 - `../jVMEC`
+- `../VMEX`
+- `../DESC`
+- `../gvec`
+- `../PARVMEC`, `../SPEC`, `../SPECTRE`, `../freegs`, and `../CHEASE` (optional
+  native participants)
+
+The repository-owned corpus in `cases/` is always included. It has analytical
+and numerical fixtures for each of 1-D, 2-D, and 3-D. FreeGS is deliberately
+limited to the 2-D fixtures; other rows remain explicit unsupported results so
+the matrix is exhaustive.
 
 `jVMEC` is optional but strongly recommended when working on asymmetric or tokamak behavior because it is a useful independent cross-check for geometry and coefficient handling in this workspace.
+
+STELLOPT and SIMSOPT orchestrate or optimise other solvers rather than being
+standalone equilibrium solvers, so they are documented as out of scope.
+
+Free-boundary and asymmetric cases are included by default.  Use
+`--symmetric-only` only when a fixed symmetric subset is wanted.  DESC and GVEC
+retain their native input formats (`input.*` and `parameter.{ini,toml,yaml}`),
+while VMEC-family cases use standard INDATA/JSON files.
 
 ## Quick Start
 
 ```bash
 # Build the tool
-fpm build
+fo check
 
 # Build the sibling repositories that the benchmark can manage directly
-fpm run vmec-build
+fo run vmec-build -- --base-dir ..
 
 # Run the benchmark driver
-fpm run vmec-benchmark -- run
+fo run vmec-benchmark -- run
 
 # Run only symmetric cases
-fpm run vmec-benchmark -- run --symmetric-only
+fo run vmec-benchmark -- run --symmetric-only
 
 # Run one named family of cases
-fpm run vmec-benchmark -- run --match tokamak
+fo run vmec-benchmark -- run --match tokamak
 
 # Run the unit tests for this repo
-fpm test
+fo test --all
 ```
 
 ## Main Commands
 
 - `vmec-benchmark setup`
-  Clones `educational_VMEC`, `VMEC2000`, and `vmecpp` into the sibling directory if they are missing.
+  Clones the configured repositories into the sibling directory if they are
+  missing. `jVMEC` remains a manually provisioned optional checkout.
 - `vmec-benchmark run`
   Discovers input files from sibling repos, runs available implementations, and writes results under `benchmark_results/`.
 - `vmec-benchmark list-repos`
@@ -66,27 +93,37 @@ fpm test
 - CMake (for building VMEC implementations)
 - Make/GCC (for building VMEC implementations)
 - Maven + Java 8+ (for jVMEC, optional)
-- Python 3 with an importable `vmecpp` package for the VMEC++ runner
+- Python 3 with the package required by each Python-backed wrapper (`vmecpp`, `vmex`, `desc`, or `gvec`)
+
+### Common formats
+
+`tools/convert_equilibrium.py` provides VMEC INDATA/JSON ↔ canonical JSON,
+VMEC → GVEC `parameter.ini`, GEQDSK summaries, and SPEC HDF5 dataset
+inventories. DESC writes a VMEC-compatible NetCDF WOUT when its `VMECIO`
+export is available. SPEC/SPECTRE are different physical models, so their
+native outputs are reported without claiming a lossless WOUT conversion.
+FreeGS writes GEQDSK plus a JSON sidecar with pressure, current, grid, and
+analytical/numerical labels.
 
 ### Installation
 ```bash
-fpm build
+fo check
 ```
 
 ## Typical Workflows
 
 ### 1. Check repository wiring
 ```bash
-fpm run vmec-benchmark -- list-repos
-fpm run vmec-benchmark -- list-cases --limit 20
+fo run vmec-benchmark -- list-repos
+fo run vmec-benchmark -- list-cases --limit 20
 ```
 
 ### 2. Run a focused comparison pass
 ```bash
-fpm run vmec-benchmark -- run --limit 5
-fpm run vmec-benchmark -- run --symmetric-only --limit 10
-fpm run vmec-benchmark -- run --match up_down_asymmetric_tokamak
-fpm run vmec-benchmark -- list-cases --match tokamak
+fo run vmec-benchmark -- run --limit 5
+fo run vmec-benchmark -- run --symmetric-only --limit 10
+fo run vmec-benchmark -- run --match up_down_asymmetric_tokamak
+fo run vmec-benchmark -- list-cases --match tokamak
 ```
 
 ### 3. Manual debug comparisons
@@ -102,6 +139,8 @@ These scripts create timestamped debug directories locally. They are intentional
 ```
 app/                 CLI entry points
 src/                 benchmark runner and implementation wrappers
+cases/               analytical/numerical 1-D, 2-D, and 3-D fixtures
+tools/               common-format and FreeGS adapters
 test/                unit tests for repo management and comparison logic
 design/              persistent implementation-analysis notes
 compare_*.sh         manual symmetric and asymmetric debug workflows
@@ -114,6 +153,10 @@ Generated benchmark results are written under `benchmark_results/`. Manual debug
 
 ## Documentation
 
+- [`design/solver_inventory.md`](design/solver_inventory.md) records the
+  solver-coverage audit and intentional out-of-scope tools.
+- [`design/ordinary_benchmark_contract.md`](design/ordinary_benchmark_contract.md)
+  records the ordinary-comparison lessons adopted from the parallel audit.
 - [`design/index.md`](design/index.md) maps the asymmetric-implementation analysis notes.
 - [`doc/README.md`](doc/README.md) gives a short documentation index for the repo itself.
 - `inputs.md` is a generated inventory of benchmark inputs from the sibling repositories.

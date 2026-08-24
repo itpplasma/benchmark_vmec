@@ -3,6 +3,7 @@ program test_vmec_types
     use vmec_benchmark_types, only: repository_config_t, vmec_result_t, string_t
     use vmec_implementation_base, only: select_python_command
     use vmecpp_implementation, only: write_vmecpp_runner_script
+    use external_vmec_implementation, only: vmex_t
     implicit none
     
     integer :: n_tests, n_passed
@@ -17,6 +18,7 @@ program test_vmec_types
     call test_string_type(n_tests, n_passed)
     call test_select_python_command_prefers_repo_venv(n_tests, n_passed)
     call test_vmecpp_runner_script_uses_single_thread(n_tests, n_passed)
+    call test_vmex_uses_repo_console_script(n_tests, n_passed)
     
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
     
@@ -142,6 +144,40 @@ contains
 
         call execute_command_line("rm -f " // script_path, exitstat=stat)
     end subroutine test_vmecpp_runner_script_uses_single_thread
+
+    subroutine test_vmex_uses_repo_console_script(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        type(vmex_t) :: impl
+        character(len=*), parameter :: repo_dir = "/tmp/benchmark_vmec_vmex_repo"
+        integer :: stat
+        logical :: success, matches
+
+        n_tests = n_tests + 1
+        call execute_command_line("rm -rf " // repo_dir, exitstat=stat)
+        call execute_command_line("mkdir -p " // repo_dir // "/.venv/bin", exitstat=stat)
+        call execute_command_line("touch " // repo_dir // "/.venv/bin/vmex", exitstat=stat)
+
+        call impl%initialize("VMEX", repo_dir)
+        success = impl%build()
+
+        matches = .false.
+        if (success) then
+            if (impl%is_available()) then
+                if (allocated(impl%executable)) then
+                    matches = trim(impl%executable) == repo_dir // "/.venv/bin/vmex"
+                end if
+            end if
+        end if
+        if (matches) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_vmex_uses_repo_console_script"
+        else
+            write(error_unit, '(A)') "✗ test_vmex_uses_repo_console_script"
+        end if
+
+        call impl%finalize()
+        call execute_command_line("rm -rf " // repo_dir, exitstat=stat)
+    end subroutine test_vmex_uses_repo_console_script
 
     logical function file_contains(path, needle)
         character(len=*), intent(in) :: path
