@@ -211,7 +211,7 @@ contains
         case ('spectre')
             python_cmd = select_python_command(this%path)
             if (index(lowercase(basename(local_input)), '.toml') > 0) then
-                cmd = 'PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
+                cmd = 'env PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
                     trim(parent_dir(this%path)) // &
                     '/benchmark_vmec/tools/run_spectre.py ' // basename(local_input)
             else
@@ -219,7 +219,7 @@ contains
                 ! the SPECTRE minimizer is launched.  This is deliberately a
                 ! separate process so converter failures are reported as such
                 ! instead of appearing as a solver syntax error.
-                cmd = 'PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
+                cmd = 'env PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
                     trim(parent_dir(this%path)) // &
                     '/benchmark_vmec/tools/convert_vmec_to_spectre.py ' // basename(local_input) // &
                     ' spectre_input.toml'
@@ -229,7 +229,7 @@ contains
                     write(error_unit, '(A)') 'SPECTRE VMEC-to-TOML conversion failed'
                     return
                 end if
-                cmd = 'PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
+                cmd = 'env PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
                     trim(parent_dir(this%path)) // &
                     '/benchmark_vmec/tools/run_spectre.py spectre_input.toml'
             end if
@@ -238,7 +238,7 @@ contains
         case ('chease')
             if (index(lowercase(basename(local_input)), '.geqdsk') > 0 .or. &
                 index(lowercase(basename(local_input)), '.eqdsk') > 0) then
-                cmd = 'PATH=' // trim(this%path) // '/src-f90:' // trim(this%path) // &
+                cmd = 'env PATH=' // trim(this%path) // '/src-f90:' // trim(this%path) // &
                     '/scripts_for_bin:$PATH ' // trim(this%path) // &
                     '/scripts_for_bin/run.chease.eqdsk ' // basename(local_input) // ' . .'
             else
