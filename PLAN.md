@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `aed9aa6`. Local `fo test test_runner_reporting`,
+- `main` is pushed through `003c2c9`. Local `fo test test_runner_reporting`,
   Python byte-compilation of all bridge scripts, and `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
   VMEX, DESC, and GVEC. GVEC's native `*_State_final.dat` is retained and
@@ -32,6 +32,9 @@ project is separate.
   ssh scluster 'sacct -j 1791025 --format=JobID,State,Elapsed,ExitCode'
   ssh scluster 'tail -f /home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/slurm-vmec-benchmark-1791025.out'
   ```
+
+- Obsolete pre-fix exhaustive job `1790415` was cancelled after its output was
+  preserved; it must not be used as the final benchmark result.
 
 - PARVMEC is discovered as a repository but is not installed on the cluster;
   it remains an explicit unavailable implementation until its Python package
