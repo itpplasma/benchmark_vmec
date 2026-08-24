@@ -91,9 +91,10 @@ project is separate.
 - Corrected tokamak GVEC rerun `1791111` is submitted with an
   `afterany:1791036` dependency. It will verify that the TOML/current-profile
   repair removes the earlier `detJ<0` conversion-induced failure.
-- Corrected exhaustive rerun `1791080` now waits for both `1791036` and
-  `1791111`; it uses the pushed converter fixes and will become the final
-  corpus run after the focused verification releases its node.
+- Corrected exhaustive rerun `1791080` waits for diagnostic completion
+  (`afterany:1791036`) and successful focused verification
+  (`afterok:1791111`); it uses the pushed converter fixes and will become the
+  final corpus run only after the focused check passes.
 
 - Obsolete pre-fix exhaustive job `1790415` was cancelled after its output was
   preserved; it must not be used as the final benchmark result.
