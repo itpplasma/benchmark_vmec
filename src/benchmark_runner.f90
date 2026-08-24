@@ -12,7 +12,7 @@ module benchmark_runner
     implicit none
     private
 
-    public :: benchmark_runner_t, freegs_case_supported, chease_case_supported
+    public :: benchmark_runner_t, freegs_case_supported, chease_case_supported, geqdsk_case_supported
     public :: spec_case_supported, spectre_case_supported
 
     type :: implementation_entry_t
@@ -563,7 +563,13 @@ contains
             write(output_unit, '(/,A)') "Running test case: " // trim(case_name)
 
             do j = 1, this%n_implementations
-                if (trim(this%implementations(j)%key) == 'freegs' .and. &
+                if (geqdsk_case_supported(this%test_cases(i)%str) .and. &
+                        trim(this%implementations(j)%key) /= 'chease') then
+                    call results%clear()
+                    results%error_message = 'Unsupported: native GEQDSK fixture is reserved for CHEASE'
+                    write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
+                        ' skipped (native GEQDSK fixture is CHEASE-only)'
+                else if (trim(this%implementations(j)%key) == 'freegs' .and. &
                     .not. freegs_case_supported(this%test_cases(i)%str)) then
                     call results%clear()
                     results%error_message = 'Unsupported: FreeGS is restricted to 2-D Grad-Shafranov cases'
@@ -881,6 +887,16 @@ contains
         chease_case_supported = index(lowered, '/2d') > 0 .and. &
             (path_has_suffix(lowered, '.geqdsk') .or. path_has_suffix(lowered, '.eqdsk'))
     end function chease_case_supported
+
+    logical function geqdsk_case_supported(filepath)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: lowered
+
+        lowered = filepath
+        call to_lower(lowered)
+        geqdsk_case_supported = index(lowered, '/2d') > 0 .and. &
+            (path_has_suffix(lowered, '.geqdsk') .or. path_has_suffix(lowered, '.eqdsk'))
+    end function geqdsk_case_supported
 
     logical function spec_case_supported(filepath)
         character(len=*), intent(in) :: filepath

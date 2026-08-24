@@ -1,6 +1,7 @@
 program test_runner_reporting
     use iso_fortran_env, only: error_unit, output_unit, real64
     use benchmark_runner, only: benchmark_runner_t, freegs_case_supported, chease_case_supported, &
+        geqdsk_case_supported, &
         spec_case_supported, spectre_case_supported
     use repository_manager, only: repository_manager_t
     use results_comparator, only: results_comparator_t
@@ -55,6 +56,8 @@ contains
 
         n_tests = n_tests + 1
         if (chease_case_supported('/repo/cases/analytic/2d_solovev/solovev.geqdsk') .and. &
+            geqdsk_case_supported('/repo/cases/generated/2d_chease/input.geqdsk') .and. &
+            .not. geqdsk_case_supported('/repo/cases/analytic/2d_solovev/input.solovev') .and. &
             .not. chease_case_supported('/repo/cases/numerical/3d_w7x/input.w7x') .and. &
             .not. chease_case_supported('/repo/cases/analytic/2d_solovev/input.solovev') .and. &
             spec_case_supported('/repo/SPEC/ci/G1V03L3Fi/G1V03L3Fi.sp') .and. &

@@ -34,6 +34,7 @@ benchmark_results/
 benchmark_results-slurm-*/
 slurm-vmec-benchmark-*.out
 slurm-vmec-benchmark-*.err
+cases/generated/
 test_vmec/
 symmetric_debug_*/
 asymmetric_debug_*/

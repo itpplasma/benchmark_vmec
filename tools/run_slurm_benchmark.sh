@@ -74,6 +74,23 @@ export OMP_DYNAMIC=false
 export OMP_PLACES=cores
 export OMP_PROC_BIND=spread
 
+stage_chease_case() {
+    # CHEASE needs a genuine EQDSK contract.  Stage the solver's small D3D
+    # regression fixture into the benchmark corpus without vendoring a
+    # third-party data file into this repository.
+    local source="$base_dir/CHEASE/WK/TESTCASES/D3D/geqdsk_COCOS5"
+    local destination="$repo_root/cases/generated/2d_chease/input.geqdsk"
+    if [[ -f "$source" ]]; then
+        mkdir -p "$(dirname "$destination")"
+        if [[ ! -f "$destination" || "$source" -nt "$destination" ]]; then
+            cp "$source" "$destination"
+        fi
+        printf 'Staged CHEASE native 2-D fixture: %s\n' "$destination"
+    else
+        printf 'CHEASE native fixture unavailable; no generated GEQDSK case staged\n' >&2
+    fi
+}
+
 driver=fo
 prepare_driver() {
     # Prefer the repository-standard fo checks.  Some older cluster fpm builds
@@ -105,6 +122,7 @@ run_driver() {
 case "$mode" in
     smoke)
         prepare_driver
+        stage_chease_case
         run_driver list-repos
         if [[ -n "$case_match" ]]; then
             run_driver list-cases "${case_match_args[@]}" --limit 1
@@ -116,6 +134,7 @@ case "$mode" in
         ;;
     full)
         prepare_driver
+        stage_chease_case
         run_driver list-repos
         run_driver list-cases "${case_match_args[@]}"
         run_driver run "${case_match_args[@]}" --timeout "$timeout_seconds"

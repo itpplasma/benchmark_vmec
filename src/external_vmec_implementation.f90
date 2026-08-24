@@ -525,13 +525,13 @@ contains
         character(len=*), intent(in) :: output_dir
         integer, intent(out) :: status
         integer :: unit
-        logical :: exists
 
-        inquire(file=trim(output_dir) // '/EQDSK_COCOS_02.OUT', exist=exists)
-        if (.not. exists) then
-            status = 1
-            return
-        end if
+        ! The CHEASE wrapper appends the input basename to its output name
+        ! (EQDSK_COCOS_02.OUT.<case>), so match the documented prefix rather
+        ! than one exact filename.
+        call execute_command_line('ls -1 ' // trim(output_dir) // &
+            '/EQDSK_COCOS_02.OUT* >/dev/null 2>&1', exitstat=status)
+        if (status /= 0) return
         open(newunit=unit, file=trim(output_dir) // '/chease_result.json', status='replace', &
             action='write', iostat=status)
         if (status /= 0) return
