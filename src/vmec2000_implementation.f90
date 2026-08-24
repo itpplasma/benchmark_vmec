@@ -36,7 +36,7 @@ contains
 
         ! Check if already built by testing if vmec module can be imported
         cmd = 'cd ' // trim(this%path) // ' && ' // trim(python_cmd) // &
-              ' -c "import vmec; print(''VMEC2000 available'')"'
+              ' -c "import vmec.vmec; from mpi4py import MPI; print(''VMEC2000 available'')"'
         call execute_command_line(trim(cmd), exitstat=stat)
         if (stat == 0) then
             ! Already built
@@ -121,9 +121,8 @@ contains
         write(unit, '(A)') "    if not MPI.Is_initialized():"
         write(unit, '(A)') "        MPI.Init()"
         write(unit, '(A)') "    fcomm = MPI.COMM_WORLD.py2f()"
-        write(unit, '(A)') "except ImportError:"
-        write(unit, '(A)') "    # Fallback for systems without MPI"
-        write(unit, '(A)') "    fcomm = -1"
+        write(unit, '(A)') "except ImportError as exc:"
+        write(unit, '(A)') "    raise RuntimeError('VMEC2000 requires mpi4py') from exc"
         write(unit, '(A)') "try:"
         write(unit, '(A)') "    import vmec"
         write(unit, '(A)') "    # Already in correct directory"
