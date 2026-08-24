@@ -7,7 +7,7 @@ project is separate.
 
 ## Implemented
 
-- `main` is pushed at `966f033`. `fo check`, the Fortran tests (5/5), Python
+- `main` is pushed at `8e999bf`. `fo check`, the Fortran tests (5/5), Python
   byte-compilation, shell syntax checks, and `git diff --check` pass.
 - VMEC-like lanes: educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC,
   and GVEC. The wider inventory also includes SPEC, SPECTRE, FreeGS, and
@@ -32,8 +32,8 @@ project is separate.
 ## Active exhaustive run
 
 Corrected full run `1791165` is running on `node20` with a 600-second
-per-case timeout. It discovered 298 cases; the latest snapshot is 87 cases
-started, 87 completed, and 9 explicit failures/unsupported rows. It writes to:
+  per-case timeout. It discovered 298 cases; the latest snapshot is 102 cases
+  started, 102 completed, and 11 explicit failures/unsupported rows. It writes to:
 
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-corrected/benchmark_results-slurm-1791165/`
 
