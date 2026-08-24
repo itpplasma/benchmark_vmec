@@ -182,13 +182,13 @@ contains
             ! the benchmark output directory so the exact generated input is
             ! retained alongside the run log.
             if (index(lowercase(basename(local_input)), 'input.') == 1) then
-                if (index(trim(this%executable), 'python') > 0) then
-                    cmd = trim(this%executable) // ' -m gvec.scripts.main convert-params --vmec ' // &
-                        basename(local_input) // ' parameter.ini'
-                else
-                    cmd = trim(this%executable) // ' convert-params --vmec ' // &
-                        basename(local_input) // ' parameter.ini'
-                end if
+                ! The upstream converter assumes dense rectangular Fourier
+                ! arrays.  The benchmark bridge first normalizes sparse VMEC
+                ! assignments such as RBC(0,0) and RBC(1,1), then delegates
+                ! to GVEC's ordinary parameter writer.
+                cmd = trim(this%executable) // ' ' // trim(benchmark_root) // &
+                    '/tools/convert_vmec_to_gvec.py ' // basename(local_input) // &
+                    ' parameter.ini'
                 call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
                     ' >> gvec.log 2>&1', exitstat=stat)
                 if (stat /= 0) then
