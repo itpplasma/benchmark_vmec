@@ -118,6 +118,8 @@ contains
         write(unit, '(A)') "import numpy as np"
         write(unit, '(A)') "try:"
         write(unit, '(A)') "    from mpi4py import MPI"
+        write(unit, '(A)') "    if not MPI.Is_initialized():"
+        write(unit, '(A)') "        MPI.Init()"
         write(unit, '(A)') "    fcomm = MPI.COMM_WORLD.py2f()"
         write(unit, '(A)') "except ImportError:"
         write(unit, '(A)') "    # Fallback for systems without MPI"
