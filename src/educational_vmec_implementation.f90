@@ -179,7 +179,10 @@ contains
         indata_file = prepared_input
 
         ! Copy and clean input file to output directory
-        local_input = trim(output_dir) // "/" // get_basename(indata_file)
+        ! Keep the normalized source and cleaned destination distinct.  Opening
+        ! the same file for read and ``status='replace'`` would truncate the
+        ! input before the cleaner has consumed it.
+        local_input = trim(output_dir) // "/input_cleaned.vmec"
         if (.not. this%clean_input_for_educational_vmec(indata_file, local_input)) then
             write(error_unit, '(A)') "Failed to clean input file for Educational VMEC"
             return
