@@ -1,5 +1,5 @@
 module jvmec_implementation
-    use iso_fortran_env, only: int32, real64, error_unit, output_unit
+    use iso_fortran_env, only: real64, error_unit, output_unit
     use vmec_implementation_base, only: vmec_implementation_t
     use vmec_benchmark_types, only: vmec_result_t
     use json_module
@@ -157,7 +157,9 @@ contains
         character(len=256) :: wout_file, log_file
         integer :: stat, ncid, varid, dimid, i, nfp_val
         integer :: ns, mnmax
-        real(real64), allocatable :: iotas_temp(:), phips_temp(:)
+        real(real64), allocatable :: iotas_temp(:)
+        real(real64), allocatable :: rmns_local(:,:), zmnc_local(:,:)
+        logical :: have_aspect, have_volume, have_rmajor, have_aminor, scalar_found
         logical :: exists
         
         call results%clear()
@@ -216,6 +218,8 @@ contains
             allocate(results%lmns(ns, mnmax))
             allocate(results%xm(mnmax))
             allocate(results%xn(mnmax))
+            allocate(rmns_local(ns, mnmax))
+            allocate(zmnc_local(ns, mnmax))
             
             ! Initialize arrays to zero
             results%rmnc = 0.0_real64
@@ -223,6 +227,21 @@ contains
             results%lmns = 0.0_real64
             results%xm = 0
             results%xn = 0
+            rmns_local = 0.0_real64
+            zmnc_local = 0.0_real64
+
+            ! Prefer quantities computed by jVMEC itself.  The Fourier
+            ! geometry below remains a fallback for older wout files.
+            have_aspect = read_jvmec_scalar(ncid, "aspect", results%aspect)
+            have_volume = read_jvmec_scalar(ncid, "volume_p", results%volume_p)
+            have_rmajor = read_jvmec_scalar(ncid, "Rmajor_p", results%rmajor_p)
+            have_aminor = read_jvmec_scalar(ncid, "Aminor_p", results%aminor_p)
+            scalar_found = read_jvmec_scalar(ncid, "wb", results%wb)
+            scalar_found = read_jvmec_scalar(ncid, "betatotal", results%betatotal)
+            scalar_found = read_jvmec_scalar(ncid, "betapol", results%betapol)
+            scalar_found = read_jvmec_scalar(ncid, "betator", results%betator)
+            scalar_found = read_jvmec_scalar(ncid, "b0", results%b0)
+            scalar_found = read_jvmec_scalar(ncid, "ctor", results%itor)
             
             ! Read Fourier coefficients
             stat = nf90_inq_varid(ncid, "rmnc", varid)
@@ -269,6 +288,11 @@ contains
                     deallocate(lmns_temp)
                 end block
             end if
+
+            call read_jvmec_fourier(ncid, "rmns", ns, mnmax, results%rmns)
+            call read_jvmec_fourier(ncid, "zmnc", ns, mnmax, results%zmnc)
+            if (allocated(results%rmns)) rmns_local = results%rmns
+            if (allocated(results%zmnc)) zmnc_local = results%zmnc
             
             ! Read mode numbers (convert from integer to real) - use actual xm dimension 
             stat = nf90_inq_varid(ncid, "xm", varid)
@@ -319,7 +343,9 @@ contains
                 end block
             end if
             
-            ! Calculate physics quantities from Fourier coefficients (if arrays loaded successfully)
+            ! Calculate geometry-derived quantities only when older output did
+            ! not contain the corresponding scalar.  Do not use the edge m=0
+            ! coefficient as a proxy for the major radius.
             if (allocated(results%rmnc) .and. allocated(results%xm) .and. allocated(results%xn)) then
                 ! Find the (m=0, n=0) mode for magnetic axis
                 do i = 1, mnmax
@@ -327,9 +353,6 @@ contains
                         ! Only overwrite if we don't already have a valid value from direct read
                         if (abs(results%raxis_cc) < 1e-12_real64) then
                             results%raxis_cc = results%rmnc(1, i)  ! Axis value
-                        end if
-                        if (abs(results%rmajor_p) < 1e-12_real64) then
-                            results%rmajor_p = results%rmnc(ns, i) ! Edge value for aspect ratio
                         end if
                         write(output_unit, '(A,I0,A,F12.6,A,F12.6)') "Found (0,0) mode at index ", i, &
                                                                     ", rmnc(1,i)=", results%rmnc(1, i), &
@@ -339,6 +362,13 @@ contains
                 end do
             else
                 write(output_unit, '(A)') "rmnc arrays not successfully loaded, using direct read values"
+            end if
+
+            if (.not. have_aspect .or. .not. have_volume .or. .not. have_rmajor .or. .not. have_aminor) then
+                call derive_jvmec_geometry(results%rmnc, rmns_local, zmnc_local, results%zmns, &
+                                           results%xm, results%xn, real(nfp_val, real64), &
+                                           results%raxis_cc, results%rmajor_p, results%aminor_p, &
+                                           results%aspect, results%volume_p)
             end if
             
             ! Read rotational transform (iota)
@@ -351,28 +381,6 @@ contains
                 end if
                 deallocate(iotas_temp)
             end if
-            
-            ! Read toroidal flux and calculate volume
-            stat = nf90_inq_varid(ncid, "phips", varid)
-            if (stat == NF90_NOERR) then
-                allocate(phips_temp(ns))
-                stat = nf90_get_var(ncid, varid, phips_temp)
-                if (stat == NF90_NOERR .and. ns > 0) then
-                    ! Estimate volume from toroidal flux
-                    results%volume_p = abs(phips_temp(ns)) * results%rmajor_p * 2.0_real64 * 3.14159265359_real64
-                end if
-                deallocate(phips_temp)
-            end if
-            
-            ! Calculate aspect ratio if we have both axis and major radius
-            if (results%raxis_cc > 0.0_real64 .and. results%rmajor_p > 0.0_real64) then
-                results%aspect = results%rmajor_p / results%raxis_cc
-            end if
-            
-            ! jVMEC doesn't output wb (magnetic energy) directly - would need to calculate from B-field
-            ! For now, set a placeholder value
-            results%wb = 0.0_real64
-            results%betatotal = 0.0_real64
             
             ! Close NetCDF file
             stat = nf90_close(ncid)
@@ -408,6 +416,94 @@ contains
             end if
         end if
     end subroutine jvmec_extract_results
+
+    logical function read_jvmec_scalar(ncid, name, value)
+        use netcdf
+        integer, intent(in) :: ncid
+        character(len=*), intent(in) :: name
+        real(real64), intent(out) :: value
+        integer :: varid, status
+
+        value = 0.0_real64
+        read_jvmec_scalar = .false.
+        status = nf90_inq_varid(ncid, trim(name), varid)
+        if (status /= NF90_NOERR) return
+        status = nf90_get_var(ncid, varid, value)
+        if (status == NF90_NOERR) read_jvmec_scalar = .true.
+    end function read_jvmec_scalar
+
+    subroutine read_jvmec_fourier(ncid, name, ns, mnmax, values)
+        use netcdf
+        integer, intent(in) :: ncid, ns, mnmax
+        character(len=*), intent(in) :: name
+        real(real64), allocatable, intent(out) :: values(:,:)
+        integer :: varid, status
+        real(real64), allocatable :: temporary(:,:)
+
+        status = nf90_inq_varid(ncid, trim(name), varid)
+        if (status /= NF90_NOERR) return
+        allocate(temporary(mnmax, ns))
+        status = nf90_get_var(ncid, varid, temporary, start=[1, 1], count=[mnmax, ns])
+        if (status == NF90_NOERR) then
+            allocate(values(ns, mnmax))
+            values = transpose(temporary)
+        end if
+        deallocate(temporary)
+    end subroutine read_jvmec_fourier
+
+    subroutine derive_jvmec_geometry(rmnc, rmns, zmnc, zmns, xm, xn, nfp, &
+                                     raxis, rmajor, aminor, aspect, volume)
+        integer, parameter :: ntheta = 128, nphi = 64
+        real(real64), parameter :: two_pi = 2.0_real64 * acos(-1.0_real64)
+        real(real64), intent(in) :: rmnc(:,:), rmns(:,:), zmnc(:,:), zmns(:,:)
+        real(real64), intent(in) :: xm(:), xn(:), nfp
+        real(real64), intent(out) :: raxis, rmajor, aminor, aspect, volume
+        integer :: itheta, iphi, imode, ns, mnmax, mode00
+        real(real64) :: theta, phi, phase, radius, height_theta
+        real(real64) :: rmin, rmax, volume_sum
+
+        ns = size(rmnc, 1)
+        mnmax = size(rmnc, 2)
+        mode00 = 1
+        do imode = 1, mnmax
+            if (abs(xm(imode)) < 1.0e-12_real64) then
+                if (abs(xn(imode)) < 1.0e-12_real64) then
+                    mode00 = imode
+                    exit
+                end if
+            end if
+        end do
+        raxis = rmnc(1, mode00)
+        rmin = huge(1.0_real64)
+        rmax = -huge(1.0_real64)
+        volume_sum = 0.0_real64
+        do iphi = 1, nphi
+            phi = two_pi * real(iphi - 1, real64) / real(nphi, real64)
+            do itheta = 1, ntheta
+                theta = two_pi * real(itheta - 1, real64) / real(ntheta, real64)
+                radius = 0.0_real64
+                height_theta = 0.0_real64
+                do imode = 1, mnmax
+                    phase = xm(imode) * theta - xn(imode) * phi / nfp
+                    radius = radius + rmnc(ns, imode) * cos(phase) + &
+                             rmns(ns, imode) * sin(phase)
+                    height_theta = height_theta - xm(imode) * zmnc(ns, imode) * sin(phase) + &
+                                   xm(imode) * zmns(ns, imode) * cos(phase)
+                end do
+                rmin = min(rmin, radius)
+                rmax = max(rmax, radius)
+                volume_sum = volume_sum + radius * radius * height_theta
+            end do
+        end do
+        rmajor = 0.5_real64 * (rmax + rmin)
+        aminor = 0.5_real64 * (rmax - rmin)
+        if (aminor > 0.0_real64) then
+            aspect = rmajor / aminor
+        else
+            aspect = 0.0_real64
+        end if
+        volume = abs(0.5_real64 * volume_sum / real(ntheta * nphi, real64) * two_pi**2)
+    end subroutine derive_jvmec_geometry
 
     function jvmec_convert_json_to_indata(this, json_filename, output_file) result(success)
         class(jvmec_t), intent(in) :: this
