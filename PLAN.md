@@ -7,7 +7,7 @@ project is separate.
 
 ## Current status (2026-08-24)
 
-- `main` is pushed through `cd4c58c`. Local `fo test` (5/5), Python
+- `main` is pushed through `74bf514`. Local `fo test` (5/5), Python
   byte-compilation of all bridge scripts, Slurm shell syntax checks, and
   `git diff --check` pass.
 - VMEC-family lanes are wired for educational_VMEC, jVMEC, VMEC2000, VMEC++,
@@ -75,8 +75,8 @@ project is separate.
   `surfaces.png`, `runtime.png`, and `runtime.csv`).
 
 - Exhaustive job `1791036` remains stable on `node11`. At the latest check it
-  had started 97 of the 298 discovered cases (72 completion messages) after
-  41 minutes, with no MPI abort; stderr contains only the expected unavailable
+  had started 209 of the 298 discovered cases (166 completion messages) after
+  1:30:41, with no MPI abort; stderr contains only the expected unavailable
   PARVMEC notice and diagnostic failures from the pre-bridge executable that
   was already running before the latest converter fixes.
 
@@ -95,10 +95,15 @@ project is separate.
   or executable is staged. No other expected VMEC-like code is missing from
   the configured repository inventory.
 
-## Handoff
+## Remaining work
 
-While job `1791036` runs, inspect its output for immediate
-adapter/converter errors and keep genuine solver failures/timeouts as explicit
-rows; only retry environment or conversion defects. After completion,
-regenerate plots from the final `comparison_table.csv` with
-`tools/plot_benchmark_results.py` and record their paths here.
+- Let diagnostic job `1791036` finish; keep its pre-bridge failures as history,
+  not as the final benchmark.
+- Verify corrected exhaustive job `1791080` after its dependency releases,
+  fixing only environment or converter defects and preserving genuine solver
+  failures/timeouts as explicit rows.
+- After `1791080` completes, regenerate scalar, surface, and timing plots from
+  its final `comparison_table.csv`, inspect them, and record their paths here.
+- Decide whether the corrected tokamak GVEC `detJ<0` solver failure remains an
+  accepted physical non-convergence or merits a separately tuned case; the
+  corrected non-axisymmetric W7-X GVEC run already passes end to end.
