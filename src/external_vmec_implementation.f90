@@ -1,6 +1,6 @@
 module external_vmec_implementation
     use iso_fortran_env, only: error_unit, output_unit, real64
-    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, shell_quote
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
@@ -157,9 +157,9 @@ contains
         if (trim(lower_name) == 'vmex') then
             prepared_input = trim(output_dir) // '/input_prepared.vmec'
             if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
-            cmd = 'cp ' // trim(prepared_input) // ' ' // trim(local_input)
+            cmd = 'cp ' // shell_quote(prepared_input) // ' ' // shell_quote(local_input)
         else
-            cmd = 'cp ' // trim(input_file) // ' ' // trim(local_input)
+            cmd = 'cp ' // shell_quote(input_file) // ' ' // shell_quote(local_input)
         end if
         call execute_command_line(trim(cmd), exitstat=stat)
         if (stat /= 0) then

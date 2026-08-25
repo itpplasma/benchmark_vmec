@@ -4,7 +4,7 @@ module vmec_implementation_base
     implicit none
     private
 
-    public :: vmec_implementation_t, select_python_command, prepare_vmec_input
+    public :: vmec_implementation_t, select_python_command, prepare_vmec_input, shell_quote
 
     type, abstract :: vmec_implementation_t
         character(len=:), allocatable :: name
@@ -71,9 +71,14 @@ contains
             source_dir = '.'
         end if
         python_cmd = select_python_command(implementation_path)
-        cmd = trim(python_cmd) // ' ' // trim(benchmark_root) // &
-              '/tools/prepare_vmec_input.py ' // trim(input_file) // ' ' // &
-              trim(output_file) // ' --search-root ' // trim(source_dir)
+        ! Input fixtures can live below directories containing spaces (the
+        ! educational_VMEC Free Boundary corpus is one such case).  Every
+        ! path passed through the shell must therefore be quoted as a single
+        ! argument; the Python helper itself handles the actual file I/O.
+        cmd = shell_quote(python_cmd) // ' ' // &
+              shell_quote(trim(benchmark_root) // '/tools/prepare_vmec_input.py') // ' ' // &
+              shell_quote(input_file) // ' ' // shell_quote(output_file) // &
+              ' --search-root ' // shell_quote(source_dir)
         call execute_command_line(trim(cmd), exitstat=stat)
         success = (stat == 0)
         if (.not. success) then
@@ -121,8 +126,8 @@ contains
         ! process.  Runs happen in per-case output directories, so retain an
         ! absolute path for executables, Python environments, and Java class
         ! paths used after that directory change.
-        call execute_command_line("realpath -m '" // trim(path) // &
-            "' > /tmp/vmec_implementation_path.tmp", exitstat=stat)
+        call execute_command_line("realpath -m " // shell_quote(path) // &
+            " > /tmp/vmec_implementation_path.tmp", exitstat=stat)
         if (stat == 0) then
             open(newunit=unit, file="/tmp/vmec_implementation_path.tmp", &
                 status="old", action="read", iostat=io_status)
@@ -173,13 +178,23 @@ contains
         logical :: success
         integer :: stat
         
-        call execute_command_line("mkdir -p " // trim(output_dir), exitstat=stat)
+        call execute_command_line("mkdir -p " // shell_quote(output_dir), exitstat=stat)
         success = (stat == 0)
         
         if (.not. success) then
             write(error_unit, '(A)') "Failed to create output directory: " // trim(output_dir)
         end if
     end function vmec_implementation_prepare_output_dir
+
+    function shell_quote(text) result(quoted)
+        character(len=*), intent(in) :: text
+        character(len=:), allocatable :: quoted
+
+        ! Repository and output paths are controlled by the benchmark.  A
+        ! single-quoted shell argument preserves spaces and shell metacharacters
+        ! without changing the path seen by the child process.
+        quoted = "'" // trim(text) // "'"
+    end function shell_quote
 
     subroutine vmec_implementation_finalize(this)
         class(vmec_implementation_t), intent(inout) :: this
