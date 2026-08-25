@@ -7,7 +7,7 @@ benchmark is separate.
 
 ## Current implementation
 
-- `main` is pushed at `484172c`. The driver has explicit lanes for
+- `main` is pushed at `71834c5`. The driver has explicit lanes for
   educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC, GVEC, PARVMEC, SPEC,
   SPECTRE, FreeGS, and CHEASE. PARVMEC is discovered but is not buildable in
   the current cluster environment.
@@ -60,16 +60,18 @@ timeout and jVMEC enabled. Result root:
 
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final/benchmark_results-slurm-final-mgrid/`
 
-At the current handoff it has 727 implementation starts, 423 completions,
-and 293 explicit failures; the driver output contains no `MPI_ABORT`. The
-result root currently has 72 native SPECTRE result JSON files (40 native
-successes and 32 native unsuccessful minimizations), including the two
+At the current handoff it has 795 implementation starts, 457 completions,
+and 325 explicit failures; the driver output contains no `MPI_ABORT`. The
+result root currently has 76 native SPECTRE result JSON files (40 native
+successes and 36 native unsuccessful minimizations), including the two
 refreshed HELIOTRON rows from the orientation-aware converter. The remaining
 hard SPECTRE failures are parser/timeout rows rather than MPI aborts. The original
 HELIOTRON abort logs are retained outside the result root at
 `/home/ert/benchmark_vmec-slurm-233aa21/spectre-refresh-audit-1791254/`.
 Focused Slurm refresh `1820253` repaired seven legacy-header rows; `isaev1`
 now reaches the solver but hits the ordinary 600-second timeout.
+Persistent progress is logged at
+`/home/ert/benchmark_vmec-slurm-233aa21/benchmark-progress-1791254.log`.
 The failures seen so far are honest solver/feature rows: GVEC
 force-tolerance/non-convergence or unsupported VMEC profiles, VMEX and jVMEC
 non-convergence on difficult educational inputs, and bounded SPECTRE timeouts
