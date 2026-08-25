@@ -194,7 +194,12 @@ contains
                 ! to GVEC's TOML writer.  TOML is required here because GVEC's
                 ! legacy INI writer drops I_tor/picard_current for current-
                 ! constrained VMEC inputs.
-                cmd = trim(this%executable) // ' ' // trim(benchmark_root) // &
+                ! The converter is a Python script, while ``pygvec`` is a
+                ! subcommand wrapper.  Always invoke the script with the
+                ! environment-selected interpreter so either installation
+                ! layout behaves identically.
+                python_cmd = select_python_command(this%path)
+                cmd = trim(python_cmd) // ' ' // trim(benchmark_root) // &
                     '/tools/convert_vmec_to_gvec.py ' // basename(local_input) // &
                     ' parameter.toml'
                 call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
@@ -215,7 +220,9 @@ contains
                 write(error_unit, '(A)') 'FreeGS supports only the benchmark 2-D Grad-Shafranov lane'
                 return
             end if
-            cmd = trim(this%executable) // ' ' // trim(benchmark_root) // &
+            python_cmd = select_python_command(this%path)
+            cmd = 'env PYTHONPATH=' // trim(this%path) // ' ' // trim(python_cmd) // ' ' // &
+                trim(benchmark_root) // &
                 '/tools/run_freegs.py ' // trim(local_input) // ' ' // trim(output_dir)
         case ('spec')
             ! SPEC's executable expects its native .sp namelist.  The runner
