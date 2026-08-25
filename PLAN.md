@@ -20,6 +20,11 @@ benchmark is separate.
   stages relative MGRID files (following checkout symlinks), and keeps
   prepared and cleaned inputs separate. FreeGS/CHEASE receive only their
   supported 2-D inputs, and SPEC only receives native SPEC namelists.
+- Shell-bound paths are quoted as single arguments, including the spaces in
+  educational_VMEC's `Free Boundary` fixtures. Focused Slurm refresh `1826653`
+  completed the `JDHtest7` case across all available lanes after this fix;
+  the remaining failures there are solver outcomes, not input-discovery
+  failures.
 - The SPECTRE VMEC converter probes the signed boundary area and selects
   `Lchangeangle` per input. This preserves the usual handedness for W7-X/NCSX
   while handling the opposite-handed HELIOTRON fixtures without MPI aborts;
@@ -60,10 +65,10 @@ timeout and jVMEC enabled. Result root:
 
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final/benchmark_results-slurm-final-mgrid/`
 
-At the current handoff it has 831 implementation starts, 470 completions,
-360 explicit failures, and one active implementation; the driver output
-contains no `MPI_ABORT`. The result root currently has 83 native SPECTRE
-result JSON files (45 native successes and 38 native unsuccessful
+At the current handoff it has 848 implementation starts, 478 completions,
+369 explicit failures, and one active implementation; the driver output
+contains no `MPI_ABORT`. The result root currently has 84 native SPECTRE
+result JSON files (45 native successes and 39 native unsuccessful
 minimizations), including the refreshed HELIOTRON rows from the
 orientation-aware converter. The remaining
 hard SPECTRE failures are parser/timeout rows rather than MPI aborts. The original
