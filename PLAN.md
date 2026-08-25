@@ -26,8 +26,8 @@ benchmark is separate.
 
 ## Upstream work
 
-- [jVMEC PR #3](https://github.com/jonathanschilling/jVMEC/pull/3): local-MGRID
-  registration fix.
+- [jVMEC PR #3](https://github.com/jonathanschilling/jVMEC/pull/3) is merged
+  upstream as `778e06c5`; it adds the local-MGRID registration fix.
 - [DESC PR #2300](https://github.com/PlasmaControl/DESC/pull/2300):
   zero-Gershgorin fix and requested changelog entry (`d9b67ba`).
 - GVEC MRs target upstream `develop` and are split by concern:
