@@ -65,10 +65,10 @@ timeout and jVMEC enabled. Result root:
 
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final/benchmark_results-slurm-final-mgrid/`
 
-At the current handoff it has 862 implementation starts, 486 completions,
-375 explicit failures, and one active implementation; the driver output
-contains no `MPI_ABORT`. The result root currently has 84 native SPECTRE
-result JSON files (45 native successes and 39 native unsuccessful
+At the current handoff it has 869 implementation starts, 490 completions,
+378 explicit failures, and one active implementation; the driver output
+contains no `MPI_ABORT`. The result root currently has 86 native SPECTRE
+result JSON files (47 native successes and 39 native unsuccessful
 minimizations), including the refreshed HELIOTRON rows from the
 orientation-aware converter. The remaining
 hard SPECTRE failures are parser/timeout rows rather than MPI aborts. The original
@@ -76,9 +76,12 @@ HELIOTRON abort logs are retained outside the result root at
 `/home/ert/benchmark_vmec-slurm-233aa21/spectre-refresh-audit-1791254/`.
 Focused Slurm refresh `1820253` repaired seven legacy-header rows; `isaev1`
 now reaches the solver but hits the ordinary 600-second timeout. A separate
-nine-case Free Boundary path refresh (`1827278`) uses the quoted path fix and
+nine-case Free Boundary path refresh (`1827777`) uses the quoted path fix and
 the benchmark's full 600-second timeout; its rows are kept in a separate
 refresh root until the job is verified and merged.
+An attempted in-allocation overlap probe hit the cluster Open MPI/PMI
+configuration and was terminated; its log and partial output are quarantined
+under `spectre-refresh-audit-1791254/` and are not benchmark evidence.
 Persistent progress is logged at
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark-progress-1791254.log`.
 The failures seen so far are honest solver/feature rows: GVEC
