@@ -60,10 +60,10 @@ timeout and jVMEC enabled. Result root:
 
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final/benchmark_results-slurm-final-mgrid/`
 
-At the current handoff it has 795 implementation starts, 457 completions,
-and 325 explicit failures; the driver output contains no `MPI_ABORT`. The
-result root currently has 76 native SPECTRE result JSON files (40 native
-successes and 36 native unsuccessful minimizations), including the two
+At the current handoff it has 800 implementation starts, 459 completions,
+and 327 explicit failures; the driver output contains no `MPI_ABORT`. The
+result root currently has 79 native SPECTRE result JSON files (44 native
+successes and 35 native unsuccessful minimizations), including the two
 refreshed HELIOTRON rows from the orientation-aware converter. The remaining
 hard SPECTRE failures are parser/timeout rows rather than MPI aborts. The original
 HELIOTRON abort logs are retained outside the result root at
