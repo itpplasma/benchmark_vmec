@@ -58,6 +58,64 @@ def _boundary(text: str, field: str, mpol: int, ntor: int) -> dict[str, float]:
     return values
 
 
+def _signed_boundary_area(
+    rbc: dict[str, float],
+    zbs: dict[str, float],
+    rbs: dict[str, float],
+    zbc: dict[str, float],
+    *,
+    ntheta: int = 64,
+    nzeta: int = 16,
+) -> float:
+    """Estimate the signed cross-sectional area of the boundary.
+
+    SPECTRE's ``Lchangeangle`` flips the poloidal handedness.  VMEC inputs do
+    not all use the same orientation, so a fixed flag can turn a valid
+    boundary into a negative-volume surface.  The signed area is a cheap,
+    convention-independent orientation probe; its sign is stable over the
+    sampled toroidal angles for the stellar-symmetric benchmark boundaries.
+    """
+
+    def terms(coefficients: dict[str, float]) -> list[tuple[int, int, float]]:
+        result = []
+        for key, coefficient in coefficients.items():
+            match = re.fullmatch(r"\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)", key)
+            if match is not None:
+                result.append((int(match.group(1)), int(match.group(2)), coefficient))
+        return result
+
+    rbc_terms = terms(rbc)
+    zbs_terms = terms(zbs)
+    rbs_terms = terms(rbs)
+    zbc_terms = terms(zbc)
+    areas = []
+    for izeta in range(nzeta):
+        zeta = 2.0 * math.pi * izeta / nzeta
+        points = []
+        for itheta in range(ntheta):
+            theta = 2.0 * math.pi * itheta / ntheta
+            radius = 0.0
+            height = 0.0
+            for m, n, coefficient in rbc_terms:
+                angle = m * theta + n * zeta
+                radius += coefficient * math.cos(angle)
+            for m, n, coefficient in rbs_terms:
+                angle = m * theta + n * zeta
+                radius += coefficient * math.sin(angle)
+            for m, n, coefficient in zbs_terms:
+                angle = m * theta + n * zeta
+                height += coefficient * math.sin(angle)
+            for m, n, coefficient in zbc_terms:
+                angle = m * theta + n * zeta
+                height += coefficient * math.cos(angle)
+            points.append((radius, height))
+        area = 0.0
+        for first, second in zip(points, points[1:] + points[:1]):
+            area += first[0] * second[1] - first[1] * second[0]
+        areas.append(0.5 * area)
+    return sum(areas) / len(areas) if areas else 0.0
+
+
 def convert(source: Path, destination: Path, nvol: int) -> None:
     try:
         import f90nml  # type: ignore
@@ -86,6 +144,12 @@ def convert(source: Path, destination: Path, nvol: int) -> None:
     tflux = [(index + 1) / nvol for index in range(nvol)]
     pressure = [_polynomial(indata.get("am", [0.0]), s) for s in tflux]
 
+    rbc = _boundary(text, "RBC", mpol, ntor)
+    zbs = _boundary(text, "ZBS", mpol, ntor)
+    rbs = _boundary(text, "RBS", mpol, ntor)
+    zbc = _boundary(text, "ZBC", mpol, ntor)
+    signed_area = _signed_boundary_area(rbc, zbs, rbs, zbc)
+
     # The volume-current constraint is accepted for both VMEC prescribed-iota
     # and prescribed-current cases, and remains well-defined when CURTOR=0.
     # This avoids SPECTRE's singular iota-only initialization for axisymmetric
@@ -107,16 +171,18 @@ def convert(source: Path, destination: Path, nvol: int) -> None:
         "adiabatic": pressure,
         "ivolume": ivolume,
         "isurf": [0.0] * nvol,
-        "rbc": _boundary(text, "RBC", mpol, ntor),
-        "zbs": _boundary(text, "ZBS", mpol, ntor),
-        "rbs": _boundary(text, "RBS", mpol, ntor),
-        "zbc": _boundary(text, "ZBC", mpol, ntor),
+        "rbc": rbc,
+        "zbs": zbs,
+        "rbs": rbs,
+        "zbc": zbc,
     }
     params = InputParameters(
         physics=physics,
         numeric={
             "linitialize": 1,
-            "lchangeangle": True,
+            # Flip only boundaries whose direct VMEC orientation is positive;
+            # a negative signed area is already in SPECTRE's handedness.
+            "lchangeangle": signed_area >= 0.0,
             "lautoinitbn": 1,
             "ndiscrete": 2,
             "impol": -4,
