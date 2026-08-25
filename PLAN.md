@@ -7,7 +7,7 @@ benchmark is separate.
 
 ## Current implementation
 
-- `main` is pushed at `182198c`. The driver has explicit lanes for
+- `main` is pushed at `4afcfd0`. The driver has explicit lanes for
   educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC, GVEC, PARVMEC, SPEC,
   SPECTRE, FreeGS, and CHEASE. PARVMEC is discovered but is not buildable in
   the current cluster environment.
@@ -20,6 +20,9 @@ benchmark is separate.
   stages relative MGRID files (following checkout symlinks), and keeps
   prepared and cleaned inputs separate. FreeGS/CHEASE receive only their
   supported 2-D inputs, and SPEC only receives native SPEC namelists.
+- The SPECTRE VMEC converter probes the signed boundary area and selects
+  `Lchangeangle` per input. This preserves the usual handedness for W7-X/NCSX
+  while handling the opposite-handed HELIOTRON fixtures without MPI aborts.
 - Cluster validation passed `fo check` (21 modules, 5 tests), shell syntax
   checks, and the converter/state focused tests (87 GVEC tests plus the
   selected long-path regression).
@@ -50,13 +53,17 @@ timeout and jVMEC enabled. Result root:
 
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final/benchmark_results-slurm-final-mgrid/`
 
-At the latest handoff snapshot it had 118 implementation starts, 117
-completions, 19 explicit failures, one no-result row, and no `MPI_ABORT` in the
-driver output. The failures seen so far are honest solver/feature rows:
-GVEC force-tolerance/non-convergence or unsupported VMEC profiles, VMEX and
-jVMEC non-convergence on one difficult educational input, and bounded SPECTRE
-timeouts on difficult cases. The patched SPECTRE W7-X case and the fixed GVEC
-converter have passed focused runs. The job remains running; do not cancel it.
+At the current handoff it has 705 implementation starts, 408 completions,
+and 286 explicit failures; the driver output contains no `MPI_ABORT`. The
+result root currently has 63 native SPECTRE result JSON files plus two
+refreshed HELIOTRON rows from the orientation-aware converter. The remaining
+SPECTRE failures are parser/timeout rows rather than MPI aborts. The original
+HELIOTRON abort logs are retained outside the result root at
+`/home/ert/benchmark_vmec-slurm-233aa21/spectre-refresh-audit-1791254/`.
+The failures seen so far are honest solver/feature rows: GVEC
+force-tolerance/non-convergence or unsupported VMEC profiles, VMEX and jVMEC
+non-convergence on difficult educational inputs, and bounded SPECTRE timeouts
+on difficult cases. The job remains running; do not cancel it.
 
 Earlier exploratory jobs `1791244`, `1791245`, and `1791248` stopped after
 specific checkout/converter/MGRID defects and are not evidence. The older
