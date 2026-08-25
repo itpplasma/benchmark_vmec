@@ -7,7 +7,7 @@ benchmark is separate.
 
 ## Current implementation
 
-- `main` is pushed at `ee63cae`. The driver has explicit lanes for
+- `main` is pushed at `4d2c863`. The driver has explicit lanes for
   educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC, GVEC, PARVMEC, SPEC,
   SPECTRE, FreeGS, and CHEASE. PARVMEC is discovered but is not buildable in
   the current cluster environment.
@@ -26,7 +26,8 @@ benchmark is separate.
   it also normalizes legacy `&END`/separator headers so historical VMEC
   namelists remain parseable. The `isaev1` conversion and limited SPECTRE
   smoke now produce a native result JSON. The SPECTRE runner propagates a
-  native JSON `success=false` as a failed implementation status.
+  native JSON `success=false` as a failed implementation status; the runtime
+  plot applies the same filter.
 - Cluster validation passed `fo check` (21 modules, 5 tests), shell syntax
   checks, and the converter/state focused tests (87 GVEC tests plus the
   selected long-path regression).
