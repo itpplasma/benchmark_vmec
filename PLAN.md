@@ -22,7 +22,10 @@ benchmark is separate.
   supported 2-D inputs, and SPEC only receives native SPEC namelists.
 - The SPECTRE VMEC converter probes the signed boundary area and selects
   `Lchangeangle` per input. This preserves the usual handedness for W7-X/NCSX
-  while handling the opposite-handed HELIOTRON fixtures without MPI aborts.
+  while handling the opposite-handed HELIOTRON fixtures without MPI aborts;
+  it also normalizes legacy `&END`/separator headers so historical VMEC
+  namelists remain parseable. The `isaev1` conversion and limited SPECTRE
+  smoke now produce a native result JSON.
 - Cluster validation passed `fo check` (21 modules, 5 tests), shell syntax
   checks, and the converter/state focused tests (87 GVEC tests plus the
   selected long-path regression).
