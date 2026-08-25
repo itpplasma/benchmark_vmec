@@ -287,6 +287,15 @@ def _runtime_records(result_root: Path):
             pattern_info = _RUNTIME_PATTERNS.get(implementation_dir.name)
             if pattern_info is None:
                 continue
+            if implementation_dir.name == "spectre":
+                result_files = sorted(implementation_dir.glob("*_res.json"))
+                if result_files:
+                    try:
+                        result = json.loads(result_files[-1].read_text(errors="replace"))
+                    except (OSError, json.JSONDecodeError):
+                        result = {}
+                    if isinstance(result, dict) and result.get("success") is False:
+                        continue
             log_name, pattern, source = pattern_info
             log_file = implementation_dir / log_name
             if not log_file.is_file():
