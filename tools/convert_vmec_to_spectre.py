@@ -127,10 +127,12 @@ def convert(source: Path, destination: Path, nvol: int) -> None:
         ) from exc
 
     text = source.read_text(errors="replace")
-    # Older VMEC fixtures close the namelist with both ``/`` and a trailing
-    # ``&END``.  Fortran accepts that legacy spelling, while f90nml treats the
-    # second terminator as a new, unterminated group.
-    parse_text = re.sub(r"(?im)^\s*&END\s*$", "", text)
+    # Older VMEC fixtures close the namelist with ``&END``; others contain
+    # both ``/`` and a trailing ``&END``.  Normalize either spelling to one
+    # slash so f90nml always sees a terminated INDATA group.
+    parse_text = re.sub(r"(?m)^\s*-{3,}\s*$\n?", "", text)
+    parse_text = re.sub(r"(?im)^\s*&END\s*$", "/", parse_text)
+    parse_text = re.sub(r"(?m)/\s*/\s*$", "/", parse_text)
     try:
         indata = f90nml.reads(parse_text)["indata"]
     except Exception as exc:  # pragma: no cover - parser diagnostics are code-specific
