@@ -30,7 +30,9 @@ export BENCHMARK_BASE_DIR="$base_dir"
 mgrid_index="${TMPDIR:-/tmp}/vmec-benchmark-mgrid-${SLURM_JOB_ID:-local}.txt"
 if [[ ! -s "$mgrid_index" ]]; then
     mgrid_index_tmp="${mgrid_index}.tmp.$$"
-    find "$base_dir" -type f -iname 'mgrid*' -print 2>/dev/null > "$mgrid_index_tmp" || true
+    # Staged cluster stacks use sibling symlinks; follow them so jVMEC and
+    # VMEC++ can see fixtures held in an educational_VMEC checkout.
+    find -L "$base_dir" -type f -iname 'mgrid*' -print 2>/dev/null > "$mgrid_index_tmp" || true
     mv -f "$mgrid_index_tmp" "$mgrid_index"
 fi
 export VMEC_BENCHMARK_MGRID_INDEX="$mgrid_index"
