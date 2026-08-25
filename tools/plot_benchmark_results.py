@@ -19,6 +19,7 @@ import argparse
 import csv
 import json
 import re
+import textwrap
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -384,7 +385,8 @@ def plot_surfaces(result_root: Path, output_dir: Path) -> Path:
                 curve = None
             if curve is not None:
                 axis.plot(curve[0], curve[1], linewidth=1.5, label=implementation)
-        axis.set_title(case_dir.name.replace("__", "/"))
+        title = textwrap.fill(case_dir.name.replace("__", "/"), width=34)
+        axis.set_title(title, fontsize=8, pad=4)
         axis.set_aspect("equal", adjustable="datalim")
         axis.set_xlabel("R")
         axis.set_ylabel("Z")
