@@ -7,7 +7,7 @@ benchmark is separate.
 
 ## Current implementation
 
-- `main` is pushed at `b0c1d40`. The driver has explicit lanes for
+- `main` is pushed and clean. The driver has explicit lanes for
   educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC, GVEC, PARVMEC, SPEC,
   SPECTRE, FreeGS, and CHEASE. PARVMEC is discovered but is not buildable in
   the current cluster environment.
