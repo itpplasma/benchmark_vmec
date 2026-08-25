@@ -289,10 +289,16 @@ contains
             if (trim(lower_name) == 'gvec' .and. stat == 0) then
                 ! GVEC's native state is a text file rather than VMEC NetCDF.
                 ! Retain it and emit the ordinary scalar comparison sidecar.
-                cmd = 'cd ' // trim(output_dir) // ' && ' // trim(this%executable) // ' ' // &
-                    trim(benchmark_root) // &
-                    '/tools/convert_gvec_to_common.py ' // &
-                    input_basename // '_State_final.dat gvec_result.json'
+                ! ``this%executable`` is normally the ``pygvec`` console
+                ! script, whose first argument must be a GVEC subcommand.  It
+                ! cannot execute this Python converter directly; use the
+                ! interpreter selected for the GVEC environment instead.
+                python_cmd = select_python_command(this%path)
+                cmd = 'cd ' // shell_quote(output_dir) // ' && ' // &
+                    shell_quote(python_cmd) // ' ' // &
+                    shell_quote(trim(benchmark_root) // '/tools/convert_gvec_to_common.py') // ' ' // &
+                    shell_quote(input_basename // '_State_final.dat') // ' ' // &
+                    shell_quote('gvec_result.json')
                 call execute_command_line(trim(cmd), exitstat=stat)
             end if
             if (trim(lower_name) == 'chease' .and. stat == 0) then
