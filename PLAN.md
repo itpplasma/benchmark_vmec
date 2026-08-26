@@ -3,75 +3,62 @@
 ## Scope
 
 This is the ordinary, non-differentiable equilibrium benchmark. The corpus has
-344 unique analytical and numerical 1-D, 2-D, and 3-D cases and twelve implementations:
-`educational_vmec`, `jVMEC`, `VMEC2000`, `VMEC++`, `VMEX`, `PARVMEC`,
-`DESC`, `GVEC`, `SPEC`, `SPECTRE`, `FreeGS`, and `CHEASE`. FreeGS
-and CHEASE are restricted to their supported 2-D Grad--Shafranov/GEQDSK inputs.
-Common-format adapters live in `tools/`. Native output is retained whenever a
-code provides it.
+344 unique analytical and numerical 1-D, 2-D, and 3-D cases and twelve
+implementations: `educational_vmec`, `jVMEC`, `VMEC2000`, `VMEC++`, `VMEX`,
+`PARVMEC`, `DESC`, `GVEC`, `SPEC`, `SPECTRE`, `FreeGS`, and `CHEASE`.
+FreeGS and CHEASE are restricted to supported 2-D Grad--Shafranov/GEQDSK
+inputs. Common-format adapters live in `tools/`.
 
 ## Repository state
 
-- `main` is clean and pushed at `d752803` (`Include successful SPECTRE timings`).
+- `main` is clean and pushed at `bc759a3`.
 - Local gates pass: `uv run fo check`, `uv run fo test --all`, Python `ruff`,
   shell syntax checks, and `git diff --check`.
-- The latest input adapters strip legacy separators/comments, normalize DESC
-  and educational-VMEC controls, stage MGRID fixtures, and write explicit
-  `benchmark_unsupported.txt` markers for missing fixtures, malformed VMEC
-  namelists, and unsupported GVEC profiles. These markers classify unsupported
-  cases. Generic infrastructure failures remain separate.
-- Slurm lanes archive the exact checkout commit into a per-job temporary
-  source/build tree (`BENCHMARK_ISOLATE_BUILD`, enabled by default), so
-  parallel Fo invocations cannot share generated modules.
+- The adapters normalize legacy VMEC inputs, strip inline comments, stage MGRID
+  fixtures, and retain explicit unsupported markers. The GVEC runner uses a
+  short job-local path before copying artifacts back, avoiding its fixed-length
+  restart-path truncation.
+- `tools/run_slurm_case_array.sbatch` and
+  `tools/submit_slurm_case_arrays.sh` provide reproducible bounded arrays.
+  `tools/merge_benchmark_results.sh` merges per-task reports with later sources
+  taking precedence.
 - Fo fix PR [#128](https://github.com/lazy-fortran/fo/pull/128) is pushed and
   green. Patched Fo `a024790` is installed on `scluster`.
 
-## Slurm runs
+## Slurm status
 
-- Protected legacy exhaustive job `1791254` is still running on `node20` from
-  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final`. It is useful
-  for progress comparison, but its checkout predates the final adapter markers.
-  Do not cancel it or use its failures as final classifications. At
-  2026-08-26 12:36 CEST: 2,015 starts, 1,189 done, 796 failures, and zero child
-  `MPI_ABORT`s. Progress:
-  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark-progress-1791254.log`.
-- Old pre-fix clean64 and legacy repair jobs were canceled after their partial
-  trees were retained. GVEC audit `1895960` is also canceled and is not final
-  evidence.
-- Authoritative replacements were submitted from the latest checkout
-  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-latest-e887277`
-  (commit `4ccf437`). Node-pinned isolated replacements are running or
-  queued: `1896105` DESC (Free Boundary subset, complete: 8 successes, 2
-  unsupported, 1 solver failure), `1896106` GVEC (STELLOPT subset, complete:
-  31 successes, 57 unsupported, 21 solver failures), `1896103` VMEC++ (bean,
-  complete: 4 successes, 5 unsupported), and full lanes `1896113` jVMEC,
-  `1896114` VMEC2000, `1896115`
-  VMEX, `1896116` SPECTRE, and `1896117` PARVMEC. They use 600-second
-  implementation timeouts. Targeted lanes use 2--6 hour allocations and full
-  lanes use one day. Educational indexed-axis/control rerun `1896669` is
-  complete on `node2`: 52 successes, 57 explicit unsupported fixtures, and
-  zero generic failures. It supersedes the educational rows in `1896104`.
-  Failed attempts `1896154`, `1896191`, and `1896424` were harness-only
-  (compile/test/no-case) failures and are not evidence. Check `squeue`,
-  `sacct`, and each `comparison_table.csv` before promotion.
-- Completed authoritative side runs: SPEC `1895954` (10/10 native cases),
-  FreeGS `1895836` (2-D cases only), and CHEASE `1895837` (2-D case only).
-  Earlier VMEC2000/PARVMEC/VMEC++/educational counts are diagnostics from
-  pre-fix checkouts, not final pass rates.
+- Protected legacy audit job `1791254` remains running on `node20`. It uses an
+  older checkout and is not final evidence.
+- Latest serial lanes from checkout `bc759a3` are running with 600-second
+  implementation timeouts: VMEC++ `1897318`, DESC `1897319`, educational VMEC
+  `1897321`, jVMEC `1897366`, VMEC2000 `1897367`, VMEX `1897368`, SPECTRE
+  `1897369`, PARVMEC `1897370`, and GVEC `1898197`.
+- The combined round-robin exhaustive array is job `1907490`. It covers every
+  case for all six slow implementations. Its frozen
+  case list is `/home/ert/benchmark_vmec-slurm-233aa21/case-suffixes-1859d3a.txt`
+  with 344 entries. Per-task reports are under
+  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_results-array-combined-bc759a3`.
+- Corrected `input.AXISYM` reruns succeeded for educational VMEC (`1897572`),
+  VMEC++ (`1897588`), DESC (`1897589`), GVEC (`1897590`), jVMEC (`1897594`),
+  VMEC2000 (`1897595`), VMEX (`1897596`), SPECTRE (`1897597`), and PARVMEC
+  (`1897631`). SPEC, FreeGS, and CHEASE correctly report unsupported for that
+  VMEC input. The long-path GVEC probe `1898244` succeeded.
+- Superseded pending fallbacks `1896113`--`1896117` and earlier harness-only
+  attempts were canceled. No current replacement log has a Fo/fpm build error,
+  missing command, MPI abort, segmentation fault, or GVEC `STATEFILE` path
+  error.
 
 ## Finish
 
-1. Wait for jobs `1896106` and `1896113`--`1896117`. Rerun only reproducible adapter or
-   infrastructure defects. Keep solver timeouts and code limitations as
-   genuine failures/unsupported rows.
-2. Confirm no final logs contain fallback builds, `fo check` failures,
-   missing commands, segmentation faults, or MPI aborts. Generate and inspect
-   scalar-relative-difference, surface, and runtime plots with:
-
-   ```bash
-   uv run --with netCDF4 --with matplotlib python tools/plot_benchmark_results.py \
-     <combined-result-root> --output-dir <combined-result-root>/plots
-   ```
-
-3. Update this file with terminal counts and plot paths, rerun all local gates,
-   then stage explicit paths, commit, and `git push origin main`.
+1. Wait for serial lanes and array `1907490` to become terminal. Rerun only a
+   task with a reproducible infrastructure defect. Keep solver failures,
+   timeouts, and explicit code limitations as genuine result rows.
+2. Merge in precedence order with `tools/merge_benchmark_results.sh`, putting
+   corrected array outputs and targeted reruns after the serial roots. Audit
+   that all 344 case slugs have the expected implementation rows.
+3. Generate and inspect scalar-relative-difference, boundary-surface, and
+   runtime plots with `tools/plot_benchmark_results.py`. Runtime points are
+   native solver timings from successful outputs only.
+4. Record terminal counts, final merge/plot paths, and the infrastructure audit
+   in this file. Rerun local gates, stage explicit paths, commit, and push
+   `origin/main`.
