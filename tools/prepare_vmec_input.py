@@ -34,6 +34,7 @@ _DESC_DROP = re.compile(
     r"ftol_array|niter|nstep|nvacskip|type_precon|prec2d_threshold|"
     r"extcur|sigma_current)\b"
 )
+_ASSIGNMENT = re.compile(r"(?=\s+[A-Za-z_]\w*(?:\([^)]*\))?\s*=)")
 
 
 def _index_candidates(search_roots: list[Path]) -> dict[str, Path]:
@@ -81,27 +82,36 @@ def prepare(
     lines: list[str] = []
     saw_slash = False
     drop_continuation = False
-    for line in text.splitlines():
-        if (_END.match(line) or _SEPARATOR.match(line) or _FORTRAN_COMMENT.match(line)
-                or _FULL_LINE_COMMENT.match(line)):
-            # VMEC accepts ``/`` as the namelist terminator.  A second
-            # ``&END`` is interpreted as a new, unterminated group by f90nml.
-            continue
-        if desc_compatible and _DESC_DROP.match(line):
-            # DESC reads the VMEC namelist itself and rejects solver controls
-            # it does not consume.  Drop an unsupported assignment and its
-            # continuation lines, retaining the equilibrium coefficients.
-            drop_continuation = True
-            continue
-        if desc_compatible and drop_continuation and "=" not in line:
-            continue
-        drop_continuation = False
-        if _OUTPUT_CONTROL.match(line):
-            continue
-        line = line.replace("(:)", "")
-        if re.match(r"^\s*/\s*$", line):
-            saw_slash = True
-        lines.append(line)
+    for original_line in text.splitlines():
+        # DESC's parser requires one assignment per physical line, while
+        # historical VMEC inputs commonly put ``MPOL = ... NTOR = ...`` (or
+        # several Fourier coefficients) on one line.  Split only at tokens
+        # that are unambiguously the start of another assignment; this keeps
+        # array values and quoted strings intact for all other consumers.
+        candidate_lines = [original_line]
+        if desc_compatible:
+            candidate_lines = _ASSIGNMENT.split(original_line)
+        for line in candidate_lines:
+            if (_END.match(line) or _SEPARATOR.match(line) or _FORTRAN_COMMENT.match(line)
+                    or _FULL_LINE_COMMENT.match(line)):
+                # VMEC accepts ``/`` as the namelist terminator.  A second
+                # ``&END`` is interpreted as a new, unterminated group by f90nml.
+                continue
+            if desc_compatible and _DESC_DROP.match(line):
+                # DESC reads the VMEC namelist itself and rejects solver controls
+                # it does not consume.  Drop an unsupported assignment and its
+                # continuation lines, retaining the equilibrium coefficients.
+                drop_continuation = True
+                continue
+            if desc_compatible and drop_continuation and "=" not in line:
+                continue
+            drop_continuation = False
+            if _OUTPUT_CONTROL.match(line):
+                continue
+            line = line.replace("(:)", "")
+            if re.match(r"^\s*/\s*$", line):
+                saw_slash = True
+            lines.append(line)
     if not saw_slash:
         lines.append("/")
 
