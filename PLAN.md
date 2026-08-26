@@ -38,13 +38,13 @@ in `tools/`; native output is retained whenever a code provides it.
   final source of truth.
 - Authoritative replacements were submitted from the latest checkout
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-latest-e887277`
-  (verify it is `bf0644a`):
-  `1896042` educational (STELLOPT subset), `1896043` VMEC++ (bean),
-  `1896044` DESC (Free Boundary subset), `1896045` GVEC (STELLOPT subset),
-  `1896046` jVMEC, `1896047` VMEC2000, `1896048` VMEX, `1896049` SPECTRE,
-  and `1896050` PARVMEC. They request one day and are pending on priority;
-  check `squeue`, `sacct`, and each `comparison_table.csv` before
-  promotion.
+  (verify it is `bf0644a`). Node-pinned replacements are running in parallel:
+  `1896065` educational (STELLOPT subset), `1896064` VMEC++ (bean),
+  `1896066` DESC (Free Boundary subset), `1896067` GVEC (STELLOPT subset),
+  `1896068` jVMEC, `1896069` VMEC2000, `1896070` VMEX, `1896071` SPECTRE,
+  and `1896072` PARVMEC. They use 600-second implementation timeouts and
+  six-hour allocation limits; check `squeue`, `sacct`, and each
+  `comparison_table.csv` before promotion.
 - Completed authoritative side runs: SPEC `1895954` (10/10 native cases),
   FreeGS `1895836` (2-D cases only), and CHEASE `1895837` (2-D case only).
   Earlier VMEC2000/PARVMEC/VMEC++/educational counts are diagnostics from
