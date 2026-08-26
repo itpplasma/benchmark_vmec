@@ -77,11 +77,6 @@ def _derived_scalars(dataset: Dataset) -> dict[str, float]:
         + rmns[row, :, None, None] * np.sin(phase),
         axis=0,
     )
-    height = np.sum(
-        zmnc[row, :, None, None] * np.cos(phase)
-        + zmns[row, :, None, None] * np.sin(phase),
-        axis=0,
-    )
     height_theta = np.sum(
         -zmnc[row, :, None, None] * xm[:, None, None] * np.sin(phase)
         + zmns[row, :, None, None] * xm[:, None, None] * np.cos(phase),
