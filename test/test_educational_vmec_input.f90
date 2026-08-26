@@ -14,7 +14,6 @@ program test_educational_vmec_input
     call test_clean_input_drops_duplicate_niter_and_renames_axis(n_tests, n_passed)
     call test_clean_input_rewrites_niter_without_niter_array(n_tests, n_passed)
     call test_clean_input_handles_legacy_axis_spelling(n_tests, n_passed)
-    call test_clean_input_handles_indexed_axis_spelling(n_tests, n_passed)
     call test_prepare_without_optional_flags(n_tests, n_passed)
 
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
@@ -106,35 +105,6 @@ contains
         write(unit, '(A)') " loldout=F"
         write(unit, '(A)') "raxis= 2.0 0.1"
         write(unit, '(A)') "zaxis = -0.1 0.2"
-        write(unit, '(A)') "/"
-        close(unit)
-
-        success = impl%clean_input_for_educational_vmec(input_file, output_file)
-
-        if (success .and. file_contains(output_file, "RAXIS_CC = 2.0 0.1") .and. &
-            file_contains(output_file, "ZAXIS_CS = -0.1 0.2") .and. &
-            .not. file_contains(output_file, "loldout")) then
-            n_passed = n_passed + 1
-            write(output_unit, '(A)') "✓ test_clean_input_handles_legacy_axis_spelling"
-        else
-            write(error_unit, '(A)') "✗ test_clean_input_handles_legacy_axis_spelling"
-        end if
-
-        call execute_command_line("rm -f " // input_file // " " // output_file, exitstat=stat)
-    end subroutine test_clean_input_handles_legacy_axis_spelling
-
-    subroutine test_clean_input_handles_indexed_axis_spelling(n_tests, n_passed)
-        integer, intent(inout) :: n_tests, n_passed
-        type(educational_vmec_t) :: impl
-        character(len=*), parameter :: input_file = "/tmp/benchmark_vmec_edu_input_4.txt"
-        character(len=*), parameter :: output_file = "/tmp/benchmark_vmec_edu_output_4.txt"
-        integer :: unit, stat
-        logical :: success
-
-        n_tests = n_tests + 1
-
-        open(newunit=unit, file=input_file, status='replace', action='write', iostat=stat)
-        write(unit, '(A)') "&INDATA"
         write(unit, '(A)') " RAXIS(00) = 3.0"
         write(unit, '(A)') " ZAXIS(00) = 0.0"
         write(unit, '(A)') " RAXIS_co(01) = 0.1"
@@ -144,18 +114,21 @@ contains
 
         success = impl%clean_input_for_educational_vmec(input_file, output_file)
 
-        if (success .and. file_contains(output_file, "RAXIS_CC(00) = 3.0") .and. &
+        if (success .and. file_contains(output_file, "RAXIS_CC = 2.0 0.1") .and. &
+            file_contains(output_file, "ZAXIS_CS = -0.1 0.2") .and. &
+            file_contains(output_file, "RAXIS_CC(00) = 3.0") .and. &
             file_contains(output_file, "ZAXIS_CS(00) = 0.0") .and. &
             file_contains(output_file, "RAXIS_CC(01) = 0.1") .and. &
-            file_contains(output_file, "ZAXIS_CC(01) = 0.2")) then
+            file_contains(output_file, "ZAXIS_CC(01) = 0.2") .and. &
+            .not. file_contains(output_file, "loldout")) then
             n_passed = n_passed + 1
-            write(output_unit, '(A)') "✓ test_clean_input_handles_indexed_axis_spelling"
+            write(output_unit, '(A)') "✓ test_clean_input_handles_legacy_axis_spelling"
         else
-            write(error_unit, '(A)') "✗ test_clean_input_handles_indexed_axis_spelling"
+            write(error_unit, '(A)') "✗ test_clean_input_handles_legacy_axis_spelling"
         end if
 
         call execute_command_line("rm -f " // input_file // " " // output_file, exitstat=stat)
-    end subroutine test_clean_input_handles_indexed_axis_spelling
+    end subroutine test_clean_input_handles_legacy_axis_spelling
 
     subroutine test_prepare_without_optional_flags(n_tests, n_passed)
         integer, intent(inout) :: n_tests, n_passed

@@ -74,7 +74,8 @@ contains
         path = '/tmp/' // trim(prefix) // '_' // trim(tag_value(:tag_length)) // '.tmp'
     end function temporary_path
 
-    logical function prepare_vmec_input(input_file, output_file, implementation_path, desc_compatible, educational_compatible) result(success)
+    logical function prepare_vmec_input(input_file, output_file, implementation_path, &
+                                        desc_compatible, educational_compatible) result(success)
         character(len=*), intent(in) :: input_file, output_file, implementation_path
         logical, intent(in), optional :: desc_compatible
         logical, intent(in), optional :: educational_compatible
