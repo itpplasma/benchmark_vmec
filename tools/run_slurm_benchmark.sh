@@ -37,8 +37,10 @@ if [[ ! -s "$mgrid_index" ]]; then
     mgrid_index_tmp="${mgrid_index}.tmp.$$"
     # Staged cluster stacks use sibling symlinks; follow them so jVMEC and
     # VMEC++ can see fixtures held in an educational_VMEC checkout.
-    find -L "$base_dir" \
-        \( -type d -name 'benchmark_results*' -o -type d -name 'build' \) -prune -o \
+    find -L "$base_dir" -maxdepth 8 \
+        \( -type d -name 'benchmark_results*' -o -type d -name 'build' -o \
+           -type d -name '.git' -o -type d -name '.venv' -o -type d -name 'target' -o \
+           -type d -name 'CMakeFiles' -o -type d -name '__pycache__' \) -prune -o \
         -type f -iname 'mgrid*' -print 2>/dev/null > "$mgrid_index_tmp" || true
     mv -f "$mgrid_index_tmp" "$mgrid_index"
 fi
