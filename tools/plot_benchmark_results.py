@@ -241,9 +241,6 @@ def _spec_metric_values(path: Path, metrics: tuple[str, ...]) -> dict[str, float
     mapping = {
         "betatotal": ("output/BetaTotal", False),
         "volume_p": ("output/volume", False),
-        "plasma_current": ("input/physics/curtor", False),
-        "raxis_cc": ("input/physics/Rac", False),
-        "iotaf_edge": ("input/physics/iota", True),
     }
     try:
         with h5py.File(files[-1], "r") as handle:
