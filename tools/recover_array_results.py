@@ -193,6 +193,16 @@ def _wout_values(path: Path) -> dict[str, float]:
             iota = _values(dataset, "iotas")
         if iota is not None:
             values["iotaf_edge"] = float(iota[-1])
+        pressure = _values(dataset, "presf")
+        if pressure is not None:
+            values["pressure_axis"] = float(pressure[0])
+        current = _scalar(dataset, "itor")
+        if current is None:
+            current_profile = _values(dataset, "ctor")
+            if current_profile is not None:
+                current = float(current_profile[-1])
+        if current is not None:
+            values["plasma_current"] = current
         # jVMEC and older VMEC++ files can omit these scalar fields.  Match
         # the benchmark plotter's geometry fallback for those files.
         if {"aspect", "volume_p", "raxis_cc"} - values.keys():
@@ -353,7 +363,10 @@ def _row(case: str, path: str, implementation: str, status: str, error: str, val
         error = "Run failed"
     result: dict[str, Any] = {"case": case, "implementation": implementation, "status": status, "error": error, **metadata}
     for name in ("wb", "betatotal", "aspect", "raxis_cc", "volume_p", "iotaf_edge", "pressure_axis", "plasma_current"):
-        result[name] = values.get(name, 0.0) if status == "success" else ""
+        # An absent native field is not a physical zero.  Keep it blank so
+        # downstream distributions cannot mistake an unavailable diagnostic
+        # for a solver-produced value.
+        result[name] = values.get(name, "") if status == "success" else ""
     return result
 
 

@@ -15,8 +15,8 @@ The matrix covers VMEC-like codes (`vmecpp`, `educational_VMEC`, `VMEC2000`,
 codes (`SPEC`, `SPECTRE`), and Grad--Shafranov codes (`FreeGS`, `CHEASE`).
 FreeGS and CHEASE provide the 2-D comparisons. The repository-owned corpus
 exercises analytical and numerical fixtures in 1-D, 2-D, and 3-D. The current
-discovery contains 344 unique cases.
-Differentiable MHD uses a separate benchmark.
+discovery contains 344 unique cases. Differentiable MHD uses a separate
+benchmark.
 
 Sibling repositories are expected one directory above this checkout. Missing
 optional repositories are reported as unavailable rather than silently omitted.
@@ -49,8 +49,7 @@ GVEC, GEQDSK, and SPEC. `tools/convert_vmec_to_spectre.py` is the ordinary
 VMEC-to-SPECTRE TOML bridge. `tools/run_spectre.py` retains SPECTRE's native
 JSON result. CHEASE is admitted only for a 2-D GEQDSK input, using its native
 `run.chease.eqdsk` wrapper. `tools/run_freegs.py` runs a 2-D FreeGS case and
-writes GEQDSK plus a JSON sidecar. Use `uv run` for these Python tools, for
-example:
+writes GEQDSK plus a JSON sidecar. Use `uv run` for these Python tools:
 
 ```bash
 uv run --project ../FreeGS python tools/run_freegs.py cases/analytic/2d_solovev/input.solovev out
@@ -61,17 +60,23 @@ uv run python tools/convert_vmec_to_spectre.py input.example spectre.toml
 These adapters transfer ordinary formats. They do not expose automatic
 differentiation or Jacobian data.
 
+## Plots
+
 To plot completed Slurm outputs (native WOUT files and successful sidecars):
 
 ```bash
-uv run --with netCDF4 --with matplotlib python tools/plot_benchmark_results.py \
+uv run --with netCDF4 --with h5py --with matplotlib python tools/plot_benchmark_results.py \
   benchmark_results-slurm-<job-id>
 ```
 
-This writes boundary overlays, scalar-comparison plots, and (where native log
-timing lines exist) `runtime.png` plus `runtime.csv` in the result directory's
-`plots/` folder. Incomplete or unsupported rows are skipped. The runtime plot
-uses code-reported timings and is not end-to-end wall time.
+The output directory contains boundary overlays, `metrics.png` (relative scalar
+agreement only), `quality.png` plus `quality.csv` (native residual/convergence
+diagnostics), and `boxplots.png` plus `boxplots.csv` (one box-and-whisker panel
+per comparison scalar and for reported runtime). Incomplete or unsupported
+rows are skipped; missing native diagnostics remain blank. Runtime uses
+code-reported timings and is not end-to-end benchmark wall time. Boxes show the
+median, IQR, 1.5×IQR whiskers, and fliers from successful outputs without
+normalization.
 
 ## Repository layout
 

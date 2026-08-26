@@ -36,16 +36,22 @@ inputs. Adapters for common formats are in `tools/`.
 
 The final plots are under
 `benchmark_results-final-ordinary-0cf8e2c/plots-final-7ac0878/`:
-`metrics.png` (relative scalar differences, one marker per code/case),
-`runtime.png` (native solver-reported timings), `runtime.csv`, and paginated
-`surfaces*.png` boundary plots. Runtime points are successful outputs only and
-are not end-to-end Slurm wall times.
+`metrics.png` (relative scalar agreement, not quality), `quality.png` and
+`quality.csv` (native residual/convergence diagnostics), `boxplots.png` and
+`boxplots.csv` (one box-and-whisker panel per scalar and reported runtime),
+`runtime.png` and `runtime.csv`, and paginated `surfaces*.png` boundary plots.
+Runtime points are successful outputs only and are not end-to-end Slurm wall
+times. Missing native diagnostics remain explicit gaps in `quality.csv`.
+The quality export contains 1,504 successful outputs; 1,500 have a native
+diagnostic and 1,203 expose a residual/tolerance ratio. FreeGS, CHEASE, and
+one malformed educational-VMEC output are intentionally marked unavailable.
 
 ## Repository and gates
 
 `main` is pushed and clean. The latest changes include collision-safe case
-slugs, complete-array recovery, nonfinite-output handling, compact plot
-labels, and bounded child termination in solver wrappers. Local Fo build,
+slugs, complete-array recovery, honest missing-value handling, native quality
+and boxplot exports, nonfinite-output handling, compact plot labels, and
+bounded child termination in solver wrappers. Local Fo build,
 tests, lint, Python Ruff, shell syntax, and whitespace checks pass. The bare
 Fo pipeline also passes (with only the repository's pre-existing formatter
 warning in `benchmark_runner.f90`).
