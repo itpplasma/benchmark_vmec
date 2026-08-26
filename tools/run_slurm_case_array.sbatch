@@ -5,7 +5,7 @@
 # matched against the discovered source path, so it remains valid when the
 # launcher unpacks the benchmark checkout in a job-local temporary directory.
 # One task runs BENCHMARK_CASES_PER_TASK cases sequentially and writes each
-# result under BENCHMARK_ARRAY_OUTPUT_ROOT/<implementation>/<case-slug>.
+# result under BENCHMARK_ARRAY_OUTPUT_ROOT/<case-slug>/<implementation>.
 #
 # The list is deliberately external to the repository: it is generated from
 # the exact discovery output of the checkout being benchmarked.  This avoids
@@ -52,19 +52,12 @@ first_line=$(( ${SLURM_ARRAY_TASK_ID:-0} * cases_per_task + 1 ))
 last_line=$((first_line + cases_per_task - 1))
 case_no=0
 
-slugify() {
-    # Keep paths recognizable while making them safe as directory names.
-    local digest readable
-    digest=$(printf '%s' "$1" | sha256sum | cut -c1-12)
-    readable=$(printf '%s' "$1" | sed -e 's#^/##' -e 's#[^A-Za-z0-9._-][^A-Za-z0-9._-]*#_#g' | cut -c1-150)
-    printf '%s_%s' "$readable" "$digest"
-}
-
 run_case() {
     local case_match=$1
-    local slug output_dir
-    slug=$(slugify "$case_match")
-    output_dir="$array_output_root/$implementation/$slug"
+    # The Fortran runner appends its canonical case slug and implementation to
+    # BENCHMARK_OUTPUT_DIR.  Keep one shared case-root layout so the resulting
+    # tree is directly consumable by the plotting and merge tools.
+    local output_dir="$array_output_root"
     mkdir -p "$output_dir"
     export BENCHMARK_BASE_DIR="$base_dir"
     export BENCHMARK_CASE_LIST="$case_list"
