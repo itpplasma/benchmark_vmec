@@ -30,9 +30,9 @@ fi
 export PATH="$HOME/.local/bin:$PATH"
 export BENCHMARK_BASE_DIR="$base_dir"
 # Parallel Slurm allocations must not refresh fo's shared dependency cache at
-# the same time.  Keep each job's cache isolated; callers may still override
-# this when deliberately reusing a prepared cache.
-export FO_CACHE_DIR="${FO_CACHE_DIR:-${TMPDIR:-/tmp}/fo-cache-${SLURM_JOB_ID:-local}}"
+# the same time.  Keep fo's normal persistent cache, but serialize the short
+# build/test bootstrap below; callers may override both paths explicitly.
+export FO_CACHE_DIR="${FO_CACHE_DIR:-$HOME/.cache/fo}"
 mkdir -p "$FO_CACHE_DIR"
 # Index reusable magnetic-grid fixtures once per allocation.  Several upstream
 # VMEC tests refer to a grid by basename while running in an isolated output
@@ -120,6 +120,10 @@ stage_chease_case() {
 
 driver=fo
 prepare_driver() {
+    local fo_cache_lock_fd
+    fo_cache_lock="${FO_CACHE_LOCK:-${FO_CACHE_DIR}.lock}"
+    exec {fo_cache_lock_fd}>"$fo_cache_lock"
+    flock "$fo_cache_lock_fd"
     # Prefer the repository-standard fo checks.  Some older cluster fpm builds
     # concatenate -pipe with pkg-config include flags; use the same fpm project
     # directly if that backend-specific failure is encountered.
@@ -150,6 +154,8 @@ prepare_driver() {
         fi
         driver=fpm
     fi
+    flock -u "$fo_cache_lock_fd"
+    eval "exec ${fo_cache_lock_fd}>&-"
 }
 
 run_driver() {
