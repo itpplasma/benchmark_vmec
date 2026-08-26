@@ -373,6 +373,8 @@ def rebuild(case_list: Path, sources: list[Path], output: Path, log_dir: Path | 
                     key = (case, implementation)
                     status, error = log_statuses.get(key, ("", ""))
                     implementation_dir = case_dir / implementation
+                    if not implementation_dir.is_dir():
+                        continue
                     unsupported = implementation_dir / "benchmark_unsupported.txt"
                     failure = implementation_dir / "benchmark_failure.txt"
                     if unsupported.is_file():
