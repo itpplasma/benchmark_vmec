@@ -176,13 +176,13 @@ contains
         ! than the VMEC /wout interchange group.  Read the scalar quantities
         ! that have direct common-benchmark meanings and retain the native
         ! HDF5 file as the output artifact.
-        have_volume = .false.
+        have_volume = dataset_exists(file_id, "/output/volume")
         call read_hdf5_scalar(file_id, "/output/volume", data%volume_p, have_volume)
-        have_current = .false.
+        have_current = dataset_exists(file_id, "/input/physics/curtor")
         call read_hdf5_scalar(file_id, "/input/physics/curtor", data%itor, have_current)
-        have_axis = .false.
+        have_axis = dataset_exists(file_id, "/input/physics/Rac")
         call read_spec_array_endpoint(file_id, "/input/physics/Rac", data%raxis_cc, .false., have_axis)
-        have_iota = .false.
+        have_iota = dataset_exists(file_id, "/input/physics/iota")
         call read_spec_array_endpoint(file_id, "/input/physics/iota", data%iotaf_edge, .true., have_iota)
 
         call h5fclose_f(file_id, error)
