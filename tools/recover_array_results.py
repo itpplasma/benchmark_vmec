@@ -338,6 +338,8 @@ def _load_log_statuses(sources: list[Path], log_dir: Path | None) -> dict[tuple[
 
 def _row(case: str, path: str, implementation: str, status: str, error: str, values: dict[str, float]) -> dict[str, Any]:
     metadata = _metadata(path, implementation)
+    if status == "failed" and not error:
+        error = "Run failed"
     result: dict[str, Any] = {"case": case, "implementation": implementation, "status": status, "error": error, **metadata}
     for name in ("wb", "betatotal", "aspect", "raxis_cc", "volume_p", "iotaf_edge", "pressure_axis", "plasma_current"):
         result[name] = values.get(name, 0.0) if status == "success" else ""
