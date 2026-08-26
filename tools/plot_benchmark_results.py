@@ -248,10 +248,24 @@ _RUNTIME_PATTERNS = {
         re.compile(r"TOTAL COMPUTATIONAL TIME \(SEC\)\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)", re.I),
         "total computational time (s)",
     ),
+    "parvmec": (
+        "parvmec.log",
+        re.compile(r"TOTAL COMPUTATIONAL TIME \(SEC\)\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)", re.I),
+        "total computational time (s)",
+    ),
     "gvec": (
         "gvec.log",
         re.compile(r"GVEC finished after\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s*seconds", re.I),
         "GVEC finished after (s)",
+    ),
+    "spec": (
+        "spec.log",
+        re.compile(
+            r"^ending :\s*([0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?)\s+:"
+            r"\s*myid=\s*0\s*;\s*completion ;\s*time=",
+            re.I | re.M,
+        ),
+        "SPEC completion time (s)",
     ),
     "spectre": (
         "spectre.log",
@@ -271,6 +285,28 @@ def _runtime_seconds(implementation: str, match) -> float:
     return float(match)
 
 
+def _successful_output(implementation_dir: Path) -> bool:
+    """Return whether an implementation directory contains a successful result."""
+    for filename in ("gvec_result.json", "freegs_result.json", "chease_result.json"):
+        sidecar = implementation_dir / filename
+        if not sidecar.is_file():
+            continue
+        try:
+            data = json.loads(sidecar.read_text(errors="replace"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        return isinstance(data, dict) and data.get("success") is True
+
+    if list(implementation_dir.glob("wout*.nc")):
+        return True
+
+    # SPEC retains its native HDF5 and completion files rather than a WOUT.
+    if implementation_dir.name == "spec":
+        return bool(list(implementation_dir.glob("*.sp.h5")) and
+                    list(implementation_dir.glob("*.sp.end")))
+    return False
+
+
 def _runtime_records(result_root: Path):
     """Yield ``(case, implementation, seconds, source)`` from native logs.
 
@@ -282,15 +318,8 @@ def _runtime_records(result_root: Path):
             pattern_info = _RUNTIME_PATTERNS.get(implementation_dir.name)
             if pattern_info is None:
                 continue
-            if implementation_dir.name == "spectre":
-                result_files = sorted(implementation_dir.glob("*_res.json"))
-                if result_files:
-                    try:
-                        result = json.loads(result_files[-1].read_text(errors="replace"))
-                    except (OSError, json.JSONDecodeError):
-                        result = {}
-                    if isinstance(result, dict) and result.get("success") is False:
-                        continue
+            if not _successful_output(implementation_dir):
+                continue
             log_name, pattern, source = pattern_info
             log_file = implementation_dir / log_name
             if not log_file.is_file():
