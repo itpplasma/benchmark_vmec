@@ -21,6 +21,7 @@ import argparse
 import csv
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -397,6 +398,31 @@ def rebuild(case_list: Path, sources: list[Path], output: Path, log_dir: Path | 
         writer.writeheader()
         for key in sorted(records):
             writer.writerow(records[key])
+
+    # Unsupported branches have no native output directory.  Materialize an
+    # exact marker in the generated result tree so the CSV and tree retain the
+    # same complete case/implementation inventory.  Existing failed output
+    # directories are preserved; only their missing marker is added.
+    result_root = output.parent
+    for row in records.values():
+        if row["status"] != "failed":
+            continue
+        implementation_dir = result_root / _case_slug(str(row["case"])) / str(row["implementation"])
+        error = str(row["error"])
+        if error.startswith("Unsupported:"):
+            if implementation_dir.exists():
+                for child in implementation_dir.iterdir():
+                    if child.is_dir():
+                        shutil.rmtree(child)
+                    else:
+                        child.unlink()
+            implementation_dir.mkdir(parents=True, exist_ok=True)
+            marker = implementation_dir / "benchmark_unsupported.txt"
+        else:
+            implementation_dir.mkdir(parents=True, exist_ok=True)
+            marker = implementation_dir / "benchmark_failure.txt"
+        if not marker.exists():
+            marker.write_text(error + "\n")
     print(f"wrote {len(records)} rows for {len(frozen)} cases and {len(IMPLEMENTATIONS)} implementations to {output}")
 
 
