@@ -134,9 +134,11 @@ contains
         integer, intent(in), optional :: timeout
         logical :: success
         character(len=:), allocatable :: local_input, prepared_input, input_basename, cmd, python_cmd
+        character(len=:), allocatable :: run_output_dir
         character(len=:), allocatable :: lower_name
         character(len=1024) :: benchmark_root
-        integer :: stat, timeout_val, root_length, root_status
+        integer :: stat, timeout_val, root_length, root_status, copy_stat
+        logical :: short_gvec_dir
 
         success = .false.
         if (.not. this%validate_input(input_file)) return
@@ -156,6 +158,8 @@ contains
         local_input = trim(output_dir) // '/' // basename(input_file)
         input_basename = basename(local_input)
         lower_name = lowercase(this%name)
+        run_output_dir = trim(output_dir)
+        short_gvec_dir = .false.
         if (trim(lower_name) == 'vmex' .or. trim(lower_name) == 'parvmec' .or. &
             (trim(lower_name) == 'gvec' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
             (trim(lower_name) == 'spectre' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
@@ -282,7 +286,30 @@ contains
             return
         end select
 
-        cmd = 'cd ' // trim(output_dir) // ' && /usr/bin/time -p timeout ' // int_to_str(timeout_val) // &
+        if (trim(lower_name) == 'gvec') then
+            ! GVEC passes absolute restart paths through a fixed 255-character
+            ! Fortran buffer.  Exhaustive case slugs can exceed that limit,
+            ! truncating the ``.dat`` suffix although the state file exists.
+            ! Run GVEC from a short per-case directory and copy its complete
+            ! artifact tree back to the persistent benchmark directory.
+            run_output_dir = temporary_path('gvec_run_' // trim(input_basename))
+            call execute_command_line('rm -rf ' // shell_quote(run_output_dir) // &
+                ' && mkdir -p ' // shell_quote(run_output_dir), exitstat=stat)
+            if (stat /= 0) then
+                write(error_unit, '(A)') 'Failed to create short GVEC run directory'
+                return
+            end if
+            call execute_command_line('cp -a ' // shell_quote(trim(output_dir) // '/.') // &
+                ' ' // shell_quote(run_output_dir) // '/', exitstat=stat)
+            if (stat /= 0) then
+                write(error_unit, '(A)') 'Failed to stage GVEC run directory'
+                call execute_command_line('rm -rf ' // shell_quote(run_output_dir))
+                return
+            end if
+            short_gvec_dir = .true.
+        end if
+
+        cmd = 'cd ' // shell_quote(run_output_dir) // ' && /usr/bin/time -p timeout ' // int_to_str(timeout_val) // &
             ' ' // trim(cmd) // ' > ' // trim(lower_name) // '.log 2>&1'
         call execute_command_line(trim(cmd), exitstat=stat)
 
@@ -304,7 +331,7 @@ contains
                 ! cannot execute this Python converter directly; use the
                 ! interpreter selected for the GVEC environment instead.
                 python_cmd = select_python_command(this%path)
-                cmd = 'cd ' // shell_quote(output_dir) // ' && ' // &
+                cmd = 'cd ' // shell_quote(run_output_dir) // ' && ' // &
                     shell_quote(python_cmd) // ' ' // &
                     shell_quote(trim(benchmark_root) // '/tools/convert_gvec_to_common.py') // ' ' // &
                     shell_quote(input_basename // '_State_final.dat') // ' ' // &
@@ -314,7 +341,20 @@ contains
             if (trim(lower_name) == 'chease' .and. stat == 0) then
                 call write_chease_sidecar(output_dir, stat)
             end if
-            success = (stat == 0)
+        end if
+
+        if (short_gvec_dir) then
+            call execute_command_line('cp -a ' // shell_quote(trim(run_output_dir) // '/.') // &
+                ' ' // shell_quote(output_dir) // '/', exitstat=copy_stat)
+            if (stat == 0 .and. copy_stat /= 0) then
+                write(error_unit, '(A)') 'Failed to copy GVEC artifacts back to benchmark output'
+                stat = copy_stat
+            end if
+            call execute_command_line('rm -rf ' // shell_quote(run_output_dir), exitstat=copy_stat)
+        end if
+
+        if (stat == 0) then
+            success = .true.
         else if (stat == 124) then
             write(error_unit, '(A)') trim(this%name) // ' timed out for ' // basename(input_file)
         else
