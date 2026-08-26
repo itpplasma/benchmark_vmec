@@ -28,6 +28,7 @@ _OUTPUT_CONTROL = re.compile(
 _END = re.compile(r"(?i)^\s*&end\s*$")
 _SEPARATOR = re.compile(r"^\s*-{3,}\s*$")
 _FORTRAN_COMMENT = re.compile(r"^\s*[cC](?:\s|$)")
+_FULL_LINE_COMMENT = re.compile(r"^\s*[!#]")
 _DESC_DROP = re.compile(
     r"(?i)^\s*(?:mgrid_file|time_slice|delt|ns_array|niter_array|"
     r"ftol_array|niter|nstep|nvacskip|type_precon|prec2d_threshold|"
@@ -81,7 +82,8 @@ def prepare(
     saw_slash = False
     drop_continuation = False
     for line in text.splitlines():
-        if _END.match(line) or _SEPARATOR.match(line) or _FORTRAN_COMMENT.match(line):
+        if (_END.match(line) or _SEPARATOR.match(line) or _FORTRAN_COMMENT.match(line)
+                or _FULL_LINE_COMMENT.match(line)):
             # VMEC accepts ``/`` as the namelist terminator.  A second
             # ``&END`` is interpreted as a new, unterminated group by f90nml.
             continue
