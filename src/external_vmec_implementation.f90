@@ -309,8 +309,10 @@ contains
             short_gvec_dir = .true.
         end if
 
-        cmd = 'cd ' // shell_quote(run_output_dir) // ' && /usr/bin/time -p timeout --kill-after=5s ' // int_to_str(timeout_val) // &
-            ' ' // trim(cmd) // ' > ' // trim(lower_name) // '.log 2>&1'
+        cmd = 'cd ' // shell_quote(run_output_dir) // &
+            ' && /usr/bin/time -p timeout --kill-after=5s ' // &
+            int_to_str(timeout_val) // ' ' // trim(cmd) // &
+            ' > ' // trim(lower_name) // '.log 2>&1'
         call execute_command_line(trim(cmd), exitstat=stat)
 
         if (stat == 0) then
