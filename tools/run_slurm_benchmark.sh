@@ -52,7 +52,12 @@ fi
 # Parallel Slurm allocations must not refresh fo's shared dependency cache at
 # the same time.  Keep fo's normal persistent cache, but serialize the short
 # build/test bootstrap below; callers may override both paths explicitly.
-export FO_CACHE_DIR="${FO_CACHE_DIR:-$HOME/.cache/fo}"
+if [[ -z "${FO_CACHE_DIR:-}" && -n "${SLURM_JOB_ID:-}" && \
+      "${BENCHMARK_ISOLATE_BUILD:-1}" != 0 ]]; then
+    export FO_CACHE_DIR="${TMPDIR:-/tmp}/fo-cache-${SLURM_JOB_ID}"
+else
+    export FO_CACHE_DIR="${FO_CACHE_DIR:-$HOME/.cache/fo}"
+fi
 mkdir -p "$FO_CACHE_DIR"
 # Index reusable magnetic-grid fixtures once per allocation.  Several upstream
 # VMEC tests refer to a grid by basename while running in an isolated output
