@@ -12,8 +12,8 @@ code provides it.
 
 ## Repository state
 
-- `main` is clean and pushed at `2e03911` (`Use build-only preparation for
-  full lanes`).
+- `main` is clean and pushed at `c42e148` (`Track corrected full-lane
+  preparation`).
 - Local gates pass: `uv run fo check`, `uv run fo test --all`, Python `ruff`,
   shell syntax checks, and `git diff --check`.
 - The latest input adapters strip legacy separators/comments, normalize DESC
@@ -41,17 +41,20 @@ code provides it.
   evidence.
 - Authoritative replacements were submitted from the latest checkout
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-latest-e887277`
-  (commit `2e03911`). Node-pinned isolated replacements are running or
-  queued: `1896105` DESC (Free Boundary subset, complete), `1896106` GVEC
-  (STELLOPT subset), `1896103` VMEC++ (bean, complete), and full lanes
-  `1896113` jVMEC, `1896114` VMEC2000, `1896115`
+  (commit `c42e148`). Node-pinned isolated replacements are running or
+  queued: `1896105` DESC (Free Boundary subset, complete: 8 successes, 2
+  unsupported, 1 solver failure), `1896106` GVEC (STELLOPT subset, complete:
+  31 successes, 57 unsupported, 21 solver failures), `1896103` VMEC++ (bean,
+  complete: 4 successes, 5 unsupported), and full lanes `1896113` jVMEC,
+  `1896114` VMEC2000, `1896115`
   VMEX, `1896116` SPECTRE, and `1896117` PARVMEC. They use 600-second
   implementation timeouts. Targeted lanes use 2--6 hour allocations and full
   lanes use one day. Educational indexed-axis/control rerun `1896669` is
-  running on `node2` from `2e03911`; it supersedes the educational rows in
-  `1896104`. Failed attempts `1896154`, `1896191`, and `1896424` were
-  harness-only (compile/test/no-case) failures and are not evidence. Check
-  `squeue`, `sacct`, and each `comparison_table.csv` before promotion.
+  complete on `node2`: 52 successes, 57 explicit unsupported fixtures, and
+  zero generic failures; it supersedes the educational rows in `1896104`.
+  Failed attempts `1896154`, `1896191`, and `1896424` were harness-only
+  (compile/test/no-case) failures and are not evidence. Check `squeue`,
+  `sacct`, and each `comparison_table.csv` before promotion.
 - Completed authoritative side runs: SPEC `1895954` (10/10 native cases),
   FreeGS `1895836` (2-D cases only), and CHEASE `1895837` (2-D case only).
   Earlier VMEC2000/PARVMEC/VMEC++/educational counts are diagnostics from
@@ -59,7 +62,7 @@ code provides it.
 
 ## Finish
 
-1. Wait for jobs `1896106`, `1896669`, and `1896113`--`1896117`; rerun only reproducible adapter or
+1. Wait for jobs `1896106` and `1896113`--`1896117`; rerun only reproducible adapter or
    infrastructure defects. Keep solver timeouts and code limitations as
    genuine failures/unsupported rows.
 2. Confirm no final logs contain fallback builds, `fo check` failures,
