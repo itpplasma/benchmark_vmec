@@ -1,6 +1,7 @@
 module external_vmec_implementation
     use iso_fortran_env, only: error_unit, output_unit, real64
-    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, shell_quote, temporary_path
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, &
+        shell_quote, temporary_path
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
