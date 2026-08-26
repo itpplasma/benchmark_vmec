@@ -11,13 +11,15 @@ inputs. Common-format adapters live in `tools/`.
 
 ## Repository state
 
-- `main` is clean and pushed at `bc759a3`.
+- `main` is clean and pushed at `a889f89`.
 - Local gates pass: `uv run fo check`, `uv run fo test --all`, Python `ruff`,
   shell syntax checks, and `git diff --check`.
 - The adapters normalize legacy VMEC inputs, strip inline comments, stage MGRID
   fixtures, and retain explicit unsupported markers. The GVEC runner uses a
   short job-local path before copying artifacts back, avoiding its fixed-length
   restart-path truncation.
+- Every solver wrapper uses `timeout --kill-after=5s`, so a child that ignores
+  the first timeout signal cannot hold an allocation indefinitely.
 - `tools/run_slurm_case_array.sbatch` and
   `tools/submit_slurm_case_arrays.sh` provide reproducible bounded arrays.
   `tools/merge_benchmark_results.sh` merges per-task reports with later sources
@@ -29,20 +31,17 @@ inputs. Common-format adapters live in `tools/`.
 
 - Protected legacy audit job `1791254` remains running on `node20`. It uses an
   older checkout and is not final evidence.
-- Fast serial lanes from checkout `bc759a3` remain running with 600-second
-  implementation timeouts: VMEC++ `1897318`, educational VMEC `1897321`,
-  VMEC2000 `1897367`, and PARVMEC `1897370`. Partial slow serial lanes DESC
-  `1897319`, jVMEC `1897366`, VMEX `1897368`, SPECTRE `1897369`, and GVEC
-  `1898197` were canceled after the replacement array became healthy. Their
-  partial trees remain audit-only.
-- The combined round-robin exhaustive array is job `1907490`. It covers every
-  case for all six slow implementations. Its frozen
-  case list is `/home/ert/benchmark_vmec-slurm-233aa21/case-suffixes-1859d3a.txt`
-  with 344 entries. Per-task reports are under
-  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_results-array-combined-bc759a3`.
-- Native-only coverage for SPEC, FreeGS, and CHEASE is queued as array
-  `1908322`. A safety array for the four fast serial lanes is queued as
-  `1908329` in case any serial allocation reaches its wall limit.
+- Earlier serial and array attempts (`1897318`, `1897321`, `1897367`,
+  `1897370`, `1907490`, `1908322`, and `1908329`) were canceled after their
+  partial trees were retained for audit. Their old timeout behavior is not
+  final evidence.
+- Fixed-checkout exhaustive arrays `1908611` (VMEC-family participants) and
+  `1908612` (the remaining six native and nested-surface participants) cover
+  all 344 frozen cases. Per-task reports are under
+  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_results-array-vmec-a889f89`
+  and `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_results-array-native-a889f89`.
+- The frozen case list is
+  `/home/ert/benchmark_vmec-slurm-233aa21/case-suffixes-1859d3a.txt`.
 - Corrected `input.AXISYM` reruns succeeded for educational VMEC (`1897572`),
   VMEC++ (`1897588`), DESC (`1897589`), GVEC (`1897590`), jVMEC (`1897594`),
   VMEC2000 (`1897595`), VMEX (`1897596`), SPECTRE (`1897597`), and PARVMEC
@@ -55,7 +54,7 @@ inputs. Common-format adapters live in `tools/`.
 
 ## Finish
 
-1. Wait for serial lanes and arrays `1907490`, `1908322`, and `1908329` to become terminal. Rerun only a
+1. Wait for arrays `1908611` and `1908612` to become terminal. Rerun only a
    task with a reproducible infrastructure defect. Keep solver failures,
    timeouts, and explicit code limitations as genuine result rows.
 2. Merge in precedence order with `tools/merge_benchmark_results.sh`, putting
