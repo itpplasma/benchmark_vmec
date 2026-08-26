@@ -12,8 +12,8 @@ code provides it.
 
 ## Repository state
 
-- `main` is clean and pushed at `9d5ad5d` (`Track corrected benchmark
-  reruns`).
+- `main` is clean and pushed at `9b77594` (`Tighten benchmark
+  documentation`).
 - Local gates pass: `uv run fo check`, `uv run fo test --all`, Python `ruff`,
   shell syntax checks, and `git diff --check`.
 - The latest input adapters strip legacy separators/comments, normalize DESC
@@ -33,7 +33,7 @@ code provides it.
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final`. It is useful
   for progress comparison, but its checkout predates the final adapter markers.
   Do not cancel it or use its failures as final classifications. At
-  2026-08-26 11:41 CEST: 1,995 starts, 1,184 done, 781 failures, and zero child
+  2026-08-26 12:16 CEST: 2,003 starts, 1,186 done, 787 failures, and zero child
   `MPI_ABORT`s. Progress:
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark-progress-1791254.log`.
 - Old pre-fix clean64 and legacy repair jobs were canceled after their partial
@@ -41,7 +41,7 @@ code provides it.
   evidence.
 - Authoritative replacements were submitted from the latest checkout
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-latest-e887277`
-  (verify it is `2615761`). Node-pinned isolated replacements are running or
+  (commit `2615761`). Node-pinned isolated replacements are running or
   queued: `1896104` educational (STELLOPT subset), `1896105` DESC (Free
   Boundary subset), `1896106` GVEC (STELLOPT subset), `1896103` VMEC++ (bean,
   complete), and full lanes `1896113` jVMEC, `1896114` VMEC2000, `1896115`
@@ -56,7 +56,7 @@ code provides it.
 
 ## Finish
 
-1. Wait for jobs `1896104`--`1896111`; rerun only reproducible adapter or
+1. Wait for jobs `1896104`--`1896106` and `1896113`--`1896117`; rerun only reproducible adapter or
    infrastructure defects. Keep solver timeouts and code limitations as
    genuine failures/unsupported rows.
 2. Confirm no final logs contain fallback builds, `fo check` failures,
