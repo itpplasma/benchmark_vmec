@@ -89,6 +89,7 @@ def prepare(
     lines: list[str] = []
     saw_slash = False
     drop_continuation = False
+    saw_indata = False
     saw_niter_array = bool(re.search(r"(?im)^\s*niter_array\s*=", text))
     saw_ftol_array = bool(re.search(r"(?im)^\s*ftol_array\s*=", text))
     for original_line in text.splitlines():
@@ -101,6 +102,15 @@ def prepare(
         if desc_compatible or educational_compatible:
             candidate_lines = _ASSIGNMENT.split(original_line)
         for line in candidate_lines:
+            if not saw_indata:
+                if re.match(r"(?i)^\s*&indata\b", line):
+                    saw_indata = True
+                else:
+                    # A few historical fixtures contain stale assignments
+                    # before the actual namelist header.  They are not part
+                    # of VMEC INDATA and make f90nml/DESC reject an otherwise
+                    # usable equilibrium, so discard the preamble.
+                    continue
             if (_END.match(line) or _SEPARATOR.match(line) or _FORTRAN_COMMENT.match(line)
                     or _FULL_LINE_COMMENT.match(line)):
                 # VMEC accepts ``/`` as the namelist terminator.  A second
