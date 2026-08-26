@@ -22,7 +22,8 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gfortran gcovr cmake git
+        sudo apt-get install -y gfortran gcovr cmake git pkg-config \
+          libhdf5-dev libnetcdf-dev libnetcdff-dev
     
     - name: Set compiler
       run: |
