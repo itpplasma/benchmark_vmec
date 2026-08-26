@@ -150,6 +150,46 @@ contains
         data%valid = .true.
         success = .true.
     end function read_hdf5_file
+
+    function read_spec_hdf5_file(filename, data) result(success)
+        character(len=*), intent(in) :: filename
+        type(hdf5_data_t), intent(inout) :: data
+        logical :: success, have_volume, have_current, have_axis, have_iota
+        integer(hid_t) :: file_id
+        integer :: error
+        logical :: exists
+
+        success = .false.
+        call data%clear()
+        inquire(file=filename, exist=exists)
+        if (.not. exists) return
+
+        call h5open_f(error)
+        if (error /= 0) return
+        call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, error)
+        if (error /= 0) then
+            call h5close_f(error)
+            return
+        end if
+
+        ! SPEC stores its native equilibrium under /input and /output rather
+        ! than the VMEC /wout interchange group.  Read the scalar quantities
+        ! that have direct common-benchmark meanings and retain the native
+        ! HDF5 file as the output artifact.
+        have_volume = .false.
+        call read_hdf5_scalar(file_id, "/output/volume", data%volume_p, have_volume)
+        have_current = .false.
+        call read_hdf5_scalar(file_id, "/input/physics/curtor", data%itor, have_current)
+        have_axis = .false.
+        call read_spec_array_endpoint(file_id, "/input/physics/Rac", data%raxis_cc, .false., have_axis)
+        have_iota = .false.
+        call read_spec_array_endpoint(file_id, "/input/physics/iota", data%iotaf_edge, .true., have_iota)
+
+        call h5fclose_f(file_id, error)
+        call h5close_f(error)
+        data%valid = have_volume
+        success = have_volume
+    end function read_spec_hdf5_file
     
     subroutine read_hdf5_scalar(file_id, var_name, value, success)
         integer(hid_t), intent(in) :: file_id
@@ -218,6 +258,46 @@ contains
         call h5sclose_f(dspace_id, error)
         call h5dclose_f(dset_id, error)
     end subroutine read_raxis_from_array
+
+    subroutine read_spec_array_endpoint(file_id, dataset_name, value, take_last, found)
+        integer(hid_t), intent(in) :: file_id
+        character(len=*), intent(in) :: dataset_name
+        real(dp), intent(out) :: value
+        logical, intent(in) :: take_last
+        logical, intent(out) :: found
+        integer(hid_t) :: dset_id, dspace_id
+        integer :: error, rank, n
+        integer(hsize_t), dimension(1) :: dims, maxdims
+        real(dp), allocatable :: values(:)
+
+        value = 0.0_dp
+        found = .false.
+        call h5dopen_f(file_id, dataset_name, dset_id, error)
+        if (error /= 0) return
+        call h5dget_space_f(dset_id, dspace_id, error)
+        if (error == 0) then
+            call h5sget_simple_extent_ndims_f(dspace_id, rank, error)
+            if (error == 0 .and. rank == 1) then
+                call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, error)
+                n = int(dims(1))
+                if (error >= 0 .and. n > 0) then
+                    allocate(values(n))
+                    call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, values, dims, error)
+                    if (error == 0) then
+                        if (take_last) then
+                            value = values(n)
+                        else
+                            value = values(1)
+                        end if
+                        found = .true.
+                    end if
+                    deallocate(values)
+                end if
+            end if
+            call h5sclose_f(dspace_id, error)
+        end if
+        call h5dclose_f(dset_id, error)
+    end subroutine read_spec_array_endpoint
     
     subroutine read_iotaf_edge_from_array(file_id, iotaf_edge)
         integer(hid_t), intent(in) :: file_id

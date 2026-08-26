@@ -4,6 +4,7 @@ module external_vmec_implementation
         shell_quote, temporary_path
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
+    use hdf5_reader, only: hdf5_data_t, read_spec_hdf5_file
     implicit none
     private
 
@@ -340,6 +341,10 @@ contains
             call extract_chease_results(output_dir, results)
             return
         end if
+        if (trim(lowercase(this%name)) == 'spec') then
+            call extract_spec_results(output_dir, results)
+            return
+        end if
         wout_temp_file = temporary_path('vmec_external_wout')
         call execute_command_line('ls -t ' // trim(output_dir) // &
             '/wout_*.nc 2>/dev/null | head -1 > ' // trim(wout_temp_file), &
@@ -546,6 +551,57 @@ contains
         results%output_format = 'geqdsk'
         if (.not. success_value) results%error_message = 'CHEASE sidecar reports failure'
     end subroutine extract_chease_results
+
+    subroutine extract_spec_results(output_dir, results)
+        character(len=*), intent(in) :: output_dir
+        type(vmec_result_t), intent(inout) :: results
+        type(hdf5_data_t) :: spec_data
+        character(len=:), allocatable :: spec_temp_file
+        character(len=2048) :: spec_file
+        integer :: stat, unit
+        logical :: exists, read_success
+
+        spec_temp_file = temporary_path('spec_result')
+        call execute_command_line('ls -t ' // trim(output_dir) // &
+            '/*.sp.h5 2>/dev/null | head -1 > ' // trim(spec_temp_file), exitstat=stat)
+        if (stat /= 0) then
+            results%error_message = 'SPEC produced no HDF5 result'
+            return
+        end if
+        open(newunit=unit, file=spec_temp_file, status='old', action='read', iostat=stat)
+        if (stat /= 0) then
+            results%error_message = 'Could not inspect SPEC HDF5 result'
+            return
+        end if
+        read(unit, '(A)', iostat=stat) spec_file
+        close(unit)
+        if (stat /= 0 .or. len_trim(spec_file) == 0) then
+            results%error_message = 'SPEC produced no HDF5 result'
+            return
+        end if
+        spec_file = trim(adjustl(spec_file))
+        inquire(file=trim(spec_file), exist=exists)
+        if (.not. exists) then
+            results%error_message = 'Missing SPEC HDF5 result: ' // trim(spec_file)
+            return
+        end if
+
+        read_success = read_spec_hdf5_file(trim(spec_file), spec_data)
+        if (.not. read_success .or. .not. spec_data%valid) then
+            results%error_message = 'Could not read SPEC HDF5 result: ' // trim(spec_file)
+            return
+        end if
+
+        results%success = .true.
+        results%dimension = 3
+        results%family = 'spec_mhd'
+        results%input_format = 'spec_namelist'
+        results%output_format = 'spec_hdf5'
+        results%volume_p = spec_data%volume_p
+        results%raxis_cc = spec_data%raxis_cc
+        results%iotaf_edge = spec_data%iotaf_edge
+        results%itor = spec_data%itor
+    end subroutine extract_spec_results
 
     subroutine write_chease_sidecar(output_dir, status)
         character(len=*), intent(in) :: output_dir
