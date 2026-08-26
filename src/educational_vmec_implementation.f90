@@ -469,6 +469,7 @@ contains
             if (index(adjustl(line), 'LOPTIM') > 0) skip_line = .true.
             if (index(adjustl(line), 'LSPECTRUM_DUMP') > 0) skip_line = .true.
             if (index(adjustl(line), 'LDIAGNO') > 0) skip_line = .true.
+            if (index(lowercase(adjustl(line)), 'loldout') > 0) skip_line = .true.
             if (index(adjustl(line), 'LTHREED') > 0) skip_line = .true.
             if (index(adjustl(line), 'LWOUTTXT') > 0) skip_line = .true.
             if (index(adjustl(line), 'LMAC') > 0) skip_line = .true.
@@ -506,14 +507,16 @@ contains
                 end if
             end if
 
-            if (index(adjustl(line), 'RAXIS =') == 1) then
-                line = line(:index(line, 'RAXIS =') - 1) // 'RAXIS_CC =' // &
-                       line(index(line, 'RAXIS =') + len('RAXIS ='):)
+            ! DESC and older VMEC fixtures spell these axis arrays as either
+            ! ``RAXIS =`` or compact/lowercase ``raxis=``.  The educational
+            ! fork exposes the equivalent Fourier arrays as RAXIS_CC and
+            ! ZAXIS_CS, so normalize only a bare assignment (never an indexed
+            ! RAXIS(...) or an already-converted RAXIS_CC name).
+            if (replace_axis_assignment(line, 'RAXIS', 'RAXIS_CC')) then
+                continue
             end if
-
-            if (index(adjustl(line), 'ZAXIS =') == 1) then
-                line = line(:index(line, 'ZAXIS =') - 1) // 'ZAXIS_CS =' // &
-                       line(index(line, 'ZAXIS =') + len('ZAXIS ='):)
+            if (replace_axis_assignment(line, 'ZAXIS', 'ZAXIS_CS')) then
+                continue
             end if
             
             ! Write line to output if not skipped
@@ -532,5 +535,54 @@ contains
         
         success = .true.
     end function educational_vmec_clean_input
+
+    logical function replace_axis_assignment(line, source_name, target_name) result(changed)
+        character(len=*), intent(inout) :: line
+        character(len=*), intent(in) :: source_name, target_name
+        character(len=:), allocatable :: lowered, source_lower
+        integer :: first, cursor, line_length
+
+        changed = .false.
+        line_length = len(line)
+        first = 1
+        do while (first <= line_length)
+            if (line(first:first) /= ' ' .and. line(first:first) /= achar(9)) exit
+            first = first + 1
+        end do
+        if (first > line_length) return
+
+        lowered = lowercase(line(first:))
+        source_lower = lowercase(source_name)
+        if (len_trim(lowered) < len_trim(source_lower)) return
+        if (lowered(:len_trim(source_lower)) /= trim(source_lower)) return
+
+        cursor = first + len_trim(source_lower)
+        do while (cursor <= line_length)
+            if (line(cursor:cursor) /= ' ' .and. line(cursor:cursor) /= achar(9)) exit
+            cursor = cursor + 1
+        end do
+        if (cursor > line_length) return
+        if (line(cursor:cursor) /= '=') return
+
+        if (first > 1) then
+            line = line(:first-1) // trim(target_name) // ' ' // line(cursor:)
+        else
+            line = trim(target_name) // ' ' // line(cursor:)
+        end if
+        changed = .true.
+    end function replace_axis_assignment
+
+    function lowercase(text) result(value)
+        character(len=*), intent(in) :: text
+        character(len=len(text)) :: value
+        integer :: i
+
+        value = text
+        do i = 1, len(text)
+            if (value(i:i) >= 'A' .and. value(i:i) <= 'Z') then
+                value(i:i) = achar(iachar(value(i:i)) + iachar('a') - iachar('A'))
+            end if
+        end do
+    end function lowercase
 
 end module educational_vmec_implementation

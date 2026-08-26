@@ -21,7 +21,8 @@ _MGRID = re.compile(
     r"(?im)^(\s*mgrid_file\s*=\s*)(['\"])([^'\"]*)(\2)(.*)$"
 )
 _OUTPUT_CONTROL = re.compile(
-    r"(?i)^\s*(?:dump_[a-z0-9_]+|lspectrum_dump|ldiagno)\s*="
+    r"(?i)^\s*(?:dump_[a-z0-9_]+|lspectrum_dump|ldiagno(?:_opt)?|"
+    r"loldout|lwouttxt|lfull3d1out)\s*="
 )
 _END = re.compile(r"(?i)^\s*&end\s*$")
 
