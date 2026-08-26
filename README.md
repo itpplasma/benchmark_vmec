@@ -3,57 +3,63 @@
 [![CI](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml/badge.svg)](https://github.com/itpplasma/benchmark_vmec/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/itpplasma/benchmark_vmec/branch/main/graph/badge.svg)](https://codecov.io/gh/itpplasma/benchmark_vmec)
 
-An ordinary (non-differentiable) benchmark for magnetic-equilibrium codes. The
-Fortran driver discovers cases, runs every available implementation, compares a
-common set of quantities, and preserves successful, failed, and unsupported
-rows in the report.
+[GitHub repository](https://github.com/itpplasma/benchmark_vmec)
 
-## Scope
+This repository runs an ordinary, non-differentiable benchmark for magnetic
+equilibrium codes. It discovers cases, runs every available implementation,
+compares common quantities, and records successful, failed, and unsupported
+rows.
 
-The matrix covers VMEC-like codes (`vmecpp`, `educational_VMEC`, `VMEC2000`,
-`jVMEC`, `VMEX`, `PARVMEC`), nested-surface codes (`DESC`, `GVEC`), MRxMHD
-codes (`SPEC`, `SPECTRE`), and Grad--Shafranov codes (`FreeGS`, `CHEASE`).
-FreeGS and CHEASE provide the 2-D comparisons. The repository-owned corpus
-exercises analytical and numerical fixtures in 1-D, 2-D, and 3-D. The current
-discovery contains 344 unique cases. Differentiable MHD uses a separate
-benchmark.
+## Coverage
 
-Sibling repositories are expected one directory above this checkout. Missing
-optional repositories are reported as unavailable rather than silently omitted.
+The corpus contains 344 analytical and numerical cases in 1-D, 2-D, and 3-D.
+It covers these twelve implementations:
+
+- VMEC-like: `educational_vmec`, `jVMEC`, `VMEC2000`, `VMEC++`, `VMEX`,
+  `PARVMEC`
+- Nested-surface: `DESC`, `GVEC`
+- MRxMHD: `SPEC`, `SPECTRE`
+- 2-D Grad-Shafranov: `FreeGS`, `CHEASE`
+
+FreeGS and CHEASE run only on supported 2-D inputs. The differentiable MHD
+benchmark is maintained separately. Optional sibling repositories are expected
+one directory above this checkout. Missing repositories are recorded as
+unavailable.
 
 ## Quick start
 
 ```bash
-# Build and test this repository
 fo check
 fo test --all
 
-# Build available sibling implementations, then run the ordinary benchmark
 fo run vmec-build -- --base-dir ..
 fo run vmec-benchmark -- run --base-dir ..
+```
 
-# Inspect wiring or run a focused subset
+Useful discovery and focused-run commands:
+
+```bash
 fo run vmec-benchmark -- list-repos --base-dir ..
 fo run vmec-benchmark -- list-cases --match tokamak
 fo run vmec-benchmark -- run --match tokamak --limit 5
 ```
 
-Results are written to `benchmark_results/`, including Markdown and CSV
-reports plus native output sidecars.
+Results are written to `benchmark_results/` with CSV and Markdown summaries,
+native outputs, and adapter sidecars.
 
-## Common-format adapters
+## Format adapters
 
-`tools/convert_equilibrium.py` converts VMEC INDATA/JSON to the benchmark's
-canonical JSON metadata and emits documented native templates or summaries for
-GVEC, GEQDSK, and SPEC. `tools/convert_vmec_to_spectre.py` is the ordinary
-VMEC-to-SPECTRE TOML bridge. `tools/run_spectre.py` retains SPECTRE's native
-JSON result. CHEASE is admitted only for a 2-D GEQDSK input, using its native
-`run.chease.eqdsk` wrapper. `tools/run_freegs.py` runs a 2-D FreeGS case and
-writes GEQDSK plus a JSON sidecar. Use `uv run` for these Python tools:
+The scripts in `tools/` keep conversions explicit and reproducible. Use
+`convert_equilibrium.py` for VMEC, JSON, GEQDSK, and SPEC metadata. Use
+`convert_vmec_to_gvec.py` and `convert_vmec_to_spectre.py` for GVEC and SPECTRE
+inputs. Use `convert_gvec_to_common.py` for GVEC metrics, `run_freegs.py` for
+2-D FreeGS plus GEQDSK, and `run_spectre.py` for native SPECTRE JSON.
+
+CHEASE consumes the native GEQDSK wrapper. Use `uv run` for Python tools:
 
 ```bash
-uv run --project ../FreeGS python tools/run_freegs.py cases/analytic/2d_solovev/input.solovev out
 uv run python tools/convert_equilibrium.py --help
+uv run python tools/convert_vmec_to_gvec.py input.example gvec.yaml
 uv run python tools/convert_vmec_to_spectre.py input.example spectre.toml
 ```
 
@@ -62,41 +68,39 @@ differentiation or Jacobian data.
 
 ## Plots
 
-To plot completed Slurm outputs (native WOUT files and successful sidecars):
+Plot completed Slurm results with:
 
 ```bash
-uv run --with netCDF4 --with h5py --with matplotlib python tools/plot_benchmark_results.py \
-  benchmark_results-slurm-<job-id>
+uv run --with netCDF4 --with h5py --with matplotlib \
+  python tools/plot_benchmark_results.py benchmark_results-slurm-<job-id>
 ```
 
-The output directory contains boundary overlays, `metrics.png` (relative scalar
-agreement only), `quality.png` plus `quality.csv` (native residual/convergence
-diagnostics), and `boxplots.png` plus `boxplots.csv` (one box-and-whisker panel
-per comparison scalar and for reported runtime). Incomplete or unsupported
-rows are skipped; missing native diagnostics remain blank. Runtime uses
-code-reported timings and is not end-to-end benchmark wall time. Boxes show the
-median, IQR, 1.5×IQR whiskers, and fliers from successful outputs without
-normalization.
+The `plots/` directory contains:
 
-## Repository layout
+- `metrics.png`: relative scalar agreement
+- `quality.png` and `quality.csv`: native residual and convergence diagnostics
+- `boxplots.png` and `boxplots.csv`: one box-and-whisker panel per scalar and runtime
+- `runtime.png` and `runtime.csv`: code-reported timing distributions
+- `surfaces*.png`: boundary overlays
 
-```
+Boxplots show the median, IQR, 1.5×IQR whiskers, and fliers from emitted
+successful outputs. Missing diagnostics remain blank. Reported runtime is code
+timing, not end-to-end Slurm wall time.
+
+## Layout
+
+```text
 app/       command-line entry points
-src/       benchmark runner, comparisons, and implementation wrappers
+src/       benchmark runner and implementation wrappers
 cases/     analytical and numerical 1-D, 2-D, and 3-D fixtures
-tools/     self-contained common-format and FreeGS adapters
+tools/     format adapters and plotting scripts
 test/      independent Fortran tests
 ```
 
-See [AGENTS.md](AGENTS.md) for the short contributor and automation contract.
-
-## Adding an implementation
-
-Add a wrapper in `src/` derived from `vmec_implementation_base`, register it in
-the runner/build command, and add an independent test. Keep native outputs and
-explicit failure or unsupported records. Do not invent a WOUT conversion for a
-code whose physical model cannot provide one.
+Add implementations through a wrapper in `src/`, register it with the runner,
+and add an independent test. Preserve native outputs and explicit failure or
+unsupported records.
 
 ## License
 
-MIT. Individual sibling implementations may use different licenses.
+MIT. Sibling implementations may use different licenses.
