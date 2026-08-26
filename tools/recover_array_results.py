@@ -57,6 +57,17 @@ def _case_name(path: str) -> str:
     else:
         repo = parts[0]
         relative = parts[1:]
+    for prefix in (
+        ("src", "test", "resources"),
+        ("tests",),
+        ("test",),
+        ("examples",),
+        ("example",),
+        ("test-CI", "examples"),
+    ):
+        if tuple(relative[: len(prefix)]) == prefix:
+            relative = relative[len(prefix) :]
+            break
     basename = relative[-1]
     if basename.startswith("input."):
         basename = basename[6:]
