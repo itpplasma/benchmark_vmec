@@ -76,7 +76,7 @@ if [[ -s "$csv_header" ]]; then
     # merged tree and its per-case inventory retain those rows as well.
     while IFS=, read -r case_name implementation status error _; do
         [[ "$status" == failed ]] || continue
-        case_slug=$(printf '%s' "$case_name" | sed -e 's#/#__#g' -e 's#[^A-Za-z0-9._-]#_#g')
+        case_slug=$(printf '%s' "$case_name" | sed -e 's#/#__#g' -e 's#[^A-Za-z0-9._=-]#_#g' -e 's#=#_eq_#g')
         implementation_dir="$destination/$case_slug/$implementation"
         if [[ "$error" == Unsupported:* ]]; then
             rm -rf -- "$implementation_dir"

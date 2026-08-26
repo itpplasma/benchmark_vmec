@@ -80,6 +80,12 @@ def _case_name(path: str) -> str:
 
 
 def _case_slug(case: str) -> str:
+    encoded = re.sub(r"[^A-Za-z0-9._=-]", "_", case.replace("/", "__"))
+    return encoded.replace("=", "_eq_")
+
+
+def _legacy_case_slug(case: str) -> str:
+    """Return the pre-collision-fix slug used by older array outputs."""
     return re.sub(r"[^A-Za-z0-9._-]", "_", case.replace("/", "__"))
 
 
@@ -348,12 +354,19 @@ def _row(case: str, path: str, implementation: str, status: str, error: str, val
 
 def rebuild(case_list: Path, sources: list[Path], output: Path, log_dir: Path | None) -> None:
     frozen: dict[str, tuple[str, str]] = {}
+    legacy_candidates: dict[str, list[tuple[str, str]]] = {}
     for line in case_list.read_text().splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         path = line.strip()
         case = _case_name(path)
         frozen[_case_slug(case)] = (case, path)
+        legacy_candidates.setdefault(_legacy_case_slug(case), []).append((case, path))
+    # Older arrays used the lossy slugger.  If a legacy directory is
+    # ambiguous, it contains the last case written by the sequential runner;
+    # map it to that case and let a rerun with the fixed slug supply the other
+    # case explicitly.
+    legacy_fallback = {slug: cases[-1] for slug, cases in legacy_candidates.items()}
     csv_rows = _load_csv_rows(sources)
     log_statuses = _load_log_statuses(sources, log_dir)
     records: dict[tuple[str, str], dict[str, Any]] = {}
@@ -369,9 +382,12 @@ def rebuild(case_list: Path, sources: list[Path], output: Path, log_dir: Path | 
                 for case_dir in sorted(task_root.iterdir()):
                     if not case_dir.is_dir() or case_dir.name == "jvmec_reports":
                         continue
-                    if case_dir.name not in frozen:
+                    case_info = frozen.get(case_dir.name)
+                    if case_info is None:
+                        case_info = legacy_fallback.get(case_dir.name)
+                    if case_info is None:
                         raise SystemExit(f"unknown case slug in {case_dir}: {case_dir.name}")
-                    case, path = frozen[case_dir.name]
+                    case, path = case_info
                     key = (case, implementation)
                     status, error = log_statuses.get(key, ("", ""))
                     implementation_dir = case_dir / implementation

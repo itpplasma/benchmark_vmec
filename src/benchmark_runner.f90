@@ -986,6 +986,12 @@ contains
                 slug = slug // ch
             case ('/')
                 slug = slug // "__"
+            case ('=')
+                ! Keep distinct inputs such as ``Ns=2048`` and
+                ! ``Ns_2048`` in separate output directories.  Replacing
+                ! punctuation with a bare underscore made those case slugs
+                ! collide and silently overwrote one result.
+                slug = slug // "_eq_"
             case default
                 slug = slug // "_"
             end select
