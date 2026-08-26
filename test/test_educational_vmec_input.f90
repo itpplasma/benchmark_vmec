@@ -137,13 +137,17 @@ contains
         write(unit, '(A)') "&INDATA"
         write(unit, '(A)') " RAXIS(00) = 3.0"
         write(unit, '(A)') " ZAXIS(00) = 0.0"
+        write(unit, '(A)') " RAXIS_co(01) = 0.1"
+        write(unit, '(A)') " ZAXIS_co(01) = 0.2"
         write(unit, '(A)') "/"
         close(unit)
 
         success = impl%clean_input_for_educational_vmec(input_file, output_file)
 
         if (success .and. file_contains(output_file, "RAXIS_CC(00) = 3.0") .and. &
-            file_contains(output_file, "ZAXIS_CS(00) = 0.0")) then
+            file_contains(output_file, "ZAXIS_CS(00) = 0.0") .and. &
+            file_contains(output_file, "RAXIS_CC(01) = 0.1") .and. &
+            file_contains(output_file, "ZAXIS_CC(01) = 0.2")) then
             n_passed = n_passed + 1
             write(output_unit, '(A)') "✓ test_clean_input_handles_indexed_axis_spelling"
         else

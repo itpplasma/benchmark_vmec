@@ -490,6 +490,8 @@ contains
             if (index(adjustl(line), 'BCRIT') == 1) skip_line = .true.
             if (index(adjustl(line), 'PT_TYPE') == 1) skip_line = .true.
             if (index(adjustl(line), 'PH_TYPE') == 1) skip_line = .true.
+            if (index(lowercase(adjustl(line)), 'lforbal') == 1) skip_line = .true.
+            if (index(lowercase(adjustl(line)), 'sigma_current') == 1) skip_line = .true.
             if (index(adjustl(line), 'AT =') == 1) then
                 skip_line = .true.
                 skipping_unsupported_block = .true.
@@ -513,6 +515,12 @@ contains
             ! fork exposes the equivalent Fourier arrays as RAXIS_CC and
             ! ZAXIS_CS, so normalize only a bare assignment (never an indexed
             ! RAXIS(...) or an already-converted RAXIS_CC name).
+            if (replace_axis_assignment(line, 'RAXIS_CO', 'RAXIS_CC')) then
+                continue
+            end if
+            if (replace_axis_assignment(line, 'ZAXIS_CO', 'ZAXIS_CC')) then
+                continue
+            end if
             if (replace_axis_assignment(line, 'RAXIS', 'RAXIS_CC')) then
                 continue
             end if

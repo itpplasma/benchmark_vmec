@@ -37,7 +37,7 @@ _DESC_DROP = re.compile(
 _ASSIGNMENT = re.compile(r"(?=\s+[A-Za-z_]\w*(?:\([^)]*\))?\s*=)")
 _EDUCATIONAL_DROP = re.compile(
     r"(?i)^\s*(?:time_slice|type_precon|precon_type|prec2d_threshold|"
-    r"bcrit|pt_type|ph_type)\b"
+    r"bcrit|pt_type|ph_type|lforbal|sigma_current)\b"
 )
 _NITER_SINGLE = re.compile(r"(?i)^\s*niter\s*=")
 _FTOL_SINGLE = re.compile(r"(?i)^\s*ftol\s*=")
