@@ -15,6 +15,7 @@ module benchmark_runner
     public :: benchmark_runner_t, freegs_case_supported, chease_case_supported, geqdsk_case_supported
     public :: gvec_case_supported
     public :: spec_case_supported, spectre_case_supported
+    public :: native_gvec_case, native_desc_case
 
     type :: implementation_entry_t
         character(len=:), allocatable :: key
@@ -684,6 +685,18 @@ contains
                     results%error_message = 'Unsupported: native GEQDSK fixture is reserved for CHEASE'
                     write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
                         ' skipped (native GEQDSK fixture is CHEASE-only)'
+                else if (native_gvec_case(this%test_cases(i)%str) .and. &
+                        trim(this%implementations(j)%key) /= 'gvec') then
+                    call results%clear()
+                    results%error_message = 'Unsupported: native GVEC parameters are not VMEC inputs'
+                    write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
+                        ' skipped (native GVEC case)'
+                else if (native_desc_case(this%test_cases(i)%str) .and. &
+                        trim(this%implementations(j)%key) /= 'desc') then
+                    call results%clear()
+                    results%error_message = 'Unsupported: native DESC fixtures are not VMEC inputs'
+                    write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
+                        ' skipped (native DESC case)'
                 else if (trim(this%implementations(j)%key) == 'freegs' .and. &
                         .not. freegs_case_supported(this%test_cases(i)%str)) then
                     call results%clear()
@@ -1062,6 +1075,41 @@ contains
         native_spectre_case = (path_has_suffix(lowered, '.toml') .or. &
             path_has_suffix(lowered, '.sp')) .and. index(lowered, '/spectre/') > 0
     end function native_spectre_case
+
+    logical function native_gvec_case(filepath)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: lowered
+
+        lowered = filepath
+        call to_lower(lowered)
+        ! GVEC's native inventory consists of parameter files.  They are
+        ! valid inputs for GVEC itself, but not VMEC INDATA for the other
+        ! implementations in the common comparison matrix.
+        native_gvec_case = index(lowered, '/gvec/') > 0 .and. &
+            (path_has_suffix(lowered, '/parameter.ini') .or. &
+             path_has_suffix(lowered, '/parameter.toml') .or. &
+             path_has_suffix(lowered, '/parameter.yaml'))
+    end function native_gvec_case
+
+    logical function native_desc_case(filepath)
+        character(len=*), intent(in) :: filepath
+        character(len=:), allocatable :: lowered, basename
+        integer :: slash
+
+        lowered = filepath
+        call to_lower(lowered)
+        slash = scan(lowered, '/', back=.true.)
+        if (slash > 0 .and. slash < len_trim(lowered)) then
+            basename = lowered(slash + 1:)
+        else
+            basename = lowered
+        end if
+        ! The DESC checkout contributes these small native fixtures as
+        ! ``*_desc`` files.  ``from_DESC`` VMEC namelists are deliberately
+        ! not classified here because their path segment is different.
+        native_desc_case = index(lowered, '/desc/') > 0 .and. &
+            (path_has_suffix(basename, '_desc') .or. index(basename, '_desc.') > 0)
+    end function native_desc_case
 
     logical function path_has_suffix(path, suffix)
         character(len=*), intent(in) :: path, suffix

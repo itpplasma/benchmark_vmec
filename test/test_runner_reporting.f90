@@ -3,7 +3,7 @@ program test_runner_reporting
     use benchmark_runner, only: benchmark_runner_t, freegs_case_supported, gvec_case_supported, &
         chease_case_supported, &
         geqdsk_case_supported, &
-        spec_case_supported, spectre_case_supported
+        spec_case_supported, spectre_case_supported, native_gvec_case, native_desc_case
     use repository_manager, only: repository_manager_t
     use results_comparator, only: results_comparator_t
     use vmec_benchmark_types, only: vmec_result_t
@@ -68,7 +68,13 @@ contains
             .not. spec_case_supported('/repo/cases/numerical/3d_w7x/input.w7x') .and. &
             spectre_case_supported('/repo/cases/numerical/3d_w7x/input.w7x') .and. &
             spectre_case_supported('/repo/SPECTRE/tests/file_io/input.toml') .and. &
-            .not. spectre_case_supported('/repo/cases/numerical/3d_w7x/w7x.nc')) then
+            .not. spectre_case_supported('/repo/cases/numerical/3d_w7x/w7x.nc') .and. &
+            native_gvec_case('/repo/gvec/test-CI/examples/case/parameter.ini') .and. &
+            native_gvec_case('/repo/gvec/python/examples/case/parameter.toml') .and. &
+            .not. native_gvec_case('/repo/cases/analytic/2d_solovev/parameter.ini') .and. &
+            native_desc_case('/repo/DESC/inputs/DSHAPE_desc') .and. &
+            native_desc_case('/repo/DESC/inputs/QSC_r2_5.5_desc') .and. &
+            .not. native_desc_case('/repo/educational_VMEC/from_DESC/NCSX/input.NCSX')) then
             n_passed = n_passed + 1
             write(output_unit, '(A)') "✓ test_external_case_filters"
         else

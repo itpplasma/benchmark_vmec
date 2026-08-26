@@ -35,6 +35,9 @@ benchmark is separate.
   output call with the successful flag so a bounded non-converged state still
   has a comparable WOUT (`ab9b3ea`). The local `fo check`/`fo test --all`
   gates pass, and compute-node API smokes produced valid WOUT files.
+- Native GVEC `parameter.*` and DESC `*_desc` fixtures are routed only to
+  their owning adapters; canonical VMEC lanes now record them as unsupported
+  format skips rather than attempting to parse them as VMEC INDATA.
 - The SPECTRE VMEC converter probes the signed boundary area and selects
   `Lchangeangle` per input. This preserves the usual handedness for W7-X/NCSX
   while handling the opposite-handed HELIOTRON fixtures without MPI aborts;
@@ -130,10 +133,11 @@ nine `Free Boundary` VMEC2000 rows failed in input preparation even though
 the solver wrote WOUT files. Fresh JDHtest7 compute-node runs (`1895675`,
 `1895677`, `1895678`) exit 0. The 64 no-output rows in `1895605` are likewise
 from its pre-refresh runner: 29 native GVEC files, two native DESC files, and
-33 legacy/unprepared VMEC inputs; the current coverage/`from_DESC` refreshes
-already recover the valid coverage rows. Only NCSX and W7X remain genuine canonical timeouts
-at 600 seconds for both VMEC2000 and PARVMEC; PARVMEC completes the ITER
-hybrid case in 564 seconds.
+33 legacy/unprepared VMEC inputs. The current runner classifies the native
+formats as owner-only skips, while the coverage/`from_DESC` refreshes already
+recover the valid VMEC rows. Only NCSX and W7X remain genuine canonical
+timeouts at 600 seconds for both VMEC2000 and PARVMEC; PARVMEC completes the
+ITER hybrid case in 564 seconds.
 
 Earlier exploratory jobs `1791244`, `1791245`, and `1791248` stopped after
 specific checkout/converter/MGRID defects and are not evidence. The older
