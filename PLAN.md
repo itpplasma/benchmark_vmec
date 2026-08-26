@@ -12,8 +12,8 @@ in `tools/`; native output is retained whenever a code provides it.
 
 ## Repository state
 
-- `main` is clean and pushed at `bf0644a` (`Report GVEC conversion limits as
-  unsupported`).
+- `main` is clean and pushed at `db994e6` (`Isolate parallel Slurm build
+  trees`).
 - Local gates pass: `uv run fo check`, `uv run fo test --all`, Python `ruff`,
   shell syntax checks, and `git diff --check`.
 - The latest input adapters strip legacy separators/comments, normalize DESC
@@ -21,6 +21,9 @@ in `tools/`; native output is retained whenever a code provides it.
   `benchmark_unsupported.txt` markers for missing fixtures, malformed VMEC
   namelists, and unsupported GVEC profiles. These markers must remain
   `unsupported`, never generic infrastructure failures.
+- Slurm lanes archive the exact checkout commit into a per-job temporary
+  source/build tree (`BENCHMARK_ISOLATE_BUILD`, enabled by default), so
+  parallel Fo invocations cannot share generated modules.
 - Fo fix PR [#128](https://github.com/lazy-fortran/fo/pull/128) is pushed and
   green; patched Fo `a024790` is installed on `scluster`.
 
@@ -38,13 +41,13 @@ in `tools/`; native output is retained whenever a code provides it.
   final source of truth.
 - Authoritative replacements were submitted from the latest checkout
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-latest-e887277`
-  (verify it is `bf0644a`). Node-pinned replacements are running in parallel:
-  `1896065` educational (STELLOPT subset), `1896064` VMEC++ (bean),
-  `1896066` DESC (Free Boundary subset), `1896067` GVEC (STELLOPT subset),
-  `1896068` jVMEC, `1896069` VMEC2000, `1896070` VMEX, `1896071` SPECTRE,
-  and `1896072` PARVMEC. They use 600-second implementation timeouts and
-  six-hour allocation limits; check `squeue`, `sacct`, and each
-  `comparison_table.csv` before promotion.
+  (verify it is `db994e6`). Node-pinned isolated replacements are running in
+  parallel: `1896075` educational (STELLOPT subset), `1896074` VMEC++ (bean),
+  `1896076` DESC (Free Boundary subset), `1896077` GVEC (STELLOPT subset),
+  `1896078` jVMEC, `1896079` VMEC2000, `1896080` VMEX, `1896081` SPECTRE,
+  and `1896082` PARVMEC. They use 600-second implementation timeouts and
+  lane-specific 2--6 hour allocation limits; check `squeue`, `sacct`, and
+  each `comparison_table.csv` before promotion.
 - Completed authoritative side runs: SPEC `1895954` (10/10 native cases),
   FreeGS `1895836` (2-D cases only), and CHEASE `1895837` (2-D case only).
   Earlier VMEC2000/PARVMEC/VMEC++/educational counts are diagnostics from
