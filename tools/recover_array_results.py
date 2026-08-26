@@ -403,7 +403,14 @@ def rebuild(case_list: Path, sources: list[Path], output: Path, log_dir: Path | 
                         fallback = csv_rows.get(key)
                         if fallback:
                             status, error = fallback.get("status", ""), fallback.get("error", "")
-                    native_success, values = _native_values(implementation_dir, implementation)
+                    # A logged/marked failure has no values to recover.  Do
+                    # not parse its partial native files: malformed solver
+                    # output can contain all-NaN geometry and would only add
+                    # noisy NumPy warnings to an already explicit failure.
+                    if status == "failed":
+                        native_success, values = False, {}
+                    else:
+                        native_success, values = _native_values(implementation_dir, implementation)
                     if not status:
                         status = "success" if native_success else "failed"
                         error = "" if native_success else "Run failed"
