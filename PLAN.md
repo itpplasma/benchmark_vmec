@@ -102,9 +102,10 @@ timing files are retained under the corresponding smoke root.
 The diagnostic-input preparation fix was verified independently: refresh job
 `1895612` completed all five `educational_VMEC/test/coverage` cases (including
 SOLOVEV and HELIOTRON) successfully in
-`benchmark_results-parvmec-coverage-refresh`. Refresh job `1895616` is running
-the 14 `educational_VMEC/test/from_DESC` cases with the same isolated
-PARVMEC-only wrapper/build; these refresh trees remain separate until the
+`benchmark_results-parvmec-coverage-refresh`. Refresh job `1895616` ran the
+14 `educational_VMEC/test/from_DESC` cases with the same isolated
+PARVMEC-only wrapper/build and completed 12/14 (NCSX and W7X reached the
+600-second solver bound). These refresh trees remain separate until the
 exhaustive job is terminal, then their PARVMEC rows can replace the stale
 pre-fix rows without touching other implementations.
 
