@@ -165,7 +165,7 @@ contains
         close(unit)
         
         ! Run the Python script
-        cmd = "cd " // trim(output_dir) // " && /usr/bin/time -p timeout " // int_to_str(timeout_val) // &
+        cmd = "cd " // trim(output_dir) // " && /usr/bin/time -p timeout --kill-after=5s " // int_to_str(timeout_val) // &
               " " // trim(python_cmd) // " run_vmecpp.py > vmecpp.log 2>&1"
 
         write(output_unit, '(A)') "DEBUG: Running command: " // trim(cmd)

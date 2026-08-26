@@ -13,9 +13,9 @@ rows in the report.
 The matrix covers VMEC-like codes (`vmecpp`, `educational_VMEC`, `VMEC2000`,
 `jVMEC`, `VMEX`, `PARVMEC`), nested-surface codes (`DESC`, `GVEC`), MRxMHD
 codes (`SPEC`, `SPECTRE`), and Grad--Shafranov codes (`FreeGS`, `CHEASE`).
-FreeGS and CHEASE provide the 2-D comparisons. The repository-owned corpus exercises analytical
-and numerical fixtures in 1-D, 2-D, and 3-D. The current discovery contains 344
-unique cases. An older GVEC checkout listed one `axisNB_N2-12` input twice.
+FreeGS and CHEASE provide the 2-D comparisons. The repository-owned corpus
+exercises analytical and numerical fixtures in 1-D, 2-D, and 3-D. The current
+discovery contains 344 unique cases.
 Differentiable MHD uses a separate benchmark.
 
 Sibling repositories are expected one directory above this checkout. Missing
