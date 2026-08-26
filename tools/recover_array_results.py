@@ -99,16 +99,17 @@ def _suffix(path: str, suffix: str) -> bool:
 def _support_error(path: str, implementation: str) -> str | None:
     """Return the runner's explicit skip reason, if this pair is unsupported."""
     lowered = path.lower()
+    normalized = "/" + lowered.lstrip("/")
     basename = lowered.rsplit("/", 1)[-1]
-    geqdsk = "/2d" in lowered and (_suffix(lowered, ".geqdsk") or _suffix(lowered, ".eqdsk"))
-    native_gvec = "/gvec/" in lowered and (
+    geqdsk = "/2d" in normalized and (_suffix(lowered, ".geqdsk") or _suffix(lowered, ".eqdsk"))
+    native_gvec = "/gvec/" in normalized and (
         _suffix(lowered, "/parameter.ini")
         or _suffix(lowered, "/parameter.toml")
         or _suffix(lowered, "/parameter.yaml")
     )
-    native_desc = "/desc/" in lowered and (basename.endswith("_desc") or "_desc." in basename)
-    spec_case = _suffix(lowered, ".sp") and "/spectre/" not in lowered
-    native_spectre = (_suffix(lowered, ".toml") or _suffix(lowered, ".sp")) and "/spectre/" in lowered
+    native_desc = "/desc/" in normalized and (basename.endswith("_desc") or "_desc." in basename)
+    spec_case = _suffix(lowered, ".sp") and "/spectre/" not in normalized
+    native_spectre = (_suffix(lowered, ".toml") or _suffix(lowered, ".sp")) and "/spectre/" in normalized
 
     if geqdsk and implementation != "chease":
         return "Unsupported: native GEQDSK fixture is reserved for CHEASE"
@@ -126,7 +127,7 @@ def _support_error(path: str, implementation: str) -> str | None:
         return "Unsupported: SPEC requires a native .sp input"
     if implementation == "spectre" and not (
         _suffix(lowered, ".toml")
-        or (_suffix(lowered, ".sp") and "/spectre/" in lowered)
+        or (_suffix(lowered, ".sp") and "/spectre/" in normalized)
         or "/input." in lowered
     ):
         return "Unsupported: SPECTRE requires VMEC input or native TOML"
