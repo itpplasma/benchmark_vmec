@@ -149,16 +149,23 @@ prepare_driver() {
     fo_cache_lock="${FO_CACHE_LOCK:-${FO_CACHE_DIR}.lock}"
     exec {fo_cache_lock_fd}>"$fo_cache_lock"
     flock "$fo_cache_lock_fd"
-    # Prefer the repository-standard fo checks.  Some older cluster fpm builds
-    # concatenate -pipe with pkg-config include flags; use the same fpm project
-    # directly if that backend-specific failure is encountered.
-    if fo check; then
-        driver=fo
-        if [[ "$mode" == smoke ]]; then
+    # Full benchmark allocations need a build, not a second all-tests pass.
+    # The test runner has a deliberately short per-test guard and can make a
+    # fresh dependency cache look like a compiler failure under load.  Smoke
+    # allocations retain the repository-standard check and test gates.
+    fo_ok=false
+    if [[ "$mode" == smoke ]]; then
+        if fo check; then
             fo test --all
+            fo_ok=true
         fi
+    elif fo build; then
+        fo_ok=true
+    fi
+    if [[ "$fo_ok" == true ]]; then
+        driver=fo
     else
-        printf 'fo check failed; retrying the same project through fpm\n' >&2
+        printf 'fo build/check failed; retrying the same project through fpm\n' >&2
         # The cluster image exposes the HDF5 Fortran module and libraries via
         # the serial HDF5 installation, while some fpm/pkg-config combinations
         # only propagate the C ``hdf5`` flags.  Supply the explicit include
