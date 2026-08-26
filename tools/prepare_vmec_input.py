@@ -26,6 +26,13 @@ _OUTPUT_CONTROL = re.compile(
     r"loldout|lwouttxt|lfull3d1out)\s*="
 )
 _END = re.compile(r"(?i)^\s*&end\s*$")
+_SEPARATOR = re.compile(r"^\s*-{3,}\s*$")
+_FORTRAN_COMMENT = re.compile(r"^\s*[cC](?:\s|$)")
+_DESC_DROP = re.compile(
+    r"(?i)^\s*(?:mgrid_file|time_slice|delt|ns_array|niter_array|"
+    r"ftol_array|niter|nstep|nvacskip|type_precon|prec2d_threshold|"
+    r"extcur|sigma_current)\b"
+)
 
 
 def _index_candidates(search_roots: list[Path]) -> dict[str, Path]:
@@ -49,7 +56,13 @@ def _index_candidates(search_roots: list[Path]) -> dict[str, Path]:
     return candidates
 
 
-def prepare(source: Path, destination: Path, search_roots: list[Path]) -> bool:
+def prepare(
+    source: Path,
+    destination: Path,
+    search_roots: list[Path],
+    *,
+    desc_compatible: bool = False,
+) -> bool:
     """Write a normalized input and return whether all referenced fixtures exist.
 
     A missing magnetic-grid file is an unsupported benchmark fixture, not a
@@ -66,11 +79,21 @@ def prepare(source: Path, destination: Path, search_roots: list[Path]) -> bool:
     text = source.read_text(errors="replace")
     lines: list[str] = []
     saw_slash = False
+    drop_continuation = False
     for line in text.splitlines():
-        if _END.match(line):
+        if _END.match(line) or _SEPARATOR.match(line) or _FORTRAN_COMMENT.match(line):
             # VMEC accepts ``/`` as the namelist terminator.  A second
             # ``&END`` is interpreted as a new, unterminated group by f90nml.
             continue
+        if desc_compatible and _DESC_DROP.match(line):
+            # DESC reads the VMEC namelist itself and rejects solver controls
+            # it does not consume.  Drop an unsupported assignment and its
+            # continuation lines, retaining the equilibrium coefficients.
+            drop_continuation = True
+            continue
+        if desc_compatible and drop_continuation and "=" not in line:
+            continue
+        drop_continuation = False
         if _OUTPUT_CONTROL.match(line):
             continue
         line = line.replace("(:)", "")
@@ -129,12 +152,16 @@ def main() -> int:
         "--search-root", action="append", type=Path, default=[],
         help="tree containing reusable MGRID fixtures (repeatable)",
     )
+    parser.add_argument(
+        "--desc", action="store_true",
+        help="also remove VMEC controls that DESC rejects while parsing",
+    )
     args = parser.parse_args()
     roots = list(args.search_root)
     base_dir = os.environ.get("BENCHMARK_BASE_DIR", "")
     if base_dir:
         roots.append(Path(base_dir))
-    return 0 if prepare(args.source, args.destination, roots) else 2
+    return 0 if prepare(args.source, args.destination, roots, desc_compatible=args.desc) else 2
 
 
 if __name__ == "__main__":

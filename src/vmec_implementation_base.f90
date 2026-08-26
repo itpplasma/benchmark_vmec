@@ -74,13 +74,16 @@ contains
         path = '/tmp/' // trim(prefix) // '_' // trim(tag_value(:tag_length)) // '.tmp'
     end function temporary_path
 
-    logical function prepare_vmec_input(input_file, output_file, implementation_path) result(success)
+    logical function prepare_vmec_input(input_file, output_file, implementation_path, desc_compatible) result(success)
         character(len=*), intent(in) :: input_file, output_file, implementation_path
+        logical, intent(in), optional :: desc_compatible
         character(len=:), allocatable :: benchmark_root, source_dir, python_cmd, cmd
         character(len=1024) :: root_value
         integer :: root_length, root_status, last_slash, stat
+        logical :: use_desc
 
         success = .false.
+        use_desc = present(desc_compatible) .and. desc_compatible
         call get_environment_variable('BENCHMARK_REPO_ROOT', root_value, &
                                       length=root_length, status=root_status)
         if (root_status == 0 .and. root_length > 0) then
@@ -105,6 +108,7 @@ contains
               shell_quote(trim(benchmark_root) // '/tools/prepare_vmec_input.py') // ' ' // &
               shell_quote(input_file) // ' ' // shell_quote(output_file) // &
               ' --search-root ' // shell_quote(source_dir)
+        if (use_desc) cmd = trim(cmd) // ' --desc'
         call execute_command_line(trim(cmd), exitstat=stat)
         success = (stat == 0)
         if (.not. success) then

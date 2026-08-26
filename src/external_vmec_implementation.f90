@@ -158,9 +158,15 @@ contains
         lower_name = lowercase(this%name)
         if (trim(lower_name) == 'vmex' .or. trim(lower_name) == 'parvmec' .or. &
             (trim(lower_name) == 'gvec' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
-            (trim(lower_name) == 'spectre' .and. index(lowercase(basename(local_input)), 'input.') == 1)) then
+            (trim(lower_name) == 'spectre' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
+            (trim(lower_name) == 'desc' .and. index(lowercase(basename(local_input)), 'input.') == 1 .and. &
+             index(lowercase(basename(local_input)), '_desc') == 0)) then
             prepared_input = trim(output_dir) // '/input_prepared.vmec'
-            if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
+            if (trim(lower_name) == 'desc') then
+                if (.not. prepare_vmec_input(input_file, prepared_input, this%path, desc_compatible=.true.)) return
+            else
+                if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
+            end if
             cmd = 'cp ' // shell_quote(prepared_input) // ' ' // shell_quote(local_input)
         else
             cmd = 'cp ' // shell_quote(input_file) // ' ' // shell_quote(local_input)
