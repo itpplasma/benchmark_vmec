@@ -1,6 +1,7 @@
 program test_educational_vmec_input
     use iso_fortran_env, only: error_unit, output_unit
     use educational_vmec_implementation, only: educational_vmec_t
+    use vmec_implementation_base, only: prepare_vmec_input
     implicit none
 
     integer :: n_tests, n_passed
@@ -13,6 +14,7 @@ program test_educational_vmec_input
     call test_clean_input_drops_duplicate_niter_and_renames_axis(n_tests, n_passed)
     call test_clean_input_rewrites_niter_without_niter_array(n_tests, n_passed)
     call test_clean_input_handles_legacy_axis_spelling(n_tests, n_passed)
+    call test_prepare_without_optional_flags(n_tests, n_passed)
 
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
 
@@ -119,6 +121,31 @@ contains
 
         call execute_command_line("rm -f " // input_file // " " // output_file, exitstat=stat)
     end subroutine test_clean_input_handles_legacy_axis_spelling
+
+    subroutine test_prepare_without_optional_flags(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        character(len=*), parameter :: input_file = "/tmp/benchmark_vmec_prepare_input.txt"
+        character(len=*), parameter :: output_file = "/tmp/benchmark_vmec_prepare_output.txt"
+        integer :: unit, stat
+        logical :: success
+
+        n_tests = n_tests + 1
+        open(newunit=unit, file=input_file, status='replace', action='write', iostat=stat)
+        write(unit, '(A)') "&INDATA"
+        write(unit, '(A)') "  NFP = 1"
+        write(unit, '(A)') "/"
+        close(unit)
+
+        success = prepare_vmec_input(input_file, output_file, ".")
+        if (success .and. file_contains(output_file, "NFP = 1")) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_prepare_without_optional_flags"
+        else
+            write(error_unit, '(A)') "✗ test_prepare_without_optional_flags"
+        end if
+
+        call execute_command_line("rm -f " // input_file // " " // output_file, exitstat=stat)
+    end subroutine test_prepare_without_optional_flags
 
     logical function file_contains(path, needle)
         character(len=*), intent(in) :: path

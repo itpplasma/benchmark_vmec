@@ -84,8 +84,10 @@ contains
         logical :: use_desc, use_educational
 
         success = .false.
-        use_desc = present(desc_compatible) .and. desc_compatible
-        use_educational = present(educational_compatible) .and. educational_compatible
+        use_desc = .false.
+        if (present(desc_compatible)) use_desc = desc_compatible
+        use_educational = .false.
+        if (present(educational_compatible)) use_educational = educational_compatible
         call get_environment_variable('BENCHMARK_REPO_ROOT', root_value, &
                                       length=root_length, status=root_status)
         if (root_status == 0 .and. root_length > 0) then
