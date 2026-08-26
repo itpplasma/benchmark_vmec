@@ -18,6 +18,19 @@ timeout_seconds=${BENCHMARK_TIMEOUT:-300}
 case_match=${BENCHMARK_MATCH:-}
 implementation_filter=${BENCHMARK_IMPLEMENTATION:-}
 
+# A Slurm stack may launch several lanes from one checkout at once.  Fo keeps
+# its native objects under ``build/fo`` in the project, so sharing that tree
+# lets concurrent compilers truncate module files.  Give each allocation a
+# clean source/build tree while keeping reports in the persistent checkout.
+if [[ -n "${SLURM_JOB_ID:-}" && "${BENCHMARK_ISOLATE_BUILD:-1}" != 0 ]]; then
+    persistent_repo_root=$repo_root
+    isolated_root=${BENCHMARK_ISOLATED_REPO:-"${TMPDIR:-/tmp}/benchmark_vmec-${SLURM_JOB_ID}"}
+    mkdir -p "$isolated_root"
+    git -C "$persistent_repo_root" archive --format=tar HEAD | tar -xf - -C "$isolated_root"
+    repo_root=$isolated_root
+    cd "$repo_root"
+fi
+
 case_match_args=()
 if [[ -n "$case_match" ]]; then
     case_match_args=(--match "$case_match")
