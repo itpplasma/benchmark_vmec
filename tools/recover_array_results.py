@@ -286,7 +286,10 @@ def _native_values(path: Path, implementation: str) -> tuple[bool, dict[str, flo
                 return "/output/volume" in handle, values
         except (OSError, ImportError, ValueError):
             return False, {}
-    values = _wout_values(path)
+    try:
+        values = _wout_values(path)
+    except (OSError, ValueError, KeyError):
+        return False, {}
     return bool(values), values
 
 
