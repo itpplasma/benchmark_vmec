@@ -414,35 +414,44 @@ def plot_runtime(result_root: Path, output_dir: Path) -> Path:
     return filename
 
 
-def plot_surfaces(result_root: Path, output_dir: Path) -> Path:
+def plot_surfaces(result_root: Path, output_dir: Path) -> list[Path]:
     cases = list(_case_outputs(result_root))
     columns = 2
-    rows = max(1, (len(cases) + columns - 1) // columns)
-    figure, axes = plt.subplots(rows, columns, squeeze=False, figsize=(12, 5 * rows))
-    for axis, (case_dir, outputs) in zip(axes.flat, cases):
-        for implementation, filename in outputs:
-            try:
-                with Dataset(filename) as dataset:
-                    curve = _surface(dataset)
-            except OSError:
-                curve = None
-            if curve is not None:
-                axis.plot(curve[0], curve[1], linewidth=1.5, label=implementation)
-        title = textwrap.fill(case_dir.name.replace("__", "/"), width=34)
-        axis.set_title(title, fontsize=8, pad=4)
-        axis.set_aspect("equal", adjustable="datalim")
-        axis.set_xlabel("R")
-        axis.set_ylabel("Z")
-        axis.grid(alpha=0.2)
-        axis.legend(fontsize="small", loc="best")
-    for axis in axes.flat[len(cases) :]:
-        axis.set_visible(False)
-    figure.suptitle("Completed benchmark WOUT boundaries (phi = 0)")
-    figure.tight_layout()
-    filename = output_dir / "surfaces.png"
-    figure.savefig(filename, dpi=180)
-    plt.close(figure)
-    return filename
+    page_size = 24
+    filenames: list[Path] = []
+    for page_start in range(0, len(cases), page_size):
+        page_cases = cases[page_start : page_start + page_size]
+        rows = max(1, (len(page_cases) + columns - 1) // columns)
+        figure, axes = plt.subplots(rows, columns, squeeze=False, figsize=(12, 5 * rows))
+        for axis, (case_dir, outputs) in zip(axes.flat, page_cases):
+            for implementation, filename in outputs:
+                try:
+                    with Dataset(filename) as dataset:
+                        curve = _surface(dataset)
+                except OSError:
+                    curve = None
+                if curve is not None:
+                    axis.plot(curve[0], curve[1], linewidth=1.5, label=implementation)
+            title = textwrap.fill(case_dir.name.replace("__", "/"), width=34)
+            axis.set_title(title, fontsize=8, pad=4)
+            axis.set_aspect("equal", adjustable="datalim")
+            axis.set_xlabel("R")
+            axis.set_ylabel("Z")
+            axis.grid(alpha=0.2)
+            axis.legend(fontsize="small", loc="best")
+        for axis in axes.flat[len(page_cases) :]:
+            axis.set_visible(False)
+        page_number = page_start // page_size + 1
+        figure.suptitle(
+            f"Completed benchmark WOUT boundaries (phi = 0), "
+            f"cases {page_start + 1}–{page_start + len(page_cases)} of {len(cases)}"
+        )
+        figure.tight_layout(rect=(0, 0, 1, 0.97))
+        filename = output_dir / ("surfaces.png" if page_number == 1 else f"surfaces-{page_number:02d}.png")
+        figure.savefig(filename, dpi=180)
+        plt.close(figure)
+        filenames.append(filename)
+    return filenames
 
 
 def plot_metrics(result_root: Path, output_dir: Path) -> Path:
@@ -533,7 +542,8 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     if not any(_case_outputs(result_root)):
         raise SystemExit(f"No completed WOUT NetCDF files found below {result_root}")
-    print(plot_surfaces(result_root, output_dir))
+    for filename in plot_surfaces(result_root, output_dir):
+        print(filename)
     print(plot_metrics(result_root, output_dir))
     print(plot_runtime(result_root, output_dir))
 
