@@ -74,16 +74,18 @@ contains
         path = '/tmp/' // trim(prefix) // '_' // trim(tag_value(:tag_length)) // '.tmp'
     end function temporary_path
 
-    logical function prepare_vmec_input(input_file, output_file, implementation_path, desc_compatible) result(success)
+    logical function prepare_vmec_input(input_file, output_file, implementation_path, desc_compatible, educational_compatible) result(success)
         character(len=*), intent(in) :: input_file, output_file, implementation_path
         logical, intent(in), optional :: desc_compatible
+        logical, intent(in), optional :: educational_compatible
         character(len=:), allocatable :: benchmark_root, source_dir, python_cmd, cmd
         character(len=1024) :: root_value
         integer :: root_length, root_status, last_slash, stat
-        logical :: use_desc
+        logical :: use_desc, use_educational
 
         success = .false.
         use_desc = present(desc_compatible) .and. desc_compatible
+        use_educational = present(educational_compatible) .and. educational_compatible
         call get_environment_variable('BENCHMARK_REPO_ROOT', root_value, &
                                       length=root_length, status=root_status)
         if (root_status == 0 .and. root_length > 0) then
@@ -109,6 +111,7 @@ contains
               shell_quote(input_file) // ' ' // shell_quote(output_file) // &
               ' --search-root ' // shell_quote(source_dir)
         if (use_desc) cmd = trim(cmd) // ' --desc'
+        if (use_educational) cmd = trim(cmd) // ' --educational'
         call execute_command_line(trim(cmd), exitstat=stat)
         success = (stat == 0)
         if (.not. success) then

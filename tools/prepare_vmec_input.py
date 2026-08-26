@@ -35,6 +35,12 @@ _DESC_DROP = re.compile(
     r"extcur|sigma_current)\b"
 )
 _ASSIGNMENT = re.compile(r"(?=\s+[A-Za-z_]\w*(?:\([^)]*\))?\s*=)")
+_EDUCATIONAL_DROP = re.compile(
+    r"(?i)^\s*(?:time_slice|type_precon|precon_type|prec2d_threshold|"
+    r"bcrit|pt_type|ph_type)\b"
+)
+_NITER_SINGLE = re.compile(r"(?i)^\s*niter\s*=")
+_FTOL_SINGLE = re.compile(r"(?i)^\s*ftol\s*=")
 
 
 def _index_candidates(search_roots: list[Path]) -> dict[str, Path]:
@@ -64,6 +70,7 @@ def prepare(
     search_roots: list[Path],
     *,
     desc_compatible: bool = False,
+    educational_compatible: bool = False,
 ) -> bool:
     """Write a normalized input and return whether all referenced fixtures exist.
 
@@ -82,6 +89,8 @@ def prepare(
     lines: list[str] = []
     saw_slash = False
     drop_continuation = False
+    saw_niter_array = bool(re.search(r"(?im)^\s*niter_array\s*=", text))
+    saw_ftol_array = bool(re.search(r"(?im)^\s*ftol_array\s*=", text))
     for original_line in text.splitlines():
         # DESC's parser requires one assignment per physical line, while
         # historical VMEC inputs commonly put ``MPOL = ... NTOR = ...`` (or
@@ -89,7 +98,7 @@ def prepare(
         # that are unambiguously the start of another assignment; this keeps
         # array values and quoted strings intact for all other consumers.
         candidate_lines = [original_line]
-        if desc_compatible:
+        if desc_compatible or educational_compatible:
             candidate_lines = _ASSIGNMENT.split(original_line)
         for line in candidate_lines:
             if (_END.match(line) or _SEPARATOR.match(line) or _FORTRAN_COMMENT.match(line)
@@ -103,6 +112,16 @@ def prepare(
                 # continuation lines, retaining the equilibrium coefficients.
                 drop_continuation = True
                 continue
+            if educational_compatible and _EDUCATIONAL_DROP.match(line):
+                continue
+            if educational_compatible and _NITER_SINGLE.match(line):
+                if saw_niter_array:
+                    continue
+                line = re.sub(r"(?i)^\s*niter\s*=", " NITER_ARRAY =", line, count=1)
+            if educational_compatible and _FTOL_SINGLE.match(line):
+                if saw_ftol_array:
+                    continue
+                line = re.sub(r"(?i)^\s*ftol\s*=", " FTOL_ARRAY =", line, count=1)
             if desc_compatible and drop_continuation and "=" not in line:
                 continue
             drop_continuation = False
@@ -168,12 +187,22 @@ def main() -> int:
         "--desc", action="store_true",
         help="also remove VMEC controls that DESC rejects while parsing",
     )
+    parser.add_argument(
+        "--educational", action="store_true",
+        help="also normalize controls rejected by the educational VMEC reader",
+    )
     args = parser.parse_args()
     roots = list(args.search_root)
     base_dir = os.environ.get("BENCHMARK_BASE_DIR", "")
     if base_dir:
         roots.append(Path(base_dir))
-    return 0 if prepare(args.source, args.destination, roots, desc_compatible=args.desc) else 2
+    return 0 if prepare(
+        args.source,
+        args.destination,
+        roots,
+        desc_compatible=args.desc,
+        educational_compatible=args.educational,
+    ) else 2
 
 
 if __name__ == "__main__":

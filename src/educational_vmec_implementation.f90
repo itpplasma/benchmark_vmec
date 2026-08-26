@@ -179,7 +179,8 @@ contains
         ! Normalize legacy diagnostic switches and stage any referenced MGRID
         ! fixture before applying the educational fork's additional aliases.
         prepared_input = trim(output_dir) // "/input_prepared.vmec"
-        if (.not. prepare_vmec_input(indata_file, prepared_input, this%path)) return
+        if (.not. prepare_vmec_input(indata_file, prepared_input, this%path, &
+                                     educational_compatible=.true.)) return
         indata_file = prepared_input
 
         ! Copy and clean input file to output directory
