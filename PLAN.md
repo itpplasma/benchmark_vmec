@@ -30,6 +30,11 @@ benchmark is separate.
   completed the `JDHtest7` case across all available lanes after this fix;
   the remaining failures there are solver outcomes, not input-discovery
   failures.
+- VMEC2000's Python adapter now mirrors the standalone PARVMEC output
+  handshake: it requests cleanup and, after `more_iter_flag`, makes a final
+  output call with the successful flag so a bounded non-converged state still
+  has a comparable WOUT (`ab9b3ea`). The local `fo check`/`fo test --all`
+  gates pass, and compute-node API smokes produced valid WOUT files.
 - The SPECTRE VMEC converter probes the signed boundary area and selects
   `Lchangeangle` per input. This preserves the usual handedness for W7-X/NCSX
   while handling the opposite-handed HELIOTRON fixtures without MPI aborts;
@@ -118,6 +123,17 @@ PARVMEC-only wrapper/build and completed 12/14 (NCSX and W7X reached the
 600-second solver bound). These refresh trees remain separate until the
 exhaustive job is terminal, then their PARVMEC rows can replace the stale
 pre-fix rows without touching other implementations.
+
+The canonical-lane audit explains the apparent VMEC2000/PARVMEC failures:
+`1791254` loaded its benchmark executable before the quoted-path fix, so its
+nine `Free Boundary` VMEC2000 rows failed in input preparation even though
+the solver wrote WOUT files. Fresh JDHtest7 compute-node runs (`1895675`,
+`1895677`, `1895678`) exit 0. The 64 no-output rows in `1895605` are likewise
+from its pre-refresh runner: 29 native GVEC files, two native DESC files, and
+33 legacy/unprepared VMEC inputs; the current coverage/`from_DESC` refreshes
+already recover the valid coverage rows. Only NCSX and W7X remain genuine canonical timeouts
+at 600 seconds for both VMEC2000 and PARVMEC; PARVMEC completes the ITER
+hybrid case in 564 seconds.
 
 Earlier exploratory jobs `1791244`, `1791245`, and `1791248` stopped after
 specific checkout/converter/MGRID defects and are not evidence. The older
