@@ -13,9 +13,9 @@ rows in the report.
 The matrix covers VMEC-like codes (`vmecpp`, `educational_VMEC`, `VMEC2000`,
 `jVMEC`, `VMEX`, `PARVMEC`), nested-surface codes (`DESC`, `GVEC`), MRxMHD
 codes (`SPEC`, `SPECTRE`), and Grad--Shafranov codes (`FreeGS`, `CHEASE`).
-FreeGS is the 2-D comparison; the repository-owned corpus still exercises both
-analytical and numerical fixtures in 1-D, 2-D, and 3-D. The differentiable
-benchmark lane is intentionally out of scope here.
+FreeGS is the 2-D comparison. The repository-owned corpus exercises analytical
+and numerical fixtures in 1-D, 2-D, and 3-D. Differentiable MHD uses a separate
+benchmark.
 
 Sibling repositories are expected one directory above this checkout. Missing
 optional repositories are reported as unavailable rather than silently omitted.
@@ -45,7 +45,7 @@ reports plus native output sidecars.
 `tools/convert_equilibrium.py` converts VMEC INDATA/JSON to the benchmark's
 canonical JSON metadata and emits documented native templates or summaries for
 GVEC, GEQDSK, and SPEC. `tools/convert_vmec_to_spectre.py` is the ordinary
-VMEC-to-SPECTRE TOML bridge; `tools/run_spectre.py` retains SPECTRE's native
+VMEC-to-SPECTRE TOML bridge. `tools/run_spectre.py` retains SPECTRE's native
 JSON result. CHEASE is admitted only for a 2-D GEQDSK input, using its native
 `run.chease.eqdsk` wrapper. `tools/run_freegs.py` runs a 2-D FreeGS case and
 writes GEQDSK plus a JSON sidecar. Use `uv run` for these Python tools, for
@@ -57,8 +57,8 @@ uv run python tools/convert_equilibrium.py --help
 uv run python tools/convert_vmec_to_spectre.py input.example spectre.toml
 ```
 
-These adapters are deliberately ordinary-format utilities; they do not expose
-automatic differentiation or Jacobian data.
+These adapters transfer ordinary formats. They do not expose automatic
+differentiation or Jacobian data.
 
 To plot completed Slurm outputs (native WOUT files only):
 
@@ -69,8 +69,8 @@ uv run --with netCDF4 --with matplotlib python tools/plot_benchmark_results.py \
 
 This writes boundary overlays, scalar-comparison plots, and (where native log
 timing lines exist) `runtime.png` plus `runtime.csv` in the result directory's
-`plots/` folder. Incomplete or unsupported rows are skipped; the runtime plot
-is explicitly limited to code-reported timings and is not end-to-end wall time.
+`plots/` folder. Incomplete or unsupported rows are skipped. The runtime plot
+uses code-reported timings and is not end-to-end wall time.
 
 ## Repository layout
 
@@ -88,7 +88,7 @@ See [AGENTS.md](AGENTS.md) for the short contributor and automation contract.
 
 Add a wrapper in `src/` derived from `vmec_implementation_base`, register it in
 the runner/build command, and add an independent test. Keep native outputs and
-explicit failure/unsupported records; do not invent a WOUT conversion for a
+explicit failure or unsupported records. Do not invent a WOUT conversion for a
 code whose physical model cannot provide one.
 
 ## License
