@@ -43,6 +43,24 @@ _NITER_SINGLE = re.compile(r"(?i)^\s*niter\s*=")
 _FTOL_SINGLE = re.compile(r"(?i)^\s*ftol\s*=")
 
 
+def _strip_inline_comment(line: str) -> str:
+    """Remove Fortran ``!``/``#`` comments outside quoted strings."""
+
+    quote = ""
+    for index, character in enumerate(line):
+        if character in {"'", '"'}:
+            if quote == character:
+                # Fortran escapes a quote in a literal by doubling it.
+                if index + 1 < len(line) and line[index + 1] == character:
+                    continue
+                quote = ""
+            elif not quote:
+                quote = character
+        elif character in {"!", "#"} and not quote:
+            return line[:index]
+    return line
+
+
 def _index_candidates(search_roots: list[Path]) -> dict[str, Path]:
     """Return one existing fixture per basename, preferring the index."""
 
@@ -93,6 +111,10 @@ def prepare(
     saw_niter_array = bool(re.search(r"(?im)^\s*niter_array\s*=", text))
     saw_ftol_array = bool(re.search(r"(?im)^\s*ftol_array\s*=", text))
     for original_line in text.splitlines():
+        # Strip comments before splitting compact assignment lines.  Otherwise
+        # a prose comment such as ``! aspect ratio = 3`` is mistaken for a
+        # namelist assignment by ``_ASSIGNMENT`` below.
+        original_line = _strip_inline_comment(original_line)
         # DESC's parser requires one assignment per physical line, while
         # historical VMEC inputs commonly put ``MPOL = ... NTOR = ...`` (or
         # several Fourier coefficients) on one line.  Split only at tokens
