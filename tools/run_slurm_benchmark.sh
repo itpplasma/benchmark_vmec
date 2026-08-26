@@ -121,6 +121,17 @@ prepare_driver() {
         fi
     else
         printf 'fo check failed; retrying the same project through fpm\n' >&2
+        # The cluster image exposes the HDF5 Fortran module and libraries via
+        # the serial HDF5 installation, while some fpm/pkg-config combinations
+        # only propagate the C ``hdf5`` flags.  Supply the explicit include
+        # and link paths for the HDF5-backed SPEC reader before the fallback
+        # build so the fallback is equivalent to the fo path.
+        hdf5_include=$(pkg-config --variable=includedir hdf5 2>/dev/null || true)
+        hdf5_libdir=$(pkg-config --variable=libdir hdf5 2>/dev/null || true)
+        if [[ -d "$hdf5_include" && -d "$hdf5_libdir" ]]; then
+            export FPM_FFLAGS="${FPM_FFLAGS:-} -I${hdf5_include}"
+            export FPM_LDFLAGS="${FPM_LDFLAGS:-} -L${hdf5_libdir} -lhdf5_fortran -lhdf5"
+        fi
         fpm build
         if [[ "$mode" == smoke ]]; then
             fpm test
