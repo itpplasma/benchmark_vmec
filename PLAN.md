@@ -29,10 +29,12 @@ inputs. Common-format adapters live in `tools/`.
 
 - Protected legacy audit job `1791254` remains running on `node20`. It uses an
   older checkout and is not final evidence.
-- Latest serial lanes from checkout `bc759a3` are running with 600-second
-  implementation timeouts: VMEC++ `1897318`, DESC `1897319`, educational VMEC
-  `1897321`, jVMEC `1897366`, VMEC2000 `1897367`, VMEX `1897368`, SPECTRE
-  `1897369`, PARVMEC `1897370`, and GVEC `1898197`.
+- Fast serial lanes from checkout `bc759a3` remain running with 600-second
+  implementation timeouts: VMEC++ `1897318`, educational VMEC `1897321`,
+  VMEC2000 `1897367`, and PARVMEC `1897370`. Partial slow serial lanes DESC
+  `1897319`, jVMEC `1897366`, VMEX `1897368`, SPECTRE `1897369`, and GVEC
+  `1898197` were canceled after the replacement array became healthy. Their
+  partial trees remain audit-only.
 - The combined round-robin exhaustive array is job `1907490`. It covers every
   case for all six slow implementations. Its frozen
   case list is `/home/ert/benchmark_vmec-slurm-233aa21/case-suffixes-1859d3a.txt`
