@@ -3,7 +3,7 @@
 ## Scope
 
 This is the ordinary, non-differentiable equilibrium benchmark. The corpus has
-345 analytical and numerical 1-D, 2-D, and 3-D cases and twelve implementations:
+344 unique analytical and numerical 1-D, 2-D, and 3-D cases and twelve implementations:
 `educational_vmec`, `jVMEC`, `VMEC2000`, `VMEC++`, `VMEX`, `PARVMEC`,
 `DESC`, `GVEC`, `SPEC`, `SPECTRE`, `FreeGS`, and `CHEASE`. FreeGS
 and CHEASE are restricted to their supported 2-D Grad--Shafranov/GEQDSK inputs.
@@ -12,7 +12,7 @@ code provides it.
 
 ## Repository state
 
-- `main` is clean and pushed at `4ccf437` (`Record corrected subset counts`).
+- `main` is clean and pushed at `d752803` (`Include successful SPECTRE timings`).
 - Local gates pass: `uv run fo check`, `uv run fo test --all`, Python `ruff`,
   shell syntax checks, and `git diff --check`.
 - The latest input adapters strip legacy separators/comments, normalize DESC
