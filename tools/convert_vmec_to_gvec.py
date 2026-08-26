@@ -29,7 +29,18 @@ def _dense_vmec_namelist(source: Path) -> dict:
     # ``&END``.  Fortran accepts this legacy spelling, while f90nml treats the
     # second terminator as a new, unterminated namelist group.
     text = source.read_text(errors="replace")
-    parse_text = re.sub(r"(?im)^\s*&END\s*$", "", text)
+    # A number of the historical educational-VMEC files use long dashed
+    # separators outside the namelist.  They are harmless to VMEC itself but
+    # make f90nml stop before ``&INDATA`` and return an empty mapping.  Strip
+    # those presentation-only lines together with the legacy second
+    # terminator before parsing; keep all actual namelist data unchanged.
+    parse_lines = [
+        line
+        for line in text.splitlines()
+        if not re.fullmatch(r"\s*-+\s*", line)
+        and not re.fullmatch(r"\s*&END\s*", line, flags=re.IGNORECASE)
+    ]
+    parse_text = "\n".join(parse_lines)
     parsed = f90nml.reads(parse_text)
     nml = parsed["indata"].todict()
     mpol = int(nml.get("mpol", 2))
