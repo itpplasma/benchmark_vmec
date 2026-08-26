@@ -236,12 +236,17 @@ def _wout_values(path: Path) -> dict[str, float]:
                     + zmns[-1, :, None, None] * xm[:, None, None] * np.cos(phase),
                     axis=0,
                 )
-                rmajor = 0.5 * (float(np.nanmax(radius)) + float(np.nanmin(radius)))
-                aminor = 0.5 * (float(np.nanmax(radius)) - float(np.nanmin(radius)))
-                if "aspect" not in values and aminor > 0.0:
-                    values["aspect"] = rmajor / aminor
+                finite_radius = radius[np.isfinite(radius)]
+                if finite_radius.size:
+                    rmajor = 0.5 * (float(finite_radius.max()) + float(finite_radius.min()))
+                    aminor = 0.5 * (float(finite_radius.max()) - float(finite_radius.min()))
+                    if "aspect" not in values and aminor > 0.0:
+                        values["aspect"] = rmajor / aminor
                 if "volume_p" not in values:
-                    values["volume_p"] = abs(0.5 * float(np.nanmean(radius**2 * height)) * (2.0 * np.pi) ** 2)
+                    volume_integrand = radius**2 * height
+                    finite_volume = volume_integrand[np.isfinite(volume_integrand)]
+                    if finite_volume.size:
+                        values["volume_p"] = abs(0.5 * float(finite_volume.mean()) * (2.0 * np.pi) ** 2)
     return values
 
 
