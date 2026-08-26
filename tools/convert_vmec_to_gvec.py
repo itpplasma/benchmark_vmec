@@ -93,9 +93,18 @@ def convert(source: Path, destination: Path) -> None:
 
     try:
         parameters = gvec_util.parameters_from_vmec(_dense_vmec_namelist(source), source.name)
-    except ValueError as exc:
-        if "not supported" in str(exc).lower() or "namelist is missing" in str(exc).lower():
-            _mark_unsupported(destination, str(exc))
+    except (KeyError, ValueError) as exc:
+        detail = str(exc)
+        lowered = detail.lower()
+        if isinstance(exc, KeyError):
+            detail = f"missing required VMEC field: {detail}"
+        if (
+            isinstance(exc, KeyError)
+            or "not supported" in lowered
+            or "namelist" in lowered
+            or "end-of-file" in lowered
+        ):
+            _mark_unsupported(destination, detail)
         raise
     # GVEC's fixed-profile path requires an initial iota profile when VMEC
     # supplies neither AI nor AC.  Current-constrained TOML runs initialize
