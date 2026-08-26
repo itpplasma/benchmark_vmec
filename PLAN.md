@@ -99,6 +99,14 @@ its result root is
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final/benchmark_results-parvmec-full/`.
 The one-case smoke job `1895604` passed on `node15`; its native WOUT and
 timing files are retained under the corresponding smoke root.
+The diagnostic-input preparation fix was verified independently: refresh job
+`1895612` completed all five `educational_VMEC/test/coverage` cases (including
+SOLOVEV and HELIOTRON) successfully in
+`benchmark_results-parvmec-coverage-refresh`. Refresh job `1895616` is running
+the 14 `educational_VMEC/test/from_DESC` cases with the same isolated
+PARVMEC-only wrapper/build; these refresh trees remain separate until the
+exhaustive job is terminal, then their PARVMEC rows can replace the stale
+pre-fix rows without touching other implementations.
 
 Earlier exploratory jobs `1791244`, `1791245`, and `1791248` stopped after
 specific checkout/converter/MGRID defects and are not evidence. The older
