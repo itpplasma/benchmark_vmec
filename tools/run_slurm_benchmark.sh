@@ -134,6 +134,9 @@ prepare_driver() {
             export FPM_FFLAGS="${FPM_FFLAGS:-} ${hdf5_cflags}"
             export FPM_LDFLAGS="${FPM_LDFLAGS:-} ${hdf5_ldflags} -lhdf5_fortran -lhdf5"
         fi
+        # fo and fpm share the build directory.  Remove fo's partially linked
+        # artifacts so fpm cannot report the failed link as "up to date".
+        fpm clean --skip >/dev/null 2>&1 || true
         fpm build
         if [[ "$mode" == smoke ]]; then
             fpm test
