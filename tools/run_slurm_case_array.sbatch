@@ -67,6 +67,7 @@ fi
 first_line=$(( chunk_index * cases_per_task + 1 ))
 last_line=$((first_line + cases_per_task - 1))
 case_no=0
+task_output_dir=""
 
 run_case() {
     local case_match=$1
@@ -75,6 +76,7 @@ run_case() {
     # also writes a report and CSV at that root, and sharing those files across
     # tasks would make the report nondeterministic.
     local output_dir="$array_output_root/$implementation/${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-local}}_${SLURM_ARRAY_TASK_ID:-0}"
+    task_output_dir="$output_dir"
     mkdir -p "$output_dir"
     export BENCHMARK_BASE_DIR="$base_dir"
     export BENCHMARK_CASE_LIST="$case_list"
@@ -105,4 +107,11 @@ while IFS= read -r case_match; do
         break
     fi
     run_case "$case_match"
+    # The Fortran driver intentionally replaces its aggregate CSV on every
+    # one-case invocation.  Preserve that row before the next case overwrites
+    # it; the merge helper consumes these archives alongside the live CSV.
+    if [[ -s "$task_output_dir/comparison_table.csv" ]]; then
+        cp -f -- "$task_output_dir/comparison_table.csv" \
+            "$task_output_dir/comparison_table_case_${case_no}.csv"
+    fi
 done < "$case_list"

@@ -56,7 +56,7 @@ for source in "$@"; do
             head -n 1 "$report_csv" > "$csv_header"
         fi
         tail -n +2 "$report_csv" >> "$csv_rows"
-    done < <(find "$source" -type f -name comparison_table.csv -printf '%h\0' | sort -zu)
+    done < <(find "$source" -type f -name 'comparison_table*.csv' -printf '%h\0' | sort -zu)
 done
 
 if [[ -s "$csv_header" ]]; then
