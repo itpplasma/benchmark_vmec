@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import re
 from pathlib import Path
+from typing import NoReturn
 
 import f90nml
 
@@ -22,6 +23,13 @@ _BOUNDARY_ASSIGNMENT = re.compile(
     r"(?im)(RBC|RBS|ZBC|ZBS)\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*=\s*"
     r"([+\-0-9.eEdD]+)"
 )
+
+
+def _mark_unsupported(destination: Path, message: str) -> "NoReturn":
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    marker = destination.parent / "benchmark_unsupported.txt"
+    marker.write_text(f"Unsupported: {message}\n")
+    raise SystemExit(f"Unsupported: {message}")
 
 
 def _dense_vmec_namelist(source: Path) -> dict:
@@ -42,7 +50,10 @@ def _dense_vmec_namelist(source: Path) -> dict:
     ]
     parse_text = "\n".join(parse_lines)
     parsed = f90nml.reads(parse_text)
-    nml = parsed["indata"].todict()
+    try:
+        nml = parsed["indata"].todict()
+    except KeyError:
+        raise ValueError("VMEC INDATA namelist is missing") from None
     mpol = int(nml.get("mpol", 2))
     ntor = int(nml.get("ntor", 0))
     dense = {
@@ -80,7 +91,12 @@ def convert(source: Path, destination: Path) -> None:
     except ImportError as exc:  # pragma: no cover - exercised in the GVEC env
         raise SystemExit("GVEC conversion needs the selected GVEC Python environment") from exc
 
-    parameters = gvec_util.parameters_from_vmec(_dense_vmec_namelist(source), source.name)
+    try:
+        parameters = gvec_util.parameters_from_vmec(_dense_vmec_namelist(source), source.name)
+    except ValueError as exc:
+        if "not supported" in str(exc).lower() or "namelist is missing" in str(exc).lower():
+            _mark_unsupported(destination, str(exc))
+        raise
     # GVEC's fixed-profile path requires an initial iota profile when VMEC
     # supplies neither AI nor AC.  Current-constrained TOML runs initialize
     # iota from I_tor themselves, so leave that path intact.

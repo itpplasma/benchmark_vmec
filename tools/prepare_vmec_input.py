@@ -164,6 +164,11 @@ def prepare(
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text("\n".join(lines).rstrip() + "\n")
+    if not re.search(r"(?im)^\s*&indata\b", text):
+        message = "Unsupported: VMEC INDATA namelist is missing"
+        marker.write_text(message + "\n")
+        print(message, file=sys.stderr)
+        return False
     if missing:
         unique_missing = list(dict.fromkeys(missing))
         message = "Unsupported: required MGRID fixture unavailable: " + ", ".join(unique_missing)
