@@ -40,6 +40,9 @@ inputs. Common-format adapters live in `tools/`.
   case list is `/home/ert/benchmark_vmec-slurm-233aa21/case-suffixes-1859d3a.txt`
   with 344 entries. Per-task reports are under
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_results-array-combined-bc759a3`.
+- Native-only coverage for SPEC, FreeGS, and CHEASE is queued as array
+  `1908322`. A safety array for the four fast serial lanes is queued as
+  `1908329` in case any serial allocation reaches its wall limit.
 - Corrected `input.AXISYM` reruns succeeded for educational VMEC (`1897572`),
   VMEC++ (`1897588`), DESC (`1897589`), GVEC (`1897590`), jVMEC (`1897594`),
   VMEC2000 (`1897595`), VMEX (`1897596`), SPECTRE (`1897597`), and PARVMEC
@@ -52,7 +55,7 @@ inputs. Common-format adapters live in `tools/`.
 
 ## Finish
 
-1. Wait for serial lanes and array `1907490` to become terminal. Rerun only a
+1. Wait for serial lanes and arrays `1907490`, `1908322`, and `1908329` to become terminal. Rerun only a
    task with a reproducible infrastructure defect. Keep solver failures,
    timeouts, and explicit code limitations as genuine result rows.
 2. Merge in precedence order with `tools/merge_benchmark_results.sh`, putting
