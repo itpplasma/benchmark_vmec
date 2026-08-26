@@ -4,7 +4,8 @@ module vmec_implementation_base
     implicit none
     private
 
-    public :: vmec_implementation_t, select_python_command, prepare_vmec_input, shell_quote
+    public :: vmec_implementation_t, select_python_command, prepare_vmec_input, &
+        read_unsupported_marker, shell_quote
     public :: temporary_path
 
     type, abstract :: vmec_implementation_t
@@ -110,6 +111,25 @@ contains
             write(error_unit, '(A)') 'Failed to prepare VMEC input: ' // trim(input_file)
         end if
     end function prepare_vmec_input
+
+    logical function read_unsupported_marker(output_dir, message) result(found)
+        character(len=*), intent(in) :: output_dir
+        character(len=:), allocatable, intent(out) :: message
+        character(len=2048) :: line
+        integer :: unit, stat
+
+        found = .false.
+        message = ''
+        open(newunit=unit, file=trim(output_dir) // '/benchmark_unsupported.txt', &
+             status='old', action='read', iostat=stat)
+        if (stat /= 0) return
+        read(unit, '(A)', iostat=stat) line
+        close(unit)
+        if (stat == 0 .and. len_trim(line) > 0) then
+            message = trim(line)
+            found = .true.
+        end if
+    end function read_unsupported_marker
 
     function select_python_command(repo_path) result(python_cmd)
         character(len=*), intent(in) :: repo_path

@@ -156,7 +156,9 @@ contains
         local_input = trim(output_dir) // '/' // basename(input_file)
         input_basename = basename(local_input)
         lower_name = lowercase(this%name)
-        if (trim(lower_name) == 'vmex' .or. trim(lower_name) == 'parvmec') then
+        if (trim(lower_name) == 'vmex' .or. trim(lower_name) == 'parvmec' .or. &
+            (trim(lower_name) == 'gvec' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
+            (trim(lower_name) == 'spectre' .and. index(lowercase(basename(local_input)), 'input.') == 1)) then
             prepared_input = trim(output_dir) // '/input_prepared.vmec'
             if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
             cmd = 'cp ' // shell_quote(prepared_input) // ' ' // shell_quote(local_input)

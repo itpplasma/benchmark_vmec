@@ -14,6 +14,7 @@ import argparse
 import os
 import re
 import shutil
+import sys
 from pathlib import Path
 
 
@@ -48,11 +49,20 @@ def _index_candidates(search_roots: list[Path]) -> dict[str, Path]:
     return candidates
 
 
-def prepare(source: Path, destination: Path, search_roots: list[Path]) -> None:
+def prepare(source: Path, destination: Path, search_roots: list[Path]) -> bool:
+    """Write a normalized input and return whether all referenced fixtures exist.
+
+    A missing magnetic-grid file is an unsupported benchmark fixture, not a
+    solver failure.  Record that distinction next to the prepared input so
+    the Fortran runner can report it without launching the code.
+    """
+
+    marker = destination.parent / "benchmark_unsupported.txt"
+    marker.unlink(missing_ok=True)
     if source.suffix.lower() == ".json":
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
-        return
+        return True
     text = source.read_text(errors="replace")
     lines: list[str] = []
     saw_slash = False
@@ -72,6 +82,7 @@ def prepare(source: Path, destination: Path, search_roots: list[Path]) -> None:
 
     candidates = _index_candidates(search_roots)
     staged_name = ""
+    missing: list[str] = []
     for index, line in enumerate(lines):
         match = _MGRID.match(line)
         if not match:
@@ -79,9 +90,12 @@ def prepare(source: Path, destination: Path, search_roots: list[Path]) -> None:
         requested = match.group(3).strip()
         if not requested or requested.lower() in {"none", "dummy", "nonef"}:
             continue
-        basename = Path(requested).name
+        # Inputs from Windows checkouts occasionally retain backslashes even
+        # when they are run on Linux.  Normalize before looking up a fixture.
+        basename = Path(requested.replace("\\", "/")).name
         candidate = candidates.get(basename)
         if candidate is None:
+            missing.append(requested)
             continue
         destination.parent.mkdir(parents=True, exist_ok=True)
         staged = destination.parent / basename
@@ -96,8 +110,15 @@ def prepare(source: Path, destination: Path, search_roots: list[Path]) -> None:
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text("\n".join(lines).rstrip() + "\n")
+    if missing:
+        unique_missing = list(dict.fromkeys(missing))
+        message = "Unsupported: required MGRID fixture unavailable: " + ", ".join(unique_missing)
+        marker.write_text(message + "\n")
+        print(message, file=sys.stderr)
+        return False
     if staged_name:
         print(f"Staged {staged_name} for {destination.name}")
+    return True
 
 
 def main() -> int:
@@ -113,8 +134,7 @@ def main() -> int:
     base_dir = os.environ.get("BENCHMARK_BASE_DIR", "")
     if base_dir:
         roots.append(Path(base_dir))
-    prepare(args.source, args.destination, roots)
-    return 0
+    return 0 if prepare(args.source, args.destination, roots) else 2
 
 
 if __name__ == "__main__":

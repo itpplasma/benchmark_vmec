@@ -1,7 +1,7 @@
 module benchmark_runner
     use iso_fortran_env, only: error_unit, output_unit
     use vmec_benchmark_types, only: vmec_result_t, string_t
-    use vmec_implementation_base, only: vmec_implementation_t, temporary_path
+    use vmec_implementation_base, only: vmec_implementation_t, temporary_path, read_unsupported_marker
     use educational_vmec_implementation, only: educational_vmec_t
     use jvmec_implementation, only: jvmec_t
     use vmec2000_implementation, only: vmec2000_t
@@ -619,7 +619,7 @@ contains
         integer, intent(in) :: impl_idx
         integer, intent(in), optional :: timeout
         type(vmec_result_t) :: results
-        character(len=:), allocatable :: case_name, case_slug, output_dir
+        character(len=:), allocatable :: case_name, case_slug, output_dir, unsupported_message
         logical :: success
 
         call results%clear()
@@ -656,12 +656,20 @@ contains
                 if (.not. allocated(results%output_format)) results%output_format = 'wout_netcdf'
                 write(output_unit, '(A)') "  ✓ " // trim(this%implementations(impl_idx)%key) // " completed"
             else
-                if (.not. allocated(results%error_message)) results%error_message = "Result extraction failed"
+                if (read_unsupported_marker(output_dir, unsupported_message)) then
+                    results%error_message = unsupported_message
+                else if (.not. allocated(results%error_message)) then
+                    results%error_message = "Result extraction failed"
+                end if
                 write(output_unit, '(A)') "  ✗ " // trim(this%implementations(impl_idx)%key) // &
                     " produced no comparable result: " // trim(results%error_message)
             end if
         else
-            results%error_message = "Run failed"
+            if (read_unsupported_marker(output_dir, unsupported_message)) then
+                results%error_message = unsupported_message
+            else
+                results%error_message = "Run failed"
+            end if
             write(output_unit, '(A)') "  ✗ " // trim(this%implementations(impl_idx)%key) // " failed"
         end if
     end function benchmark_runner_run_single_case
