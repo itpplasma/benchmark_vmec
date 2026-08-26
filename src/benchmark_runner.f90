@@ -1,7 +1,7 @@
 module benchmark_runner
     use iso_fortran_env, only: error_unit, output_unit
     use vmec_benchmark_types, only: vmec_result_t, string_t
-    use vmec_implementation_base, only: vmec_implementation_t
+    use vmec_implementation_base, only: vmec_implementation_t, temporary_path
     use educational_vmec_implementation, only: educational_vmec_t
     use jvmec_implementation, only: jvmec_t
     use vmec2000_implementation, only: vmec2000_t
@@ -482,7 +482,7 @@ contains
             return
         end if
 
-        temp_file = "/tmp/benchmark_vmec_test_files.tmp"
+        temp_file = temporary_path("benchmark_vmec_test_files")
         cmd = "find " // trim(search_roots) // " -follow \( " // &
             "-path '*/.git' -o -path '*/.venv' -o -path '*/build' -o " // &
             "-path '*/__pycache__' -o -path '*/node_modules' \) -prune -o " // &
@@ -521,7 +521,7 @@ contains
         ! GVEC's native cases are parameter files rather than VMEC INDATA
         ! files.  Keep them in the same case inventory so the adapter can run
         ! them without pretending that every code consumes the same syntax.
-        parameter_temp_file = "/tmp/benchmark_vmec_parameter_files.tmp"
+        parameter_temp_file = temporary_path("benchmark_vmec_parameter_files")
         cmd = "find " // trim(search_roots) // " -follow \( " // &
             "-path '*/.git' -o -path '*/.venv' -o -path '*/build' -o " // &
             "-path '*/__pycache__' -o -path '*/node_modules' \) -prune -o " // &
@@ -555,7 +555,7 @@ contains
         ! native inventory when the repositories are provisioned.  SPECTRE
         ! also ships a few native .sp tracing inputs; their path is classified
         ! below so SPEC never receives them accidentally.
-        parameter_temp_file = "/tmp/benchmark_vmec_native_files.tmp"
+        parameter_temp_file = temporary_path("benchmark_vmec_native_files")
         cmd = "find " // trim(search_roots) // " -follow \( " // &
             "-path '*/.git' -o -path '*/.venv' -o -path '*/build' -o " // &
             "-path '*/__pycache__' -o -path '*/node_modules' \) -prune -o " // &
@@ -584,7 +584,7 @@ contains
         ! inventory to the SPECTRE checkout because other sibling projects
         ! use TOML for unrelated configuration and VMEC profiles.
         if (this%repo_manager%is_cloned("SPECTRE")) then
-            parameter_temp_file = "/tmp/benchmark_vmec_spectre_toml_files.tmp"
+            parameter_temp_file = temporary_path("benchmark_vmec_spectre_toml_files")
             repo_path = this%repo_manager%get_repo_path("SPECTRE")
             cmd = "find " // trim(repo_path) // " -follow \( " // &
                 "-path '*/.git' -o -path '*/.venv' -o -path '*/build' -o " // &

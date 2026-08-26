@@ -1,6 +1,6 @@
 module external_vmec_implementation
     use iso_fortran_env, only: error_unit, output_unit, real64
-    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, shell_quote
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, shell_quote, temporary_path
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
@@ -317,6 +317,7 @@ contains
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
         character(len=512) :: wout_file
+        character(len=:), allocatable :: wout_temp_file
         type(wout_data_t) :: wout_data
         integer :: stat, unit
         logical :: exists, read_success
@@ -338,15 +339,16 @@ contains
             call extract_chease_results(output_dir, results)
             return
         end if
+        wout_temp_file = temporary_path('vmec_external_wout')
         call execute_command_line('ls -t ' // trim(output_dir) // &
-            '/wout_*.nc 2>/dev/null | head -1 > /tmp/vmec_external_wout.tmp', &
+            '/wout_*.nc 2>/dev/null | head -1 > ' // trim(wout_temp_file), &
             exitstat=stat)
         if (stat /= 0) then
             results%error_message = 'No wout file found for ' // trim(this%name)
             return
         end if
 
-        open(newunit=unit, file='/tmp/vmec_external_wout.tmp', status='old', action='read', iostat=stat)
+        open(newunit=unit, file=wout_temp_file, status='old', action='read', iostat=stat)
         if (stat /= 0) then
             results%error_message = 'Could not inspect ' // trim(this%name) // ' output'
             return
@@ -480,15 +482,17 @@ contains
         type(vmec_result_t), intent(inout) :: results
         integer :: stat, unit
         character(len=512) :: filename
+        character(len=:), allocatable :: spectre_temp_file
         logical :: exists
 
+        spectre_temp_file = temporary_path('spectre_result')
         call execute_command_line('ls -t ' // trim(output_dir) // &
-            '/*_res.json 2>/dev/null | head -1 > /tmp/spectre_result.tmp', exitstat=stat)
+            '/*_res.json 2>/dev/null | head -1 > ' // trim(spectre_temp_file), exitstat=stat)
         if (stat /= 0) then
             results%error_message = 'SPECTRE produced no result JSON'
             return
         end if
-        open(newunit=unit, file='/tmp/spectre_result.tmp', status='old', action='read', iostat=stat)
+        open(newunit=unit, file=spectre_temp_file, status='old', action='read', iostat=stat)
         if (stat /= 0) then
             results%error_message = 'Could not inspect SPECTRE result JSON'
             return

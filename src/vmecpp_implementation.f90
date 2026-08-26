@@ -1,6 +1,6 @@
 module vmecpp_implementation
     use iso_fortran_env, only: error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, temporary_path
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
@@ -20,7 +20,7 @@ contains
     function vmecpp_build(this) result(success)
         class(vmecpp_t), intent(inout) :: this
         logical :: success
-        character(len=:), allocatable :: cmd, build_dir, python_cmd
+        character(len=:), allocatable :: cmd, build_dir, python_cmd, build_path_file, exec_path_file
         character(len=1000) :: temp_path
         integer :: stat, i, unit
         logical :: exists
@@ -37,9 +37,11 @@ contains
         python_cmd = select_python_command(this%path)
         
         ! Store absolute path
-        call execute_command_line("realpath " // trim(build_dir) // " > /tmp/vmecpp_build_path.tmp", exitstat=stat)
+        build_path_file = temporary_path("vmecpp_build_path")
+        exec_path_file = temporary_path("vmecpp_exec_path")
+        call execute_command_line("realpath " // trim(build_dir) // " > " // trim(build_path_file), exitstat=stat)
         if (stat == 0) then
-            open(newunit=unit, file="/tmp/vmecpp_build_path.tmp", status="old", action="read")
+            open(newunit=unit, file=build_path_file, status="old", action="read")
             read(unit, '(A)', iostat=i) temp_path
             close(unit)
             if (i == 0) then
@@ -99,9 +101,9 @@ contains
         inquire(file=trim(this%executable), exist=exists)
         if (exists) then
             ! Get absolute path again to make sure it's correct
-            call execute_command_line("realpath " // trim(this%executable) // " > /tmp/vmecpp_exec_path.tmp", exitstat=stat)
+            call execute_command_line("realpath " // trim(this%executable) // " > " // trim(exec_path_file), exitstat=stat)
             if (stat == 0) then
-                open(newunit=unit, file="/tmp/vmecpp_exec_path.tmp", status="old", action="read")
+                open(newunit=unit, file=exec_path_file, status="old", action="read")
                 read(unit, '(A)', iostat=i) temp_path
                 close(unit)
                 if (i == 0) then
@@ -209,6 +211,7 @@ contains
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
         character(len=2048) :: netcdf_file
+        character(len=:), allocatable :: netcdf_temp_file
         type(wout_data_t) :: wout_data
         integer :: stat, unit
         logical :: exists, read_success
@@ -216,10 +219,11 @@ contains
         call results%clear()
 
         ! Look for NetCDF file - use the most recently modified one
+        netcdf_temp_file = temporary_path("netcdf_file_vmecpp")
         call execute_command_line("ls -t " // trim(output_dir) // &
-            "/wout_*.nc 2>/dev/null | head -1 > /tmp/netcdf_file_vmecpp.tmp", exitstat=stat)
+            "/wout_*.nc 2>/dev/null | head -1 > " // trim(netcdf_temp_file), exitstat=stat)
         if (stat == 0) then
-            open(newunit=unit, file="/tmp/netcdf_file_vmecpp.tmp", status="old", action="read")
+            open(newunit=unit, file=netcdf_temp_file, status="old", action="read")
             read(unit, '(A)', iostat=stat) netcdf_file
             close(unit)
             if (stat /= 0) netcdf_file = ""

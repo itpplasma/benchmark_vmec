@@ -5,6 +5,7 @@ module vmec_implementation_base
     private
 
     public :: vmec_implementation_t, select_python_command, prepare_vmec_input, shell_quote
+    public :: temporary_path
 
     type, abstract :: vmec_implementation_t
         character(len=:), allocatable :: name
@@ -47,6 +48,30 @@ module vmec_implementation_base
     end interface
 
 contains
+
+    function temporary_path(prefix) result(path)
+        character(len=*), intent(in) :: prefix
+        character(len=:), allocatable :: path
+        character(len=128) :: tag_value
+        integer :: tag_length, tag_status
+
+        ! Each Slurm allocation gets its own namespace.  The benchmark runs
+        ! several Fortran drivers concurrently on the same node, so fixed
+        ! names under /tmp would let discovery/result extraction overwrite a
+        ! neighbour's file.  BENCHMARK_TEMP_TAG is useful for local parallel
+        ! smoke tests; otherwise local runs share a harmless ``local`` tag.
+        call get_environment_variable('BENCHMARK_TEMP_TAG', tag_value, &
+                                      length=tag_length, status=tag_status)
+        if (tag_status /= 0 .or. tag_length <= 0) then
+            call get_environment_variable('SLURM_JOB_ID', tag_value, &
+                                          length=tag_length, status=tag_status)
+        end if
+        if (tag_status /= 0 .or. tag_length <= 0) then
+            tag_value = 'local'
+            tag_length = len_trim(tag_value)
+        end if
+        path = '/tmp/' // trim(prefix) // '_' // trim(tag_value(:tag_length)) // '.tmp'
+    end function temporary_path
 
     logical function prepare_vmec_input(input_file, output_file, implementation_path) result(success)
         character(len=*), intent(in) :: input_file, output_file, implementation_path
@@ -117,6 +142,7 @@ contains
         character(len=*), intent(in) :: name
         character(len=*), intent(in) :: path
         character(len=512) :: resolved_path
+        character(len=:), allocatable :: resolved_path_file
         integer :: stat, unit, io_status
         
         this%name = trim(name)
@@ -126,10 +152,11 @@ contains
         ! process.  Runs happen in per-case output directories, so retain an
         ! absolute path for executables, Python environments, and Java class
         ! paths used after that directory change.
+        resolved_path_file = temporary_path('vmec_implementation_path')
         call execute_command_line("realpath -m " // shell_quote(path) // &
-            " > /tmp/vmec_implementation_path.tmp", exitstat=stat)
+            " > " // shell_quote(resolved_path_file), exitstat=stat)
         if (stat == 0) then
-            open(newunit=unit, file="/tmp/vmec_implementation_path.tmp", &
+            open(newunit=unit, file=resolved_path_file, &
                 status="old", action="read", iostat=io_status)
             if (io_status == 0) then
                 read(unit, '(A)', iostat=io_status) resolved_path

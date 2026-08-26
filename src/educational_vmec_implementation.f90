@@ -1,6 +1,6 @@
 module educational_vmec_implementation
     use iso_fortran_env, only: real64, error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t, prepare_vmec_input
+    use vmec_implementation_base, only: vmec_implementation_t, prepare_vmec_input, temporary_path
     use vmec_benchmark_types, only: vmec_result_t
     use json_module
     use wout_reader, only: wout_data_t, read_wout_file
@@ -23,7 +23,7 @@ contains
     function educational_vmec_build(this) result(success)
         class(educational_vmec_t), intent(inout) :: this
         logical :: success
-        character(len=:), allocatable :: build_dir, cmd
+        character(len=:), allocatable :: build_dir, cmd, realpath_file, pwd_file
         character(len=1000) :: temp_path
         integer :: stat, i, unit
         logical :: exists
@@ -43,9 +43,11 @@ contains
         inquire(file=trim(build_dir) // "/bin/xvmec", exist=exists)
         if (exists) then
             ! Already built, just set the absolute executable path
-            call execute_command_line("realpath " // trim(this%path) // " > /tmp/vmec_path.tmp", exitstat=stat)
+            realpath_file = temporary_path("vmec_path")
+            pwd_file = temporary_path("vmec_pwd")
+            call execute_command_line("realpath " // trim(this%path) // " > " // trim(realpath_file), exitstat=stat)
             if (stat == 0) then
-                open(newunit=unit, file="/tmp/vmec_path.tmp", status="old", action="read")
+                open(newunit=unit, file=realpath_file, status="old", action="read")
                 read(unit, '(A)', iostat=i) temp_path
                 close(unit)
                 if (i == 0) then
@@ -53,9 +55,9 @@ contains
                 end if
             else
                 ! Fallback to current working directory + relative path
-                call execute_command_line("pwd > /tmp/vmec_pwd.tmp", exitstat=stat)
+                call execute_command_line("pwd > " // trim(pwd_file), exitstat=stat)
                 if (stat == 0) then
-                    open(newunit=unit, file="/tmp/vmec_pwd.tmp", status="old", action="read")
+                    open(newunit=unit, file=pwd_file, status="old", action="read")
                     read(unit, '(A)', iostat=i) temp_path
                     close(unit)
                     if (i == 0) then
@@ -111,9 +113,11 @@ contains
         
         if (exists) then
             ! Set absolute path using the same method as for pre-built
-            call execute_command_line("realpath " // trim(this%path) // " > /tmp/vmec_path.tmp", exitstat=stat)
+            realpath_file = temporary_path("vmec_path")
+            pwd_file = temporary_path("vmec_pwd")
+            call execute_command_line("realpath " // trim(this%path) // " > " // trim(realpath_file), exitstat=stat)
             if (stat == 0) then
-                open(newunit=unit, file="/tmp/vmec_path.tmp", status="old", action="read")
+                open(newunit=unit, file=realpath_file, status="old", action="read")
                 read(unit, '(A)', iostat=i) temp_path
                 close(unit)
                 if (i == 0) then
@@ -121,9 +125,9 @@ contains
                 end if
             else
                 ! Fallback: create absolute path manually
-                call execute_command_line("pwd > /tmp/vmec_pwd.tmp", exitstat=stat)
+                call execute_command_line("pwd > " // trim(pwd_file), exitstat=stat)
                 if (stat == 0) then
-                    open(newunit=unit, file="/tmp/vmec_pwd.tmp", status="old", action="read")
+                    open(newunit=unit, file=pwd_file, status="old", action="read")
                     read(unit, '(A)', iostat=i) temp_path
                     close(unit)
                     if (i == 0) then
@@ -221,6 +225,7 @@ contains
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(out) :: results
         character(len=2048) :: wout_file
+        character(len=:), allocatable :: wout_temp_file
         type(wout_data_t) :: wout_data
         integer :: stat, unit
         logical :: exists, read_success
@@ -228,10 +233,12 @@ contains
         call results%clear()
         
         ! Look for wout file - use the most recently modified one
-        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1 > /tmp/wout_file.tmp", &
+        wout_temp_file = temporary_path("wout_file_educational")
+        call execute_command_line("ls -t " // trim(output_dir) // "/wout_*.nc 2>/dev/null | head -1 > " // &
+                                trim(wout_temp_file), &
                                 exitstat=stat)
         if (stat == 0) then
-            open(newunit=unit, file="/tmp/wout_file.tmp", status="old", action="read")
+            open(newunit=unit, file=wout_temp_file, status="old", action="read")
             read(unit, '(A)', iostat=stat) wout_file
             close(unit)
             if (stat /= 0) wout_file = ""

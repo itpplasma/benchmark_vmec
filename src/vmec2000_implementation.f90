@@ -1,6 +1,6 @@
 module vmec2000_implementation
     use iso_fortran_env, only: error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, temporary_path
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
@@ -177,15 +177,17 @@ contains
         character(len=2048) :: wout_file
         type(wout_data_t) :: wout_data
         integer :: stat, unit
+        character(len=:), allocatable :: wout_temp_file
         logical :: exists, read_success
 
         call results%clear()
 
         ! Look for wout file - use the most recently modified one
+        wout_temp_file = temporary_path("wout_file_vmec2000")
         call execute_command_line("ls -t " // trim(output_dir) // &
-            "/wout_*.nc 2>/dev/null | head -1 > /tmp/wout_file_vmec2000.tmp", exitstat=stat)
+            "/wout_*.nc 2>/dev/null | head -1 > " // trim(wout_temp_file), exitstat=stat)
         if (stat == 0) then
-            open(newunit=unit, file="/tmp/wout_file_vmec2000.tmp", status="old", action="read")
+            open(newunit=unit, file=wout_temp_file, status="old", action="read")
             read(unit, '(A)', iostat=stat) wout_file
             close(unit)
             if (stat /= 0) then
