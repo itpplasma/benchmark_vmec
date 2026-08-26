@@ -29,6 +29,13 @@ fi
 
 export PATH="$HOME/.local/bin:$PATH"
 export BENCHMARK_BASE_DIR="$base_dir"
+# Fo's compiler autodetection can select the Debian triplet wrapper on the
+# cluster; that wrapper exposes a flag-joining bug in Fo's first-build path.
+# Prefer the canonical gfortran executable while retaining an explicit caller
+# override for other toolchains.
+if [[ -z "${FO_FC:-}" ]] && command -v gfortran >/dev/null 2>&1; then
+    export FO_FC="$(command -v gfortran)"
+fi
 # Parallel Slurm allocations must not refresh fo's shared dependency cache at
 # the same time.  Keep fo's normal persistent cache, but serialize the short
 # build/test bootstrap below; callers may override both paths explicitly.
