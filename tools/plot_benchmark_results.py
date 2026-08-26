@@ -297,6 +297,16 @@ def _successful_output(implementation_dir: Path) -> bool:
             return False
         return isinstance(data, dict) and data.get("success") is True
 
+    if implementation_dir.name == "spectre":
+        result_files = sorted(implementation_dir.glob("*_res.json"))
+        if not result_files:
+            return False
+        try:
+            data = json.loads(result_files[-1].read_text(errors="replace"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        return isinstance(data, dict) and data.get("success") is True
+
     if list(implementation_dir.glob("wout*.nc")):
         return True
 
