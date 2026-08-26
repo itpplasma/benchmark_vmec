@@ -19,6 +19,10 @@ fi
 destination=$1
 shift
 mkdir -p "$destination"
+csv_rows=$(mktemp)
+csv_header=$(mktemp)
+csv_unique=$(mktemp)
+trap 'rm -f -- "$csv_rows" "$csv_header" "$csv_unique"' EXIT
 
 copy_report_root() {
     local report_root=$1
@@ -47,8 +51,44 @@ for source in "$@"; do
     }
     while IFS= read -r -d '' report_root; do
         copy_report_root "$report_root"
+        report_csv="$report_root/comparison_table.csv"
+        if [[ ! -s "$csv_header" ]]; then
+            head -n 1 "$report_csv" > "$csv_header"
+        fi
+        tail -n +2 "$report_csv" >> "$csv_rows"
     done < <(find "$source" -type f -name comparison_table.csv -printf '%h\0' | sort -zu)
 done
+
+if [[ -s "$csv_header" ]]; then
+    # Keep first-seen order for readable reports while letting later sources
+    # replace an earlier case/implementation pair.
+    awk -F, ' {
+        key = $1 SUBSEP $2
+        if (!(key in line)) order[++n] = key
+        line[key] = $0
+    } END {
+        for (i = 1; i <= n; ++i) print line[order[i]]
+    }' "$csv_rows" > "$csv_unique"
+    cat "$csv_header" "$csv_unique" > "$destination/comparison_table.csv"
+
+    # Unsupported branches do not run an implementation and therefore have
+    # no output directory to copy.  Materialize their explicit markers so the
+    # merged tree and its per-case inventory retain those rows as well.
+    while IFS=, read -r case_name implementation status error _; do
+        [[ "$status" == failed ]] || continue
+        case_slug=$(printf '%s' "$case_name" | sed -e 's#/#__#g' -e 's#[^A-Za-z0-9._-]#_#g')
+        implementation_dir="$destination/$case_slug/$implementation"
+        if [[ "$error" == Unsupported:* ]]; then
+            rm -rf -- "$implementation_dir"
+        fi
+        mkdir -p "$implementation_dir"
+        if [[ "$error" == Unsupported:* ]]; then
+            printf '%s\n' "$error" > "$implementation_dir/benchmark_unsupported.txt"
+        else
+            printf '%s\n' "$error" > "$implementation_dir/benchmark_failure.txt"
+        fi
+    done < "$csv_unique"
+fi
 
 printf 'Merged implementation directories: %s\n' \
     "$(find "$destination" -mindepth 2 -maxdepth 2 -type d | wc -l)"
