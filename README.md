@@ -13,7 +13,7 @@ rows in the report.
 The matrix covers VMEC-like codes (`vmecpp`, `educational_VMEC`, `VMEC2000`,
 `jVMEC`, `VMEX`, `PARVMEC`), nested-surface codes (`DESC`, `GVEC`), MRxMHD
 codes (`SPEC`, `SPECTRE`), and Grad--Shafranov codes (`FreeGS`, `CHEASE`).
-FreeGS is the 2-D comparison. The repository-owned corpus exercises analytical
+FreeGS and CHEASE provide the 2-D comparisons. The repository-owned corpus exercises analytical
 and numerical fixtures in 1-D, 2-D, and 3-D. The current discovery contains 344
 unique cases. An older GVEC checkout listed one `axisNB_N2-12` input twice.
 Differentiable MHD uses a separate benchmark.
@@ -61,7 +61,7 @@ uv run python tools/convert_vmec_to_spectre.py input.example spectre.toml
 These adapters transfer ordinary formats. They do not expose automatic
 differentiation or Jacobian data.
 
-To plot completed Slurm outputs (native WOUT files only):
+To plot completed Slurm outputs (native WOUT files and successful sidecars):
 
 ```bash
 uv run --with netCDF4 --with matplotlib python tools/plot_benchmark_results.py \
