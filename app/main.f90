@@ -8,7 +8,7 @@ program vmec_benchmark
 
     character(len=:), allocatable :: help_text(:)
     character(len=:), allocatable :: version_text(:)
-    character(len=256) :: base_dir, output_dir, case_match
+    character(len=256) :: base_dir, output_dir, case_match, implementation_filter
     logical :: force_clone, show_version, show_help, symmetric_only
     integer :: timeout, limit, i
     character(len=32) :: command
@@ -37,6 +37,7 @@ program vmec_benchmark
         '   --limit N           Limit number of test cases                      ', &
         '   --symmetric-only    Only run symmetric cases (lasym=F)              ', &
         '   --match TEXT        Only include cases whose path contains TEXT     ', &
+        '   --impl ID           Run only one implementation (e.g. parvmec)     ', &
         '   --version           Show version information                        ', &
         '   --help              Show this help message                          ', &
         '                                                                        ', &
@@ -45,6 +46,7 @@ program vmec_benchmark
         '   vmec-benchmark run --limit 5                                         ', &
         '   vmec-benchmark run --symmetric-only                                  ', &
         '   vmec-benchmark run --match tokamak                                   ', &
+        '   vmec-benchmark run --impl parvmec                                   ', &
         '   vmec-benchmark hard-reset                                            ', &
         '   vmec-benchmark list-cases                                            ', &
         '']
@@ -56,7 +58,8 @@ program vmec_benchmark
 
     ! Parse command line arguments
     call set_args('--base-dir ".." --output-dir "./benchmark_results" &
-        &--force F --timeout 300 --limit 0 --symmetric-only F --match "" --version F --help F', &
+        &--force F --timeout 300 --limit 0 --symmetric-only F --impl "all" &
+        &--match " " --version F --help F', &
         help_text, version_text)
 
     base_dir = sget('base-dir')
@@ -67,6 +70,8 @@ program vmec_benchmark
     symmetric_only = lget('symmetric-only')
     case_match = sget('match')
     if (.not. specified('match')) case_match = ''
+    implementation_filter = sget('impl')
+    if (.not. specified('impl')) implementation_filter = ''
     show_version = lget('version')
     show_help = lget('help')
 
@@ -96,7 +101,7 @@ program vmec_benchmark
     case ('setup')
         call cmd_setup(base_dir, force_clone)
     case ('run')
-        call cmd_run(base_dir, output_dir, timeout, limit, symmetric_only, case_match)
+        call cmd_run(base_dir, output_dir, timeout, limit, symmetric_only, case_match, implementation_filter)
     case ('update')
         call cmd_update(base_dir)
     case ('hard-reset')
@@ -127,13 +132,14 @@ contains
         call repo_manager%finalize()
     end subroutine cmd_setup
 
-    subroutine cmd_run(base_dir, output_dir, timeout, limit, symmetric_only, case_match)
+    subroutine cmd_run(base_dir, output_dir, timeout, limit, symmetric_only, case_match, implementation_filter)
         character(len=*), intent(in) :: base_dir
         character(len=*), intent(in) :: output_dir
         integer, intent(in) :: timeout
         integer, intent(in) :: limit
         logical, intent(in) :: symmetric_only
         character(len=*), intent(in) :: case_match
+        character(len=*), intent(in) :: implementation_filter
         type(repository_manager_t) :: repo_manager
         type(benchmark_runner_t) :: runner
         type(results_comparator_t) :: comparator
@@ -146,7 +152,7 @@ contains
         call runner%initialize(output_dir, repo_manager)
 
         ! Setup implementations
-        call runner%setup_implementations()
+        call runner%setup_implementations(implementation_filter)
 
         if (runner%n_implementations == 0) then
             write(error_unit, '(A)') 'No implementations available!'

@@ -9,13 +9,18 @@ benchmark is separate.
 
 - `main` is pushed and clean. The driver has explicit lanes for
   educational_VMEC, jVMEC, VMEC2000, VMEC++, VMEX, DESC, GVEC, PARVMEC, SPEC,
-  SPECTRE, FreeGS, and CHEASE. PARVMEC is discovered but is not buildable in
-  the current cluster environment.
-- The final stack discovers 345 cases and 11 implementation lanes, including
-  10 native SPEC inputs and the native SPECTRE `.sp`/`.toml` inventory. Native
-  outputs are retained; VMEC, GVEC, SPECTRE, SPEC, JSON, NetCDF, and GEQDSK
+  SPECTRE, FreeGS, and CHEASE. The exhaustive stack has 11 lanes; PARVMEC is
+  built and run separately with the pinned superbuild below.
+- The final stack discovers 345 cases. The corpus includes 10 native SPEC
+  inputs and the native SPECTRE `.sp`/`.toml` inventory. Native outputs are
+  retained; VMEC, GVEC, SPECTRE, SPEC, JSON, NetCDF, and GEQDSK
   converters/sidecars are used where a code does not natively provide the
   common benchmark format.
+- `tools/build_parvmec.sh` pins PARVMEC `eae0ff26` and LIBSTELL `8f0dbd7`,
+  records a build manifest, and emits a stable `xvmec` path. The
+  `tools/run_parvmec_slurm.sbatch` wrapper uses `--impl parvmec` and a private
+  output tree, so it can run beside the exhaustive allocation without building
+  or launching any other implementation.
 - Input preparation strips unsupported diagnostics and legacy terminators,
   stages relative MGRID files (following checkout symlinks), and keeps
   prepared and cleaned inputs separate. FreeGS/CHEASE receive only their
@@ -88,6 +93,12 @@ The failures seen so far are honest solver/feature rows: GVEC
 force-tolerance/non-convergence or unsupported VMEC profiles, VMEX and jVMEC
 non-convergence on difficult educational inputs, and bounded SPECTRE timeouts
 on difficult cases. The job remains running; do not cancel it.
+
+PARVMEC-only Slurm job `1895605` runs independently with `node20` excluded;
+its result root is
+`/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final/benchmark_results-parvmec-full/`.
+The one-case smoke job `1895604` passed on `node15`; its native WOUT and
+timing files are retained under the corresponding smoke root.
 
 Earlier exploratory jobs `1791244`, `1791245`, and `1791248` stopped after
 specific checkout/converter/MGRID defects and are not evidence. The older

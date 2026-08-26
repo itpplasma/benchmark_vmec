@@ -16,10 +16,15 @@ base_dir=${BENCHMARK_BASE_DIR:-$(dirname "$repo_root")}
 output_dir=${BENCHMARK_OUTPUT_DIR:-"$repo_root/benchmark_results-slurm-${SLURM_JOB_ID:-local}"}
 timeout_seconds=${BENCHMARK_TIMEOUT:-300}
 case_match=${BENCHMARK_MATCH:-}
+implementation_filter=${BENCHMARK_IMPLEMENTATION:-}
 
 case_match_args=()
 if [[ -n "$case_match" ]]; then
     case_match_args=(--match "$case_match")
+fi
+implementation_args=()
+if [[ -n "$implementation_filter" ]]; then
+    implementation_args=(--impl "$implementation_filter")
 fi
 
 export PATH="$HOME/.local/bin:$PATH"
@@ -27,7 +32,7 @@ export BENCHMARK_BASE_DIR="$base_dir"
 # Index reusable magnetic-grid fixtures once per allocation.  Several upstream
 # VMEC tests refer to a grid by basename while running in an isolated output
 # directory; adapters use this index to stage the matching file when present.
-mgrid_index="${TMPDIR:-/tmp}/vmec-benchmark-mgrid-${SLURM_JOB_ID:-local}.txt"
+mgrid_index=${VMEC_BENCHMARK_MGRID_INDEX:-"${TMPDIR:-/tmp}/vmec-benchmark-mgrid-${SLURM_JOB_ID:-local}.txt"}
 if [[ ! -s "$mgrid_index" ]]; then
     mgrid_index_tmp="${mgrid_index}.tmp.$$"
     # Staged cluster stacks use sibling symlinks; follow them so jVMEC and
@@ -59,7 +64,8 @@ if [[ -f "$netcdff_pc" ]]; then
         sed "s#^prefix=/usr#prefix=$HOME/.local/netcdff/usr#" \
             "$netcdff_pc" > "$netcdff_override"
     fi
-    export PKG_CONFIG_PATH="$(dirname "$netcdff_override")${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+    pkgconfig_dir=$(dirname "$netcdff_override")
+    export PKG_CONFIG_PATH="$pkgconfig_dir${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 fi
 # Include the manually staged Java implementation whenever its checkout is
 # present.  It remains an ordinary (non-differentiable) participant.
@@ -140,10 +146,10 @@ case "$mode" in
         run_driver list-repos
         if [[ -n "$case_match" ]]; then
             run_driver list-cases "${case_match_args[@]}" --limit 1
-            run_driver run "${case_match_args[@]}" --limit 1 --timeout "$timeout_seconds"
+            run_driver run "${case_match_args[@]}" "${implementation_args[@]}" --limit 1 --timeout "$timeout_seconds"
         else
             run_driver list-cases --match 'cases/analytic/2d_solovev' --limit 1
-            run_driver run --match 'cases/analytic/2d_solovev' --limit 1 --timeout "$timeout_seconds"
+            run_driver run --match 'cases/analytic/2d_solovev' "${implementation_args[@]}" --limit 1 --timeout "$timeout_seconds"
         fi
         ;;
     full)
@@ -151,7 +157,7 @@ case "$mode" in
         stage_chease_case
         run_driver list-repos
         run_driver list-cases "${case_match_args[@]}"
-        run_driver run "${case_match_args[@]}" --timeout "$timeout_seconds"
+        run_driver run "${case_match_args[@]}" "${implementation_args[@]}" --timeout "$timeout_seconds"
         ;;
     *)
         printf 'usage: %s {smoke|full}\n' "$0" >&2

@@ -59,8 +59,9 @@ contains
         call execute_command_line("mkdir -p " // trim(this%output_dir), exitstat=stat)
     end subroutine benchmark_runner_initialize
 
-    subroutine benchmark_runner_setup_implementations(this)
+    subroutine benchmark_runner_setup_implementations(this, implementation_filter)
         class(benchmark_runner_t), intent(inout) :: this
+        character(len=*), intent(in), optional :: implementation_filter
         character(len=:), allocatable :: repo_path
         type(educational_vmec_t), allocatable :: edu_vmec
         type(jvmec_t), allocatable :: jvmec
@@ -83,7 +84,8 @@ contains
         this%n_implementations = 0
 
         ! Educational VMEC
-        if (this%repo_manager%is_cloned("educational_VMEC")) then
+        if (implementation_selected(implementation_filter, 'educational_vmec') .and. &
+                this%repo_manager%is_cloned("educational_VMEC")) then
             repo_path = this%repo_manager%get_repo_path("educational_VMEC")
 
             allocate(edu_vmec)
@@ -109,7 +111,7 @@ contains
         ! jVMEC (check for directory presence)
         repo_path = trim(this%repo_manager%base_path) // "/jVMEC"
         inquire(file=trim(repo_path), exist=exists)
-        if (exists) then
+        if (implementation_selected(implementation_filter, 'jvmec') .and. exists) then
             allocate(jvmec)
             call jvmec%initialize("jVMEC", repo_path)
 
@@ -131,7 +133,8 @@ contains
         end if
 
         ! VMEC2000
-        if (this%repo_manager%is_cloned("VMEC2000")) then
+        if (implementation_selected(implementation_filter, 'vmec2000') .and. &
+                this%repo_manager%is_cloned("VMEC2000")) then
             repo_path = this%repo_manager%get_repo_path("VMEC2000")
 
             allocate(vmec2000)
@@ -155,7 +158,8 @@ contains
         end if
 
         ! VMEC++
-        if (this%repo_manager%is_cloned("vmecpp")) then
+        if (implementation_selected(implementation_filter, 'vmecpp') .and. &
+                this%repo_manager%is_cloned("vmecpp")) then
             repo_path = this%repo_manager%get_repo_path("vmecpp")
 
             allocate(vmecpp)
@@ -179,7 +183,8 @@ contains
         end if
 
         ! VMEX
-        if (this%repo_manager%is_cloned("VMEX")) then
+        if (implementation_selected(implementation_filter, 'vmex') .and. &
+                this%repo_manager%is_cloned("VMEX")) then
             repo_path = this%repo_manager%get_repo_path("VMEX")
             allocate(vmex)
             call vmex%initialize("VMEX", repo_path)
@@ -195,7 +200,8 @@ contains
         end if
 
         ! DESC
-        if (this%repo_manager%is_cloned("DESC")) then
+        if (implementation_selected(implementation_filter, 'desc') .and. &
+                this%repo_manager%is_cloned("DESC")) then
             repo_path = this%repo_manager%get_repo_path("DESC")
             allocate(desc)
             call desc%initialize("DESC", repo_path)
@@ -211,7 +217,8 @@ contains
         end if
 
         ! GVEC
-        if (this%repo_manager%is_cloned("gvec")) then
+        if (implementation_selected(implementation_filter, 'gvec') .and. &
+                this%repo_manager%is_cloned("gvec")) then
             repo_path = this%repo_manager%get_repo_path("gvec")
             allocate(gvec)
             call gvec%initialize("GVEC", repo_path)
@@ -229,7 +236,8 @@ contains
         ! PARVMEC, SPEC and SPECTRE are retained as native participants.  They
         ! only enter the run when a checkout has a usable executable; their
         ! native outputs are reported separately from VMEC WOUT quantities.
-        if (this%repo_manager%is_cloned("PARVMEC")) then
+        if (implementation_selected(implementation_filter, 'parvmec') .and. &
+                this%repo_manager%is_cloned("PARVMEC")) then
             repo_path = this%repo_manager%get_repo_path("PARVMEC")
             allocate(parvmec); call parvmec%initialize("PARVMEC", repo_path)
             if (parvmec%build()) then
@@ -241,7 +249,8 @@ contains
                 deallocate(parvmec)
             end if
         end if
-        if (this%repo_manager%is_cloned("SPEC")) then
+        if (implementation_selected(implementation_filter, 'spec') .and. &
+                this%repo_manager%is_cloned("SPEC")) then
             repo_path = this%repo_manager%get_repo_path("SPEC")
             allocate(spec); call spec%initialize("SPEC", repo_path)
             if (spec%build()) then
@@ -253,7 +262,8 @@ contains
                 deallocate(spec)
             end if
         end if
-        if (this%repo_manager%is_cloned("SPECTRE")) then
+        if (implementation_selected(implementation_filter, 'spectre') .and. &
+                this%repo_manager%is_cloned("SPECTRE")) then
             repo_path = this%repo_manager%get_repo_path("SPECTRE")
             allocate(spectre); call spectre%initialize("SPECTRE", repo_path)
             if (spectre%build()) then
@@ -265,7 +275,8 @@ contains
                 deallocate(spectre)
             end if
         end if
-        if (this%repo_manager%is_cloned("FreeGS") .or. this%repo_manager%is_cloned("freegs")) then
+        if (implementation_selected(implementation_filter, 'freegs') .and. &
+                (this%repo_manager%is_cloned("FreeGS") .or. this%repo_manager%is_cloned("freegs"))) then
             repo_path = this%repo_manager%get_repo_path("FreeGS")
             inquire(file=trim(repo_path), exist=exists)
             if (.not. exists) repo_path = this%repo_manager%get_repo_path("freegs")
@@ -279,7 +290,8 @@ contains
                 deallocate(freegs)
             end if
         end if
-        if (this%repo_manager%is_cloned("CHEASE")) then
+        if (implementation_selected(implementation_filter, 'chease') .and. &
+                this%repo_manager%is_cloned("CHEASE")) then
             repo_path = this%repo_manager%get_repo_path("CHEASE")
             allocate(chease); call chease%initialize("CHEASE", repo_path)
             if (chease%build()) then
@@ -292,6 +304,31 @@ contains
             end if
         end if
     end subroutine benchmark_runner_setup_implementations
+
+    logical function implementation_selected(filter, name)
+        character(len=*), intent(in), optional :: filter
+        character(len=*), intent(in) :: name
+
+        if (.not. present(filter)) then
+            implementation_selected = .true.
+        else if (len_trim(filter) == 0 .or. trim(lowercase_filter(filter)) == 'all') then
+            implementation_selected = .true.
+        else
+            implementation_selected = trim(lowercase_filter(filter)) == trim(lowercase_filter(name))
+        end if
+    end function implementation_selected
+
+    function lowercase_filter(text) result(value)
+        character(len=*), intent(in) :: text
+        character(len=len(text)) :: value
+        integer :: i, code
+
+        value = text
+        do i = 1, len(text)
+            code = iachar(value(i:i))
+            if (code >= iachar('A') .and. code <= iachar('Z')) value(i:i) = achar(code + 32)
+        end do
+    end function lowercase_filter
 
     subroutine benchmark_runner_discover_test_cases(this, limit, symmetric_only, case_match)
         class(benchmark_runner_t), intent(inout) :: this
