@@ -70,8 +70,9 @@ timeout and jVMEC enabled. Result root:
 
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final/benchmark_results-slurm-final-mgrid/`
 
-At the current handoff it has 869 implementation starts, 490 completions,
-378 explicit failures, and one active implementation; the driver output
+At the 2026-08-26 07:21 CEST handoff it has 1,702 implementation starts,
+989 completions, 685 explicit failures, 646 supported-case skips, and one
+active implementation; the driver output
 contains no `MPI_ABORT`. The result root currently has 86 native SPECTRE
 result JSON files (47 native successes and 39 native unsuccessful
 minimizations), including the refreshed HELIOTRON rows from the
@@ -97,6 +98,15 @@ on difficult cases. The job remains running; do not cancel it.
 PARVMEC-only Slurm job `1895605` runs independently with `node20` excluded;
 its result root is
 `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-final/benchmark_results-parvmec-full/`.
+It discovered and processed all 344 cases and wrote the complete comparison
+report/CSV (`243` successes, `101` failed or unsupported rows). Slurm recorded
+`FAILED 127:0` only after the report was written; the only diagnostic was
+`tools/run_slurm_benchmark.sh: line 166: 2: command not found`. A one-case
+timeout through the generic launcher (`1895657`), a one-case timeout through
+the PARVMEC wrapper (`1895662`), and the normal timeout path all completed
+with exit 0, so the old full-run status is retained as a wrapper-cleanup
+anomaly rather than a solver failure. No PARVMEC rerun is required for the
+already complete data tree unless a clean Slurm exit is specifically needed.
 The one-case smoke job `1895604` passed on `node15`; its native WOUT and
 timing files are retained under the corresponding smoke root.
 The diagnostic-input preparation fix was verified independently: refresh job
