@@ -29,6 +29,11 @@ fi
 
 export PATH="$HOME/.local/bin:$PATH"
 export BENCHMARK_BASE_DIR="$base_dir"
+# Parallel Slurm allocations must not refresh fo's shared dependency cache at
+# the same time.  Keep each job's cache isolated; callers may still override
+# this when deliberately reusing a prepared cache.
+export FO_CACHE_DIR="${FO_CACHE_DIR:-${TMPDIR:-/tmp}/fo-cache-${SLURM_JOB_ID:-local}}"
+mkdir -p "$FO_CACHE_DIR"
 # Index reusable magnetic-grid fixtures once per allocation.  Several upstream
 # VMEC tests refer to a grid by basename while running in an isolated output
 # directory; adapters use this index to stage the matching file when present.
