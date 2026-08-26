@@ -541,7 +541,8 @@ contains
         character(len=*), intent(inout) :: line
         character(len=*), intent(in) :: source_name, target_name
         character(len=:), allocatable :: lowered, source_lower
-        integer :: first, cursor, line_length
+        integer :: first, cursor, line_length, index_start, index_end
+        character(len=:), allocatable :: index_suffix, replacement
 
         changed = .false.
         line_length = len(line)
@@ -563,12 +564,27 @@ contains
             cursor = cursor + 1
         end do
         if (cursor > line_length) return
+        index_suffix = ''
+        if (line(cursor:cursor) == '(') then
+            index_start = cursor
+            index_end = index_start + index(line(index_start:), ')') - 1
+            if (index_end < index_start) return
+            index_suffix = line(index_start:index_end)
+            cursor = index_end + 1
+            do while (cursor <= line_length)
+                if (line(cursor:cursor) /= ' ' .and. line(cursor:cursor) /= achar(9)) exit
+                cursor = cursor + 1
+            end do
+        end if
+        if (cursor > line_length) return
         if (line(cursor:cursor) /= '=') return
 
+        replacement = trim(target_name) // trim(index_suffix) // ' ' // line(cursor:)
+
         if (first > 1) then
-            line = line(:first-1) // trim(target_name) // ' ' // line(cursor:)
+            line = line(:first-1) // replacement
         else
-            line = trim(target_name) // ' ' // line(cursor:)
+            line = replacement
         end if
         changed = .true.
     end function replace_axis_assignment
