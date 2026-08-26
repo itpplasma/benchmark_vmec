@@ -12,8 +12,8 @@ in `tools/`; native output is retained whenever a code provides it.
 
 ## Repository state
 
-- `main` is clean and pushed at `db994e6` (`Isolate parallel Slurm build
-  trees`).
+- `main` is clean and pushed at `2615761` (`Isolate Slurm dependency
+  caches`).
 - Local gates pass: `uv run fo check`, `uv run fo test --all`, Python `ruff`,
   shell syntax checks, and `git diff --check`.
 - The latest input adapters strip legacy separators/comments, normalize DESC
@@ -41,11 +41,11 @@ in `tools/`; native output is retained whenever a code provides it.
   final source of truth.
 - Authoritative replacements were submitted from the latest checkout
   `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_vmec-latest-e887277`
-  (verify it is `db994e6`). Node-pinned isolated replacements are running in
-  parallel: `1896075` educational (STELLOPT subset), `1896074` VMEC++ (bean),
-  `1896076` DESC (Free Boundary subset), `1896077` GVEC (STELLOPT subset),
-  `1896078` jVMEC, `1896079` VMEC2000, `1896080` VMEX, `1896081` SPECTRE,
-  and `1896082` PARVMEC. They use 600-second implementation timeouts and
+  (verify it is `2615761`). Node-pinned isolated replacements are running in
+  parallel: `1896104` educational (STELLOPT subset), `1896103` VMEC++ (bean),
+  `1896105` DESC (Free Boundary subset), `1896106` GVEC (STELLOPT subset),
+  `1896107` jVMEC, `1896108` VMEC2000, `1896109` VMEX, `1896110` SPECTRE,
+  and `1896111` PARVMEC. They use 600-second implementation timeouts and
   lane-specific 2--6 hour allocation limits; check `squeue`, `sacct`, and
   each `comparison_table.csv` before promotion.
 - Completed authoritative side runs: SPEC `1895954` (10/10 native cases),
