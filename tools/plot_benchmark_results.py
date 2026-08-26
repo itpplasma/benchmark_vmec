@@ -395,7 +395,7 @@ def plot_runtime(result_root: Path, output_dir: Path) -> Path:
             )
     axis.set_yscale("log")
     axis.set_ylabel("reported solver runtime (s)", fontsize=9)
-    axis.set_xticks(positions, [_short_case_label(case) for case in cases], rotation=35, ha="right", fontsize=7)
+    axis.set_xticks(positions, [_short_case_label(case) for case in cases], rotation=90, ha="center", fontsize=5)
     axis.tick_params(axis="y", labelsize=8)
     axis.grid(axis="y", which="both", alpha=0.2)
     axis.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=min(5, len(codes)), frameon=False, fontsize=8)
@@ -407,7 +407,7 @@ def plot_runtime(result_root: Path, output_dir: Path) -> Path:
         fontsize=7,
         color="#555555",
     )
-    figure.subplots_adjust(left=0.08, right=0.99, bottom=0.28, top=0.80)
+    figure.subplots_adjust(left=0.08, right=0.99, bottom=0.31, top=0.80)
     filename = output_dir / "runtime.png"
     figure.savefig(filename, dpi=180)
     plt.close(figure)
@@ -513,7 +513,7 @@ def plot_metrics(result_root: Path, output_dir: Path) -> Path:
         axis.set_ylabel("relative difference (%)", fontsize=9)
         axis.grid(axis="y", alpha=0.2)
         axis.tick_params(axis="y", labelsize=8)
-    axes[-1, 0].set_xticks(positions, labels, rotation=35, ha="right", fontsize=7)
+    axes[-1, 0].set_xticks(positions, labels, rotation=90, ha="center", fontsize=5)
     handles, labels_for_legend = axes[0, 0].get_legend_handles_labels()
     figure.legend(
         handles,
@@ -525,7 +525,7 @@ def plot_metrics(result_root: Path, output_dir: Path) -> Path:
         fontsize=8,
     )
     figure.suptitle("Relative scalar difference by code", fontsize=13, y=0.985)
-    figure.subplots_adjust(left=0.08, right=0.99, bottom=0.30, top=0.87, hspace=0.35)
+    figure.subplots_adjust(left=0.08, right=0.99, bottom=0.33, top=0.87, hspace=0.35)
     filename = output_dir / "metrics.png"
     figure.savefig(filename, dpi=180)
     plt.close(figure)
