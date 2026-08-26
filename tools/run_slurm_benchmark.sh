@@ -134,6 +134,10 @@ run_driver() {
         BENCHMARK_REPO_ROOT="$repo_root" fo run vmec-benchmark -- "$@" \
             --base-dir "$base_dir" --output-dir "$output_dir"
     else
+        # Keep discovery rooted in this checkout on the fpm fallback too.
+        # Without the export, the executable defaults to a sibling
+        # ``benchmark_vmec`` symlink, which can point at an unrelated or
+        # already-running result tree.
         BENCHMARK_REPO_ROOT="$repo_root" fpm run --target vmec-benchmark -- "$@" \
             --base-dir "$base_dir" --output-dir "$output_dir"
     fi
