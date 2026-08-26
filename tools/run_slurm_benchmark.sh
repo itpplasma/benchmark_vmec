@@ -37,7 +37,9 @@ if [[ ! -s "$mgrid_index" ]]; then
     mgrid_index_tmp="${mgrid_index}.tmp.$$"
     # Staged cluster stacks use sibling symlinks; follow them so jVMEC and
     # VMEC++ can see fixtures held in an educational_VMEC checkout.
-    find -L "$base_dir" -type f -iname 'mgrid*' -print 2>/dev/null > "$mgrid_index_tmp" || true
+    find -L "$base_dir" \
+        \( -type d -name 'benchmark_results*' -o -type d -name 'build' \) -prune -o \
+        -type f -iname 'mgrid*' -print 2>/dev/null > "$mgrid_index_tmp" || true
     mv -f "$mgrid_index_tmp" "$mgrid_index"
 fi
 export VMEC_BENCHMARK_MGRID_INDEX="$mgrid_index"
@@ -126,11 +128,11 @@ prepare_driver() {
         # only propagate the C ``hdf5`` flags.  Supply the explicit include
         # and link paths for the HDF5-backed SPEC reader before the fallback
         # build so the fallback is equivalent to the fo path.
-        hdf5_include=$(pkg-config --variable=includedir hdf5 2>/dev/null || true)
-        hdf5_libdir=$(pkg-config --variable=libdir hdf5 2>/dev/null || true)
-        if [[ -d "$hdf5_include" && -d "$hdf5_libdir" ]]; then
-            export FPM_FFLAGS="${FPM_FFLAGS:-} -I${hdf5_include}"
-            export FPM_LDFLAGS="${FPM_LDFLAGS:-} -L${hdf5_libdir} -lhdf5_fortran -lhdf5"
+        hdf5_cflags=$(pkg-config --cflags-only-I hdf5 2>/dev/null || true)
+        hdf5_ldflags=$(pkg-config --libs-only-L hdf5 2>/dev/null || true)
+        if [[ -n "$hdf5_cflags" && -n "$hdf5_ldflags" ]]; then
+            export FPM_FFLAGS="${FPM_FFLAGS:-} ${hdf5_cflags}"
+            export FPM_LDFLAGS="${FPM_LDFLAGS:-} ${hdf5_ldflags} -lhdf5_fortran -lhdf5"
         fi
         fpm build
         if [[ "$mode" == smoke ]]; then
