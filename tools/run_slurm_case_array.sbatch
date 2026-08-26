@@ -4,6 +4,8 @@
 # BENCHMARK_CASE_LIST contains one stable path suffix per line.  A suffix is
 # matched against the discovered source path, so it remains valid when the
 # launcher unpacks the benchmark checkout in a job-local temporary directory.
+# Set BENCHMARK_IMPLEMENTATIONS to a colon-separated list for a round-robin
+# combined array; otherwise set BENCHMARK_IMPLEMENTATION for one code.
 # One task runs BENCHMARK_CASES_PER_TASK cases sequentially and writes each
 # result under BENCHMARK_ARRAY_OUTPUT_ROOT/<implementation>/<task>/<case-slug>.
 #
@@ -33,11 +35,25 @@ else
 fi
 
 case_list=${BENCHMARK_CASE_LIST:?BENCHMARK_CASE_LIST is required}
-implementation=${BENCHMARK_IMPLEMENTATION:?BENCHMARK_IMPLEMENTATION is required}
 cases_per_task=${BENCHMARK_CASES_PER_TASK:-4}
 array_output_root=${BENCHMARK_ARRAY_OUTPUT_ROOT:-"$repo_root/benchmark_results-array-${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-local}}"}
 base_dir=${BENCHMARK_BASE_DIR:-$(dirname "$repo_root")}
 timeout_seconds=${BENCHMARK_TIMEOUT:-600}
+implementation_list=${BENCHMARK_IMPLEMENTATIONS:-}
+if [[ -n "$implementation_list" ]]; then
+    IFS=: read -r -a implementations <<< "$implementation_list"
+    (( ${#implementations[@]} > 0 )) || {
+        printf 'BENCHMARK_IMPLEMENTATIONS is empty\n' >&2
+        exit 2
+    }
+    # Interleave implementations in the array index so one code cannot occupy
+    # every scheduler slot while the other codes wait behind it.
+    implementation=${implementations[$(( ${SLURM_ARRAY_TASK_ID:-0} % ${#implementations[@]} ))]}
+    chunk_index=$(( ${SLURM_ARRAY_TASK_ID:-0} / ${#implementations[@]} ))
+else
+    implementation=${BENCHMARK_IMPLEMENTATION:?BENCHMARK_IMPLEMENTATION is required}
+    chunk_index=${SLURM_ARRAY_TASK_ID:-0}
+fi
 
 [[ -r "$case_list" ]] || {
     printf 'case list is not readable: %s\n' "$case_list" >&2
@@ -48,7 +64,7 @@ timeout_seconds=${BENCHMARK_TIMEOUT:-600}
     exit 2
 }
 
-first_line=$(( ${SLURM_ARRAY_TASK_ID:-0} * cases_per_task + 1 ))
+first_line=$(( chunk_index * cases_per_task + 1 ))
 last_line=$((first_line + cases_per_task - 1))
 case_no=0
 

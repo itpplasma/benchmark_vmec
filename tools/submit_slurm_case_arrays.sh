@@ -24,6 +24,7 @@ shift
 cases_per_task=${BENCHMARK_CASES_PER_TASK:-4}
 concurrency=${BENCHMARK_ARRAY_CONCURRENCY:-32}
 output_root=${BENCHMARK_ARRAY_OUTPUT_ROOT:-}
+combined=${BENCHMARK_COMBINED_ARRAY:-0}
 repo_root=$(git rev-parse --show-toplevel)
 
 [[ "$cases_per_task" =~ ^[1-9][0-9]*$ ]] || {
@@ -45,6 +46,18 @@ task_count=$(( (case_count + cases_per_task - 1) / cases_per_task ))
 export_args="ALL,BENCHMARK_CASE_LIST=$case_list,BENCHMARK_CASES_PER_TASK=$cases_per_task"
 if [[ -n "$output_root" ]]; then
     export_args+=",BENCHMARK_ARRAY_OUTPUT_ROOT=$output_root"
+fi
+
+if [[ "$combined" == 1 ]]; then
+    implementation_list=$(IFS=:; printf '%s' "$*")
+    implementation_count=$#
+    total_tasks=$((task_count * implementation_count))
+    printf 'Submitting combined array: %d cases, %d tasks, %d implementations, concurrency %d\n' \
+        "$case_count" "$total_tasks" "$implementation_count" "$concurrency"
+    sbatch --array="0-$((total_tasks - 1))%$concurrency" \
+        --export="$export_args,BENCHMARK_IMPLEMENTATIONS=$implementation_list" \
+        "$repo_root/tools/run_slurm_case_array.sbatch"
+    exit 0
 fi
 
 for implementation in "$@"; do
