@@ -24,24 +24,28 @@ It covers these twelve implementations:
 FreeGS and CHEASE run only on supported 2-D inputs. The differentiable MHD
 benchmark is maintained separately. Optional sibling repositories are expected
 one directory above this checkout. Missing repositories are recorded as
-unavailable.
+unavailable. `setup` clones those repositories recursively, including their
+tracked test inputs. The benchmark-owned cases under `cases/` are versioned in
+this repository. Files that are not tracked by either source must be provisioned
+separately.
 
 ## Quick start
 
 ```bash
-fo check
-fo test --all
+fpm build
+fpm test
 
-fo run vmec-build -- --base-dir ..
-fo run vmec-benchmark -- run --base-dir ..
+fpm run --target vmec-benchmark -- setup --base-dir ..
+fpm run --target vmec-build -- --base-dir ..
+fpm run --target vmec-benchmark -- run --base-dir ..
 ```
 
 Useful discovery and focused-run commands:
 
 ```bash
-fo run vmec-benchmark -- list-repos --base-dir ..
-fo run vmec-benchmark -- list-cases --match tokamak
-fo run vmec-benchmark -- run --match tokamak --limit 5
+fpm run --target vmec-benchmark -- list-repos --base-dir ..
+fpm run --target vmec-benchmark -- list-cases --match tokamak
+fpm run --target vmec-benchmark -- run --match tokamak --limit 5
 ```
 
 Results are written to `benchmark_results/` with CSV and Markdown summaries,

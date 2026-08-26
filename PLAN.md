@@ -28,8 +28,8 @@ inputs. Adapters for common formats are in `tools/`.
 - Status totals: 1,504 successes and 2,624 failures, of which 2,168 are
   explicit unsupported-scope rows. Remaining failures are solver failures or
   bounded timeouts. No task in the three arrays had a non-zero Slurm exit.
-- Infrastructure audit of all array stdout/stderr found zero Fo/fpm build
-  errors, missing commands/modules, MPI aborts, segmentation faults, or
+- Infrastructure audit of all array stdout/stderr found zero fpm build errors,
+  missing commands/modules, MPI aborts, segmentation faults, or
   GVEC `STATEFILE` path errors.
 
 ## Plots and timings
@@ -51,9 +51,9 @@ one malformed educational-VMEC output are intentionally marked unavailable.
 `main` is pushed and clean. The latest changes include collision-safe case
 slugs, complete-array recovery, honest missing-value handling, native quality
 and boxplot exports, nonfinite-output handling, compact plot labels, and
-bounded child termination in solver wrappers. Local Fo build,
-tests, lint, Python Ruff, shell syntax, and whitespace checks pass. The bare
-Fo pipeline also passes (with only the repository's pre-existing formatter
+bounded child termination in solver wrappers. Local fpm build, tests, lint,
+Python Ruff, shell syntax, and whitespace checks pass. The direct fpm pipeline
+also passes (with only the repository's pre-existing formatter
 warning in `benchmark_runner.f90`).
 
 The protected legacy audit job `1791254` remains on `node20` using an old
