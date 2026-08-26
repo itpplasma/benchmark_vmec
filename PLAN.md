@@ -3,7 +3,7 @@
 ## Scope
 
 This is the ordinary, non-differentiable equilibrium benchmark. The corpus has
-345 analytical and numerical 1-D, 2-D, and 3-D cases and eleven lanes:
+345 analytical and numerical 1-D, 2-D, and 3-D cases and twelve implementations:
 `educational_vmec`, `jVMEC`, `VMEC2000`, `VMEC++`, `VMEX`, `PARVMEC`,
 `DESC`, `GVEC`, `SPEC`, `SPECTRE`, `FreeGS`, and `CHEASE`. FreeGS
 and CHEASE are restricted to their supported 2-D Grad--Shafranov/GEQDSK inputs.
