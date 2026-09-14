@@ -51,6 +51,10 @@ fpm run --target vmec-benchmark -- run --match tokamak --limit 5
 Results are written to `benchmark_results/` with CSV and Markdown summaries,
 native outputs, and adapter sidecars.
 
+The curated exhaustive result is in `results/ordinary-0cf8e2c/`: 4,128 rows
+covering all 344 cases and twelve implementations, together with final metric,
+quality, runtime, boxplot, and boundary figures. Binary figures use Git LFS.
+
 ## Format adapters
 
 The scripts in `tools/` keep conversions explicit and reproducible. Use
