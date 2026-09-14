@@ -21,8 +21,9 @@ inputs. Adapters for common formats are in `tools/`.
   collided with `jVMEC/Ns_2048.M_32` in older output directories. The
   high-resolution jVMEC run timed out at 588.55 s. This is retained as a true
   code result, not an infrastructure failure.
-- Final tree:
-  `/home/ert/benchmark_vmec-slurm-233aa21/benchmark_results-final-ordinary-0cf8e2c`.
+- Curated final evidence: `results/ordinary-0cf8e2c/`. The 4,128-row
+  comparison table and final plots are retained here; regenerable per-run
+  solver outputs and cluster build trees were removed on 2026-09-14.
   `comparison_table.csv` has exactly 4,128 unique rows (344 cases × 12
   implementations), and the tree has 4,128 case/implementation directories.
 - Status totals: 1,504 successes and 2,624 failures, of which 2,168 are
@@ -34,8 +35,7 @@ inputs. Adapters for common formats are in `tools/`.
 
 ## Plots and timings
 
-The final plots are under
-`benchmark_results-final-ordinary-0cf8e2c/plots-final-7ac0878/`:
+The final plots are under `results/ordinary-0cf8e2c/plots/`:
 `metrics.png` (relative scalar agreement, not quality), `quality.png` and
 `quality.csv` (native residual/convergence diagnostics), `boxplots.png` and
 `boxplots.csv` (one box-and-whisker panel per scalar and reported runtime),
