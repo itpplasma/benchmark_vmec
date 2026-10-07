@@ -11,7 +11,7 @@ inputs. Adapters for common formats are in `tools/`.
 
 ## Reproducible result
 
-- Frozen case list: `/home/ert/benchmark_vmec-slurm-233aa21/case-suffixes-1859d3a.txt`.
+- Historical case-list path: `/home/ert/benchmark_vmec-slurm-233aa21/case-suffixes-1859d3a.txt`; it is not present in the current checkout. The curated table retains the 344 case identifiers, not a complete source-pinned input manifest.
 - VMEC-family array `1908611`: 516/516 tasks completed. Maximum task time
   00:33:12.
 - Native array `1908612`: 516/516 tasks completed. Maximum task time
@@ -25,7 +25,8 @@ inputs. Adapters for common formats are in `tools/`.
   comparison table and final plots are retained here; regenerable per-run
   solver outputs and cluster build trees were removed on 2026-09-14.
   `comparison_table.csv` has exactly 4,128 unique rows (344 cases × 12
-  implementations), and the tree has 4,128 case/implementation directories.
+  implementations). The current committed archive retains scalar/quality CSVs
+  and figures; native case directories, states and logs are not retained there.
 - Status totals: 1,504 successes and 2,624 failures, of which 2,168 are
   explicit unsupported-scope rows. Remaining failures are solver failures or
   bounded timeouts. No task in the three arrays had a non-zero Slurm exit.
@@ -59,3 +60,12 @@ warning in `benchmark_runner.f90`).
 The protected legacy audit job `1791254` remains on `node20` using an old
 checkout and is not evidence for the final table. The cluster is healthy
 (`compute`: 20 nodes total, 19 usable, about 1,018 idle CPUs at handoff).
+
+## Focused TC24 handoff
+
+- Ordinary/all-variant wrapper authority stays here; the differentiable benchmark is complementary.
+- Current matched cases and execution authority: [TC24 PLAN](https://gitlab.tugraz.at/plasma/proj/ntv/iter_tc24/-/blob/main/PLAN.md). Reuse exact source/input seals and physical fields from that campaign.
+- Gate physical input matching before comparing outputs: the historical FreeGS wrapper ignores the supplied geometry/profiles, and its reported successes are operational probes.
+- Record actual solver/package/binary revisions, original/generated inputs and adapter hashes for new runs. Moving sibling branches and the historical corpus identifier do not provide these pins.
+- Preserve historical outcomes. Do not interpret status counts, native residuals or scalar agreement as independent physical-force validation. Existing [#1](https://github.com/itpplasma/benchmark_vmec/issues/1) owns the status/timing discussion.
+- First follow-ups: honest FreeGS case admission; source/input provenance; export one admitted ordinary TC24 circular case. No full-corpus rerun or inverse-GS redesign is required for this handoff.

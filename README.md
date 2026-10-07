@@ -29,6 +29,15 @@ tracked test inputs. The benchmark-owned cases under `cases/` are versioned in
 this repository. Files that are not tracked by either source must be provisioned
 separately.
 
+## TC24 matched-equilibrium bridge
+
+- This repository owns the ordinary all-implementation benchmark. The [differentiable benchmark](https://gitlab.tugraz.at/plasma/proj/stel/mhd-differentiable) separately owns derivative and optimization comparisons.
+- The [TC24 PLAN](https://gitlab.tugraz.at/plasma/proj/ntv/iter_tc24/-/blob/main/PLAN.md) and [case contract](https://gitlab.tugraz.at/plasma/proj/ntv/iter_tc24/-/blob/main/equilibrium/CASE_CONTRACT.md) own the current equilibrium-first cases, signed physical inputs and run registry.
+- Reuse wrappers and format adapters after checking exact boundary/profile/flux laws, source revisions and conventions. Common scalar output or a successful process does not establish a matched physical problem.
+- Historical FreeGS rows are operational probes: `tools/run_freegs.py` chooses hard-coded geometry/profiles by filename rather than reading the supplied physical input. They are not matched FreeGS/VMEC physics comparisons.
+- The archived table preserves reported outcomes; native convergence is separate in `plots/quality.csv`. [Issue #1](https://github.com/itpplasma/benchmark_vmec/issues/1) tracks status and timing distinctions. The retained archive has scalar/quality exports and figures, not native states/logs or complete source/input manifests.
+- Add admitted ordinary cases and reusable gates here; retain TC24 campaign authority there. Do not import a fitted solver state as an independent force reference or rerun the full historical corpus to establish a new focused case.
+
 ## Quick start
 
 ```bash
