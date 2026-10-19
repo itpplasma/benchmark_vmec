@@ -1,9 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
+  merge_group:
 
 jobs:
   test-coverage:
@@ -26,8 +25,8 @@ jobs:
     
     - name: Set compiler
       run: |
-        echo "FC=gfortran" >> $GITHUB_ENV
-        echo "FPM_FC=gfortran" >> $GITHUB_ENV
+        echo "FC=gfortran" >> "$GITHUB_ENV"
+        echo "FPM_FC=gfortran" >> "$GITHUB_ENV"
     
     - name: Build with coverage flags
       run: |
