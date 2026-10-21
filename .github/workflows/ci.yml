@@ -2,51 +2,64 @@ name: CI
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
   merge_group:
-
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Fortran Package Manager
-      run: |
-        wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
-        chmod +x fpm-0.12.0-linux-x86_64-gcc-12
-        sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gfortran gcovr cmake git pkg-config \
-          libhdf5-dev libnetcdf-dev libnetcdff-dev
-    
-    - name: Set compiler
-      run: |
-        echo "FC=gfortran" >> "$GITHUB_ENV"
-        echo "FPM_FC=gfortran" >> "$GITHUB_ENV"
-    
-    - name: Build with coverage flags
-      run: |
-        fpm build --flag '-fprofile-arcs -ftest-coverage'
-    
-    - name: Run tests with coverage
-      run: |
-        fpm test --flag '-fprofile-arcs -ftest-coverage'
-    
-    - name: Generate coverage report
-      if: always()
-      run: |
-        gcovr --root . --exclude 'build/dependencies/*' --xml -o coverage.xml --print-summary
-    
-    - name: Upload coverage to Codecov
-      if: always()
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+      - uses: actions/checkout@v4
+
+      - name: Setup Fortran Package Manager
+        run: |
+          wget https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0-linux-x86_64-gcc-12
+          chmod +x fpm-0.12.0-linux-x86_64-gcc-12
+          sudo mv fpm-0.12.0-linux-x86_64-gcc-12 /usr/local/bin/fpm
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran gcovr cmake git pkg-config \
+            libhdf5-dev libnetcdf-dev libnetcdff-dev
+
+      - name: Set compiler
+        run: |
+          echo "FC=gfortran" >> "$GITHUB_ENV"
+          echo "FPM_FC=gfortran" >> "$GITHUB_ENV"
+
+      - name: Build with coverage flags
+        run: |
+          fpm build --flag '-fprofile-arcs -ftest-coverage'
+
+      - name: Run tests with coverage
+        run: |
+          fpm test --flag '-fprofile-arcs -ftest-coverage'
+
+      - name: Generate coverage report
+        if: always()
+        run: |
+          gcovr --root . --exclude 'build/dependencies/*' --xml -o coverage.xml --print-summary
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+    if: >-
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
