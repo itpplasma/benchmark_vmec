@@ -55,7 +55,10 @@ jobs:
       - name: Generate coverage report
         if: always()
         run: |
-          gcovr --root . --exclude 'build/dependencies/*' --xml -o coverage.xml --print-summary
+          gfortran --version
+          gcov --version
+          gcovr --gcov-executable "gcov-$(gfortran -dumpversion)" \
+            --root . --exclude 'build/dependencies/*' --xml -o coverage.xml --print-summary
 
       - name: Upload coverage to Codecov
         if: always()
