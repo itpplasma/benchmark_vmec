@@ -12,12 +12,20 @@ on:
     branches:
       - main
   workflow_dispatch:
+permissions:
+  contents: read
+
 jobs:
   test-coverage:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, itp-ubuntu24]
 
+    env:
+      MPLBACKEND: Agg
     steps:
       - uses: actions/checkout@v4
+
+      - name: Use executable job scratch
+        run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       - name: Setup Fortran Package Manager
         run: |
@@ -47,19 +55,22 @@ jobs:
       - name: Generate coverage report
         if: always()
         run: |
-          gcovr --root . --exclude 'build/dependencies/*' --xml -o coverage.xml --print-summary
+          gfortran --version
+          gcov --version
+          gcovr --gcov-executable "gcov-$(gfortran -dumpversion)" \
+            --root . --exclude 'build/dependencies/*' --xml -o coverage.xml --print-summary
 
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
     if: >-
-      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]')
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
