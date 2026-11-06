@@ -1,6 +1,7 @@
 module educational_vmec_implementation
     use iso_fortran_env, only: real64, error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t, prepare_vmec_input, temporary_path
+    use vmec_implementation_base, only: vmec_implementation_t, prepare_vmec_input, temporary_path, &
+        accept_wout_exit
     use vmec_benchmark_types, only: vmec_result_t
     use json_module
     use wout_reader, only: wout_data_t, read_wout_file
@@ -202,6 +203,7 @@ contains
         write(output_unit, '(A)') "DEBUG: Running command: " // trim(cmd)
         
         call execute_command_line(trim(cmd), exitstat=stat)
+        call accept_wout_exit(output_dir, stat)
         
         if (stat == 0) then
             call execute_command_line( &

@@ -1,6 +1,6 @@
 module jvmec_implementation
     use iso_fortran_env, only: real64, error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t, prepare_vmec_input
+    use vmec_implementation_base, only: vmec_implementation_t, accept_wout_exit, prepare_vmec_input
     use vmec_benchmark_types, only: vmec_result_t
     use json_module
     implicit none
@@ -144,6 +144,7 @@ contains
         ! Debug: print the command being run
         write(output_unit, '(A)') "DEBUG: Running command: " // trim(cmd)
         call execute_command_line(trim(cmd), exitstat=stat)
+        call accept_wout_exit(output_dir, stat)
         
         if (stat == 0) then
             success = .true.

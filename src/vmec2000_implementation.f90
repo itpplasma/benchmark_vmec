@@ -1,6 +1,7 @@
 module vmec2000_implementation
     use iso_fortran_env, only: error_unit, output_unit
-    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, temporary_path
+    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, &
+        temporary_path, accept_wout_exit
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
     implicit none
@@ -160,6 +161,7 @@ contains
               " " // trim(python_cmd) // " " // get_basename(python_script) // " > vmec2000.log 2>&1"
 
         call execute_command_line(trim(cmd), exitstat=stat)
+        call accept_wout_exit(output_dir, stat)
 
         if (stat == 0) then
             success = .true.

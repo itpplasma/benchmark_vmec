@@ -5,7 +5,7 @@ module vmec_implementation_base
     private
 
     public :: vmec_implementation_t, select_python_command, prepare_vmec_input, &
-        read_unsupported_marker, shell_quote
+        read_unsupported_marker, shell_quote, accept_wout_exit, read_run_status
     public :: temporary_path
 
     type, abstract :: vmec_implementation_t
@@ -62,10 +62,10 @@ contains
         ! neighbour's file.  BENCHMARK_TEMP_TAG is useful for local parallel
         ! smoke tests; otherwise local runs share a harmless ``local`` tag.
         call get_environment_variable('BENCHMARK_TEMP_TAG', tag_value, &
-                                      length=tag_length, status=tag_status)
+            length=tag_length, status=tag_status)
         if (tag_status /= 0 .or. tag_length <= 0) then
             call get_environment_variable('SLURM_JOB_ID', tag_value, &
-                                          length=tag_length, status=tag_status)
+                length=tag_length, status=tag_status)
         end if
         if (tag_status /= 0 .or. tag_length <= 0) then
             tag_value = 'local'
@@ -75,7 +75,7 @@ contains
     end function temporary_path
 
     logical function prepare_vmec_input(input_file, output_file, implementation_path, &
-                                        desc_compatible, educational_compatible) result(success)
+            desc_compatible, educational_compatible) result(success)
         character(len=*), intent(in) :: input_file, output_file, implementation_path
         logical, intent(in), optional :: desc_compatible
         logical, intent(in), optional :: educational_compatible
@@ -90,7 +90,7 @@ contains
         use_educational = .false.
         if (present(educational_compatible)) use_educational = educational_compatible
         call get_environment_variable('BENCHMARK_REPO_ROOT', root_value, &
-                                      length=root_length, status=root_status)
+            length=root_length, status=root_status)
         if (root_status == 0 .and. root_length > 0) then
             benchmark_root = trim(root_value(1:root_length))
         else
@@ -110,9 +110,9 @@ contains
         ! path passed through the shell must therefore be quoted as a single
         ! argument; the Python helper itself handles the actual file I/O.
         cmd = shell_quote(python_cmd) // ' ' // &
-              shell_quote(trim(benchmark_root) // '/tools/prepare_vmec_input.py') // ' ' // &
-              shell_quote(input_file) // ' ' // shell_quote(output_file) // &
-              ' --search-root ' // shell_quote(source_dir)
+            shell_quote(trim(benchmark_root) // '/tools/prepare_vmec_input.py') // ' ' // &
+            shell_quote(input_file) // ' ' // shell_quote(output_file) // &
+            ' --search-root ' // shell_quote(source_dir)
         if (use_desc) cmd = trim(cmd) // ' --desc'
         if (use_educational) cmd = trim(cmd) // ' --educational'
         call execute_command_line(trim(cmd), exitstat=stat)
@@ -131,7 +131,7 @@ contains
         found = .false.
         message = ''
         open(newunit=unit, file=trim(output_dir) // '/benchmark_unsupported.txt', &
-             status='old', action='read', iostat=stat)
+            status='old', action='read', iostat=stat)
         if (stat /= 0) return
         read(unit, '(A)', iostat=stat) line
         close(unit)
@@ -141,6 +141,50 @@ contains
         end if
     end function read_unsupported_marker
 
+    ! VMEX and jVMEC exit with VMEC's ier_flag when NITER is exhausted but
+    ! still write a complete wout, while VMEC2000 exits 0 in the same state.
+    ! A readable wout counts as a run; its residual decides convergence.
+    ! Any other non-zero exit is recorded so a timeout is not reported as a crash.
+    subroutine accept_wout_exit(output_dir, stat)
+        character(len=*), intent(in) :: output_dir
+        integer, intent(inout) :: stat
+        integer :: probe, unit, io
+
+        if (stat == 0) return
+        if (stat /= 124) then
+            call execute_command_line('ls ' // shell_quote(trim(output_dir)) // &
+                '/wout_*.nc > /dev/null 2>&1', exitstat=probe)
+            if (probe == 0) then
+                stat = 0
+                return
+            end if
+        end if
+        open(newunit=unit, file=trim(output_dir) // '/benchmark_run_status.txt', &
+            status='replace', action='write', iostat=io)
+        if (io /= 0) return
+        if (stat == 124) then
+            write(unit, '(A)') 'Run timed out'
+        else
+            write(unit, '(A,I0,A)') 'Run failed (exit status ', stat, ')'
+        end if
+        close(unit)
+    end subroutine accept_wout_exit
+
+    function read_run_status(output_dir) result(message)
+        character(len=*), intent(in) :: output_dir
+        character(len=:), allocatable :: message
+        character(len=256) :: line
+        integer :: unit, stat
+
+        message = 'Run failed'
+        open(newunit=unit, file=trim(output_dir) // '/benchmark_run_status.txt', &
+            status='old', action='read', iostat=stat)
+        if (stat /= 0) return
+        read(unit, '(A)', iostat=stat) line
+        close(unit)
+        if (stat == 0 .and. len_trim(line) > 0) message = trim(line)
+    end function read_run_status
+
     function select_python_command(repo_path) result(python_cmd)
         character(len=*), intent(in) :: repo_path
         character(len=:), allocatable :: python_cmd
@@ -149,7 +193,7 @@ contains
         logical :: exists
 
         call get_environment_variable("VMEC_BENCHMARK_PYTHON", env_python, &
-                                      length=env_length, status=env_status)
+            length=env_length, status=env_status)
         if (env_status == 0 .and. env_length > 0) then
             inquire(file=trim(env_python(1:env_length)), exist=exists)
             if (exists) then
@@ -174,7 +218,7 @@ contains
         character(len=512) :: resolved_path
         character(len=:), allocatable :: resolved_path_file
         integer :: stat, unit, io_status
-        
+
         this%name = trim(name)
         this%path = trim(path)
 
@@ -202,7 +246,7 @@ contains
     function vmec_implementation_is_available(this) result(is_available)
         class(vmec_implementation_t), intent(in) :: this
         logical :: is_available
-        
+
         is_available = this%available
     end function vmec_implementation_is_available
 
@@ -211,15 +255,15 @@ contains
         character(len=*), intent(in) :: input_file
         logical :: valid
         logical :: exists, is_file
-        
+
         valid = .false.
-        
+
         inquire(file=trim(input_file), exist=exists)
         if (.not. exists) then
             write(error_unit, '(A)') "Input file does not exist: " // trim(input_file)
             return
         end if
-        
+
         ! Check if it's a regular file (not a directory)
         inquire(file=trim(input_file), exist=is_file)
         if (is_file) then
@@ -234,10 +278,10 @@ contains
         character(len=*), intent(in) :: output_dir
         logical :: success
         integer :: stat
-        
+
         call execute_command_line("mkdir -p " // shell_quote(output_dir), exitstat=stat)
         success = (stat == 0)
-        
+
         if (.not. success) then
             write(error_unit, '(A)') "Failed to create output directory: " // trim(output_dir)
         end if
@@ -255,7 +299,7 @@ contains
 
     subroutine vmec_implementation_finalize(this)
         class(vmec_implementation_t), intent(inout) :: this
-        
+
         if (allocated(this%name)) deallocate(this%name)
         if (allocated(this%path)) deallocate(this%path)
         if (allocated(this%executable)) deallocate(this%executable)

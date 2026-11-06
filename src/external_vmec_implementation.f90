@@ -1,6 +1,6 @@
 module external_vmec_implementation
     use iso_fortran_env, only: error_unit, output_unit, real64
-    use vmec_implementation_base, only: vmec_implementation_t, select_python_command, prepare_vmec_input, &
+    use vmec_implementation_base, only: vmec_implementation_t, accept_wout_exit, select_python_command, prepare_vmec_input, &
         shell_quote, temporary_path
     use vmec_benchmark_types, only: vmec_result_t
     use wout_reader, only: wout_data_t, read_wout_file
@@ -314,6 +314,7 @@ contains
             int_to_str(timeout_val) // ' ' // trim(cmd) // &
             ' > ' // trim(lower_name) // '.log 2>&1'
         call execute_command_line(trim(cmd), exitstat=stat)
+        call accept_wout_exit(run_output_dir, stat)
 
         if (stat == 0) then
             ! DESC's native HDF5 output is converted to the shared wout format
