@@ -498,21 +498,40 @@ contains
     subroutine extract_gvec_results(output_dir, results)
         character(len=*), intent(in) :: output_dir
         type(vmec_result_t), intent(inout) :: results
+
+        call read_result_sidecar(trim(output_dir) // '/gvec_result.json', 'GVEC', results)
+        results%family = 'vmec_family'
+        results%input_format = 'vmec_indata'
+        results%output_format = 'gvec_state'
+    end subroutine extract_gvec_results
+
+    subroutine extract_spectre_results(output_dir, results)
+        character(len=*), intent(in) :: output_dir
+        type(vmec_result_t), intent(inout) :: results
+
+        call read_result_sidecar(trim(output_dir) // '/spectre_result.json', 'SPECTRE', results)
+        results%family = 'spectre_mhd'
+        results%input_format = 'vmec_indata_or_spectre_toml'
+        results%output_format = 'spectre_json'
+    end subroutine extract_spectre_results
+
+    subroutine read_result_sidecar(filename, code, results)
+        character(len=*), intent(in) :: filename, code
+        type(vmec_result_t), intent(inout) :: results
         character(len=512) :: line
-        character(len=:), allocatable :: filename
         integer :: unit, stat
         logical :: exists, success_value
         real(real64) :: value
 
-        filename = trim(output_dir) // '/gvec_result.json'
+        results%dimension = 3
         inquire(file=filename, exist=exists)
         if (.not. exists) then
-            results%error_message = 'GVEC did not produce gvec_result.json'
+            results%error_message = code // ' did not produce ' // basename(filename)
             return
         end if
         open(newunit=unit, file=filename, status='old', action='read', iostat=stat)
         if (stat /= 0) then
-            results%error_message = 'Could not read GVEC result sidecar'
+            results%error_message = 'Could not read ' // code // ' result sidecar'
             return
         end if
         success_value = .false.
@@ -533,47 +552,8 @@ contains
         end do
         close(unit)
         results%success = success_value
-        results%dimension = 3
-        results%family = 'vmec_family'
-        results%input_format = 'vmec_indata'
-        results%output_format = 'gvec_state'
-        if (.not. success_value) results%error_message = 'GVEC sidecar reports failure'
-    end subroutine extract_gvec_results
-
-    subroutine extract_spectre_results(output_dir, results)
-        character(len=*), intent(in) :: output_dir
-        type(vmec_result_t), intent(inout) :: results
-        integer :: stat, unit
-        character(len=512) :: filename
-        character(len=:), allocatable :: spectre_temp_file
-        logical :: exists
-
-        spectre_temp_file = temporary_path('spectre_result')
-        call execute_command_line('ls -t ' // trim(output_dir) // &
-            '/*_res.json 2>/dev/null | head -1 > ' // trim(spectre_temp_file), exitstat=stat)
-        if (stat /= 0) then
-            results%error_message = 'SPECTRE produced no result JSON'
-            return
-        end if
-        open(newunit=unit, file=spectre_temp_file, status='old', action='read', iostat=stat)
-        if (stat /= 0) then
-            results%error_message = 'Could not inspect SPECTRE result JSON'
-            return
-        end if
-        read(unit, '(A)', iostat=stat) filename
-        close(unit)
-        filename = trim(adjustl(filename))
-        inquire(file=trim(filename), exist=exists)
-        if (.not. exists) then
-            results%error_message = 'SPECTRE result JSON is missing'
-            return
-        end if
-        results%success = .true.
-        results%dimension = 3
-        results%family = 'spectre_mhd'
-        results%input_format = 'vmec_indata_or_spectre_toml'
-        results%output_format = 'spectre_json'
-    end subroutine extract_spectre_results
+        if (.not. success_value) results%error_message = code // ' sidecar reports failure'
+    end subroutine read_result_sidecar
 
     subroutine extract_chease_results(output_dir, results)
         character(len=*), intent(in) :: output_dir

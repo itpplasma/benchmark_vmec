@@ -280,7 +280,7 @@ def _native_values(path: Path, implementation: str) -> tuple[bool, dict[str, flo
     if implementation == "chease":
         return _json_values(path, "chease_result.json")
     if implementation == "spectre":
-        return bool(sorted(path.glob("*_res.json"))), {}
+        return _json_values(path, "spectre_result.json")
     if implementation == "spec":
         files = sorted(path.glob("*.sp.h5"))
         if not files:
