@@ -336,11 +336,12 @@ contains
                 ! script, whose first argument must be a GVEC subcommand.  It
                 ! cannot execute this Python converter directly; use the
                 ! interpreter selected for the GVEC environment instead.
+                ! GVEC names the state after ProjectName, not after the input file.
                 python_cmd = select_python_command(this%path)
                 cmd = 'cd ' // shell_quote(run_output_dir) // ' && ' // &
                     shell_quote(python_cmd) // ' ' // &
                     shell_quote(trim(benchmark_root) // '/tools/convert_gvec_to_common.py') // ' ' // &
-                    shell_quote(input_basename // '_State_final.dat') // ' ' // &
+                    '"$(ls -t *_State_final.dat | head -1)" ' // &
                     shell_quote('gvec_result.json')
                 call execute_command_line(trim(cmd), exitstat=stat)
             end if
