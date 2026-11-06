@@ -21,11 +21,12 @@ enclosed flux and current constraint.
 | all except GVEC | GVEC's native test cases on the (R, Z) map run as VMEC inputs in `cases/from_gvec` (14 equilibria for 21 cases; `tools/convert_gvec_to_vmec.py`). The 9 cases on knot, Frenet or cylinder maps have no VMEC equivalent | PR_GVEC_CASES | open |
 | VMEX | `PRECON_TYPE` CG, GMRESR and TFQMR run on the GMRES path | [uwplasma/vmex#727](https://github.com/uwplasma/vmex/pull/727) | draft |
 | VMEX | educational_VMEC's `VAC_1_2` is accepted | [uwplasma/vmex#730](https://github.com/uwplasma/vmex/pull/730) | draft |
-| VMEX, VMEC2000, educational VMEC | `sum_atan` takes its limit at the edge for every exponent and sign | [uwplasma/vmex#729](https://github.com/uwplasma/vmex/pull/729), [itpplasma/VMEC2000#5](https://github.com/itpplasma/VMEC2000/pull/5), [itpplasma/educational_VMEC#1](https://github.com/itpplasma/educational_VMEC/pull/1) | draft |
+| VMEX, VMEC2000, educational VMEC | `sum_atan` takes its limit at the edge for every exponent and sign | [uwplasma/vmex#729](https://github.com/uwplasma/vmex/pull/729), [itpplasma/VMEC2000#5](https://github.com/itpplasma/VMEC2000/pull/5), [itpplasma/educational_VMEC#1](https://github.com/itpplasma/educational_VMEC/pull/1) | VMEX draft, forks merged |
 | VMEX | the 2-D GMRES path stalls above tight FTOL | [uwplasma/vmex#731](https://github.com/uwplasma/vmex/issues/731) | issue |
-| GVEC | all VMEC profile types; interpolated profiles honour `scale` (current sign) | [itpplasma/gvec#27](https://github.com/itpplasma/gvec/pull/27) | draft |
+| GVEC | all VMEC profile types; interpolated profiles honour `scale` (current sign) | [itpplasma/gvec#27](https://github.com/itpplasma/gvec/pull/27) | merged |
 | DESC | VMEC profile types as splines, VMEC's current sign, free boundary in the mgrid field | [itpplasma/DESC#17](https://github.com/itpplasma/DESC/pull/17) | draft |
-| SPECTRE | VMEC profile types in the VMEC converter; converged wout profiles | [krystophny/spectre!5](https://gitlab.com/krystophny/spectre/-/merge_requests/5) | draft |
+| SPECTRE | VMEC profile types in the VMEC converter; converged wout profiles; iota-constrained conversions start from the poloidal flux and `mu` of the transform, without which axisymmetric cases hit a singular straight-field-line solve | [krystophny/spectre!5](https://gitlab.com/krystophny/spectre/-/merge_requests/5) | merged |
+| SPECTRE | VMEC inputs go through SPECTRE's own converter at the deck's resolution, with boundaries oriented as VMEC orients them; volume and aspect ratio come from SPECTRE's output (its innermost surface is a coordinate axis, not the magnetic axis), the force residual from its minimiser; convergence follows the tolerance table below | #24 | open |
 
 ## Convergence tolerances
 
@@ -38,6 +39,7 @@ code.
 | VMEC2000, PARVMEC, VMEX, VMEC++, jVMEC, educational VMEC | normalised squared force residuals `fsqr`, `fsqz`, `fsql` below `FTOL` |
 | GVEC | unsquared absolute L2 norm of the variational force of each variable below `minimize_tol` (`MinimizeMHD3D_descent`) |
 | DESC (command line) | relative change of the least-squares cost below `ftol`; the normalised force error is reported, not enforced |
+| SPECTRE | relative change of the least-squares cost; the benchmark stops it after 500 evaluations and counts a run as converged when SPECTRE reports success or the root mean square of its final force residuals is at most 1e-8 |
 
 A tolerance of `1e-12` on a squared residual therefore corresponds to about
 `1e-6` on the force norm itself.
