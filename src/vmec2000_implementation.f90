@@ -219,6 +219,8 @@ contains
                     results%raxis_cc = wout_data%raxis_cc
                     results%volume_p = wout_data%volume_p
                     results%iotaf_edge = wout_data%iotaf_edge
+                    results%pressure_axis = wout_data%pres_axis
+                    results%plasma_current = wout_data%itor
                     results%itor = wout_data%itor
                     results%b0 = wout_data%b0
                     results%rmajor_p = wout_data%rmajor_p
