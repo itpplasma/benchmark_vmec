@@ -17,6 +17,7 @@ program test_educational_vmec_input
     call test_prepare_without_optional_flags(n_tests, n_passed)
     call test_prepare_desc_marks_free_boundary_unsupported(n_tests, n_passed)
     call test_prepare_renames_legacy_indata(n_tests, n_passed)
+    call test_prepare_marks_adiabatic_unsupported(n_tests, n_passed)
 
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
 
@@ -230,6 +231,35 @@ contains
         call execute_command_line("rm -f " // input_file // " " // output_file // &
             " /tmp/benchmark_unsupported.txt", exitstat=stat)
     end subroutine test_prepare_renames_legacy_indata
+
+    subroutine test_prepare_marks_adiabatic_unsupported(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        character(len=*), parameter :: work_dir = "/tmp/benchmark_vmec_prepare_gamma"
+        character(len=*), parameter :: input_file = work_dir // "/input.gamma"
+        character(len=*), parameter :: output_file = work_dir // "/out/input_prepared.vmec"
+        integer :: unit, stat
+
+        n_tests = n_tests + 1
+        call execute_command_line("mkdir -p " // work_dir // "/out", exitstat=stat)
+        open(newunit=unit, file=input_file, status='replace', action='write', iostat=stat)
+        write(unit, '(A)') "&INDATA"
+        write(unit, '(A)') "  GAMMA = 2.000,"
+        write(unit, '(A)') "/"
+        close(unit)
+
+        if (prepare_vmec_input(input_file, output_file, ".") .and. &
+            .not. prepare_vmec_input(input_file, output_file, ".", desc_compatible=.true.) .and. &
+            .not. prepare_vmec_input(input_file, output_file, ".", fixed_pressure_only="GVEC") .and. &
+            file_contains(work_dir // "/out/benchmark_unsupported.txt", &
+            "GVEC holds the pressure profile fixed")) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_prepare_marks_adiabatic_unsupported"
+        else
+            write(error_unit, '(A)') "✗ test_prepare_marks_adiabatic_unsupported"
+        end if
+
+        call execute_command_line("rm -rf " // work_dir, exitstat=stat)
+    end subroutine test_prepare_marks_adiabatic_unsupported
 
     logical function file_contains(path, needle)
         character(len=*), intent(in) :: path
