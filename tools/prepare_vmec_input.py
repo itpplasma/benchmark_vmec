@@ -42,6 +42,7 @@ _DESC_DROP = re.compile(
     r"ftol_array|niter|nstep|nvacskip|type_precon|prec2d_threshold|"
     r"extcur|sigma_current)\b"
 )
+_FIELD = re.compile(r"(?i)^\s*(?:mgrid_file|extcur)\b")
 _ASSIGNMENT = re.compile(r"(?=\s+[A-Za-z_]\w*(?:\([^)]*\))?\s*=)")
 _EDUCATIONAL_DROP = re.compile(
     r"(?i)^\s*(?:time_slice|type_precon|precon_type|prec2d_threshold|"
@@ -82,6 +83,23 @@ def _adiabatic(text: str) -> bool:
     body = "\n".join(_strip_inline_comment(line) for line in text.splitlines())
     match = re.search(r"(?im)^[^\n]*?\bgamma\s*=\s*([-+0-9.eEdD]+)", body)
     return bool(match) and float(match.group(1).replace("d", "e").replace("D", "e")) != 0.0
+
+
+def _solves_free_boundary(code: str) -> bool:
+    """Whether the code installed in this interpreter solves VMEC free-boundary inputs."""
+    try:
+        if code.lower() == "desc":
+            from desc.input_reader import InputReader
+
+            return hasattr(InputReader(), "free_boundary")
+        if code.lower() == "gvec":
+            import fbtools  # noqa: F401
+            from gvec.coils import MgridField  # noqa: F401
+
+            return True
+    except Exception:
+        return False
+    return False
 
 
 def _netcdf_mgrid_name(name: str) -> str:
@@ -145,6 +163,7 @@ def prepare(
     saw_niter_array = bool(re.search(r"(?im)^\s*niter_array\s*=", text))
     saw_ftol_array = bool(re.search(r"(?im)^\s*ftol_array\s*=", text))
     legacy_unsupported = ""
+    desc_field = desc_compatible and _free_boundary(text) and _solves_free_boundary("desc")
     for original_line in text.splitlines():
         # Strip comments before splitting compact assignment lines.  Otherwise
         # a prose comment such as ``! aspect ratio = 3`` is mistaken for a
@@ -173,7 +192,8 @@ def prepare(
                 # VMEC accepts ``/`` as the namelist terminator.  A second
                 # ``&END`` is interpreted as a new, unterminated group by f90nml.
                 continue
-            if desc_compatible and _DESC_DROP.match(line):
+            if desc_compatible and _DESC_DROP.match(line) and not (
+                    desc_field and _FIELD.match(line)):
                 # DESC reads the VMEC namelist itself and rejects solver controls
                 # it does not consume.  Drop an unsupported assignment and its
                 # continuation lines, retaining the equilibrium coefficients.
@@ -250,8 +270,10 @@ def prepare(
         marker.write_text(message + "\n")
         print(message, file=sys.stderr)
         return False
-    if desc_compatible and not fixed_boundary_only:
+    if desc_compatible and not fixed_boundary_only and not desc_field:
         fixed_boundary_only = "DESC"
+    if fixed_boundary_only and _solves_free_boundary(fixed_boundary_only):
+        fixed_boundary_only = ""
     if desc_compatible and not fixed_pressure_only:
         fixed_pressure_only = "DESC"
     if fixed_pressure_only and _adiabatic(text):
