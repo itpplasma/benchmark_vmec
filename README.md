@@ -36,6 +36,7 @@ Python tools.
 
     fpm run --target vmec-benchmark -- setup --base-dir ..   # clone implementations
     fpm run --target vmec-build -- --base-dir ..             # build them
+    tools/build_mgrid_fixtures.sh <MAKEGRID mgrid> .. ../mgrid-fixtures  # free-boundary grids
     fpm run --target vmec-benchmark -- run --base-dir ..     # run all cases
 
 Focused runs and discovery:
