@@ -14,7 +14,7 @@ enclosed flux and current constraint.
 | PARVMEC | Superbuild defines the Stellarator-Tools `pull_libstell` and `pull_parvmec` targets | #11 | merged |
 | DESC | Free-boundary inputs are reported unsupported: the VMEC reader solves them as fixed-boundary | #12 | merged |
 | GVEC, SPECTRE | Free-boundary inputs are reported unsupported: the converters write fixed-boundary runs | #14 | merged |
-| all | mgrid fixtures for 46 free-boundary cases (DIII-D grid from STELLOPT; TFTR, NCSX and W7-X grids from MAKEGRID on the corpus coils) | this PR | open |
+| all | mgrid fixtures for 46 free-boundary cases (DIII-D grid from STELLOPT; TFTR, NCSX and W7-X grids from MAKEGRID on the corpus coils) | #16 | merged |
 
 ## Convergence tolerances
 
