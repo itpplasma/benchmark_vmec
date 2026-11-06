@@ -37,6 +37,14 @@ foreach(interface_name IN ITEMS sanitizer traps checks)
     endif()
 endforeach()
 
+# Current LIBSTELL and PARVMEC depend on the superproject's source-update
+# targets; the benchmark supplies its own checkouts.
+foreach(pull_target IN ITEMS pull_libstell pull_parvmec)
+    if(NOT TARGET ${pull_target})
+        add_custom_target(${pull_target})
+    endif()
+endforeach()
+
 add_subdirectory("${LIBSTELL_SOURCE_DIR}" libstell)
 add_subdirectory("${PARVMEC_SOURCE_DIR}" parvmec)
 
