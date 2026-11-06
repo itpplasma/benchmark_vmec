@@ -98,6 +98,7 @@ def prepare(
     *,
     desc_compatible: bool = False,
     educational_compatible: bool = False,
+    fixed_boundary_only: str = "",
 ) -> bool:
     """Write a normalized input and return whether all referenced fixtures exist.
 
@@ -210,8 +211,11 @@ def prepare(
         marker.write_text(message + "\n")
         print(message, file=sys.stderr)
         return False
-    if desc_compatible and _free_boundary(text):
-        message = "Unsupported: DESC reads free-boundary VMEC inputs as fixed-boundary"
+    if desc_compatible and not fixed_boundary_only:
+        fixed_boundary_only = "DESC"
+    if fixed_boundary_only and _free_boundary(text):
+        message = (f"Unsupported: {fixed_boundary_only} reads free-boundary VMEC inputs "
+                   "as fixed-boundary")
         marker.write_text(message + "\n")
         print(message, file=sys.stderr)
         return False
@@ -242,6 +246,10 @@ def main() -> int:
         "--educational", action="store_true",
         help="also normalize controls rejected by the educational VMEC reader",
     )
+    parser.add_argument(
+        "--fixed-boundary-only", default="", metavar="CODE",
+        help="mark free-boundary inputs unsupported for CODE",
+    )
     args = parser.parse_args()
     roots = list(args.search_root)
     base_dir = os.environ.get("BENCHMARK_BASE_DIR", "")
@@ -253,6 +261,7 @@ def main() -> int:
         roots,
         desc_compatible=args.desc,
         educational_compatible=args.educational,
+        fixed_boundary_only=args.fixed_boundary_only,
     ) else 2
 
 
