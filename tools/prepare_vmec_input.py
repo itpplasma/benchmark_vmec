@@ -14,6 +14,7 @@ import argparse
 import os
 import re
 import shutil
+import struct
 import sys
 from pathlib import Path
 
@@ -43,6 +44,10 @@ _DESC_DROP = re.compile(
     r"extcur|sigma_current)\b"
 )
 _FIELD = re.compile(r"(?i)^\s*(?:mgrid_file|extcur)\b")
+_EXTCUR = re.compile(
+    r"(?is)\bextcur\s*(?:\(\s*(\d+)\s*\))?\s*=\s*(.*?)(?=\b[a-z_][a-z0-9_]*\s*(?:\([^)]*\))?\s*=|/|&end|$)"
+)
+_NUMBER = re.compile(r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][+-]?\d+)?")
 _ASSIGNMENT = re.compile(r"(?=\s+[A-Za-z_]\w*(?:\([^)]*\))?\s*=)")
 _EDUCATIONAL_DROP = re.compile(
     r"(?i)^\s*(?:time_slice|type_precon|precon_type|prec2d_threshold|"
@@ -73,7 +78,8 @@ def _strip_inline_comment(line: str) -> str:
 def _free_boundary(text: str) -> bool:
     lines = [_strip_inline_comment(line) for line in text.splitlines()]
     body = "\n".join(lines)
-    lfreeb = re.search(r"(?i)\blfreeb\s*=\s*\.?t", body)
+    # VMEC defaults LFREEB to true and runs free-boundary whenever a grid is named
+    lfreeb = not re.search(r"(?i)\blfreeb\s*=\s*\.?f", body)
     mgrid = _MGRID.search(body)
     return bool(lfreeb and mgrid and mgrid.group(3).strip().lower()
                 not in {"", "none", "dummy", "nonef"})
@@ -130,6 +136,43 @@ def _index_candidates(search_roots: list[Path]) -> dict[str, Path]:
             if path.is_file() and path.name not in candidates:
                 candidates[path.name] = path
     return candidates
+
+
+def _coil_groups(path: Path) -> int | None:
+    """Number of coil groups of an mgrid, from its ``external_coil_groups`` dimension."""
+    data = path.read_bytes()
+    if data[:3] == b"CDF":
+        # classic netCDF header: magic, record count, then the dimension list
+        offset = 8
+        tag, count = struct.unpack(">ii", data[offset:offset + 8])
+        offset += 8
+        if tag == 10:
+            for _ in range(count):
+                (size,) = struct.unpack(">i", data[offset:offset + 4])
+                name = data[offset + 4:offset + 4 + size].decode()
+                offset += 4 + (size + 3) // 4 * 4
+                (length,) = struct.unpack(">i", data[offset:offset + 4])
+                offset += 4
+                if name == "external_coil_groups":
+                    return length
+        return None
+    try:
+        import netCDF4  # type: ignore
+    except ImportError:
+        return None
+    with netCDF4.Dataset(path) as grid:
+        return len(grid.dimensions["external_coil_groups"])
+
+
+def _highest_extcur(text: str) -> tuple[int, float]:
+    """Highest EXTCUR index with a nonzero current, and that current."""
+    currents: dict[int, float] = {}
+    for start, values in _EXTCUR.findall(text):
+        first = int(start) if start else 1
+        for offset, value in enumerate(_NUMBER.findall(values)):
+            currents[first + offset] = float(value.replace("D", "E").replace("d", "e"))
+    nonzero = [index for index, value in currents.items() if value != 0.0]
+    return (max(nonzero), currents[max(nonzero)]) if nonzero else (0, 0.0)
 
 
 def prepare(
@@ -294,6 +337,15 @@ def prepare(
         marker.write_text(message + "\n")
         print(message, file=sys.stderr)
         return False
+    if staged_name and _free_boundary(text):
+        groups = _coil_groups(destination.parent / staged_name)
+        index, current = _highest_extcur(text)
+        if groups is not None and index > groups:
+            message = (f"Unsupported: MGRID fixture {staged_name} has {groups} coil groups, "
+                       f"but the deck sets EXTCUR({index}) = {current:g}")
+            marker.write_text(message + "\n")
+            print(message, file=sys.stderr)
+            return False
     if staged_name:
         print(f"Staged {staged_name} for {destination.name}")
     return True
