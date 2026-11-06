@@ -16,6 +16,7 @@ program test_educational_vmec_input
     call test_clean_input_handles_legacy_axis_spelling(n_tests, n_passed)
     call test_prepare_without_optional_flags(n_tests, n_passed)
     call test_prepare_desc_marks_free_boundary_unsupported(n_tests, n_passed)
+    call test_prepare_renames_legacy_indata(n_tests, n_passed)
 
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
 
@@ -191,6 +192,44 @@ contains
 
         call execute_command_line("rm -rf " // work_dir, exitstat=stat)
     end subroutine test_prepare_desc_marks_free_boundary_unsupported
+
+    subroutine test_prepare_renames_legacy_indata(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        character(len=*), parameter :: input_file = "/tmp/benchmark_vmec_prepare_legacy.txt"
+        character(len=*), parameter :: output_file = "/tmp/benchmark_vmec_prepare_legacy_out.txt"
+        integer :: unit, stat
+        logical :: renamed, rejected
+
+        n_tests = n_tests + 1
+        open(newunit=unit, file=input_file, status='replace', action='write', iostat=stat)
+        write(unit, '(A)') "&INDATA"
+        write(unit, '(A)') "  TYPE_PRECON = 'GMRES'"
+        write(unit, '(A)') "  RAXIS_co(0) = 1.65, ZAXIS_co(0) = 0.13"
+        write(unit, '(A)') "  AC_FORM = 0"
+        write(unit, '(A)') "/"
+        close(unit)
+        renamed = prepare_vmec_input(input_file, output_file, ".") .and. &
+            file_contains(output_file, "PRECON_TYPE = 'GMRES'") .and. &
+            file_contains(output_file, "RAXIS_CC(0) = 1.65, ZAXIS_CC(0) = 0.13") .and. &
+            .not. file_contains(output_file, "AC_FORM")
+
+        open(newunit=unit, file=input_file, status='replace', action='write', iostat=stat)
+        write(unit, '(A)') "&INDATA"
+        write(unit, '(A)') "  AC_FORM = 1"
+        write(unit, '(A)') "/"
+        close(unit)
+        rejected = .not. prepare_vmec_input(input_file, output_file, ".")
+
+        if (renamed .and. rejected) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_prepare_renames_legacy_indata"
+        else
+            write(error_unit, '(A)') "✗ test_prepare_renames_legacy_indata"
+        end if
+
+        call execute_command_line("rm -f " // input_file // " " // output_file // &
+            " /tmp/benchmark_unsupported.txt", exitstat=stat)
+    end subroutine test_prepare_renames_legacy_indata
 
     logical function file_contains(path, needle)
         character(len=*), intent(in) :: path
