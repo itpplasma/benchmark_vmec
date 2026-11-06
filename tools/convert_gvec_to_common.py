@@ -65,8 +65,17 @@ def convert(source: Path) -> dict[str, object]:
         metrics["iotaf_edge"] = number(rows[-1][3])
         metrics["pressure_axis"] = number(rows[0][4])
 
-    # ``gvec.log`` is optional input to this converter; the native state file
-    # itself remains sufficient for all scalar geometry/profile quantities.
+    # GVEC exits 0 also when it stops at its iteration limit above minimize_tol
+    log = source.parent / "gvec.log"
+    if log.exists():
+        final = re.findall(
+            rf"\|force\|\s*=\s*({FLOAT})\s*\(minimize_tol\s*=\s*({FLOAT})\)",
+            log.read_text(errors="replace"),
+        )
+        if final:
+            force, tol = (number(item) for item in final[-1])
+            metrics["force_residual"] = force
+            metrics["success"] = force <= tol
     if "volume_p" in metrics and "rmajor_p" in metrics and "aminor_p" in metrics:
         metrics["aspect"] = float(metrics["rmajor_p"]) / float(metrics["aminor_p"])
     return metrics
