@@ -26,6 +26,14 @@ _OUTPUT_CONTROL = re.compile(
     r"loldout|lwouttxt|lfull3d1out)\s*="
 )
 _END = re.compile(r"(?i)^\s*&end\s*$")
+# Spellings of older VMEC versions that current readers reject; the meaning
+# of each is that of the current name.
+_LEGACY_NAMES = (
+    (re.compile(r"(?i)\btype_precon(?=\s*=)"), "PRECON_TYPE"),
+    (re.compile(r"(?i)\braxis_co(?=\s*[(=])"), "RAXIS_CC"),
+    (re.compile(r"(?i)\bzaxis_co(?=\s*[(=])"), "ZAXIS_CC"),
+)
+_AC_FORM = re.compile(r"(?i)^\s*ac_form\s*=\s*([^,\s]+)\s*,?\s*$")
 _SEPARATOR = re.compile(r"^\s*-{3,}\s*$")
 _FORTRAN_COMMENT = re.compile(r"^\s*[cC](?:\s|$)")
 _FULL_LINE_COMMENT = re.compile(r"^\s*[!#]")
@@ -120,6 +128,7 @@ def prepare(
     saw_indata = False
     saw_niter_array = bool(re.search(r"(?im)^\s*niter_array\s*=", text))
     saw_ftol_array = bool(re.search(r"(?im)^\s*ftol_array\s*=", text))
+    legacy_unsupported = ""
     for original_line in text.splitlines():
         # Strip comments before splitting compact assignment lines.  Otherwise
         # a prose comment such as ``! aspect ratio = 3`` is mistaken for a
@@ -169,6 +178,14 @@ def prepare(
             drop_continuation = False
             if _OUTPUT_CONTROL.match(line):
                 continue
+            ac_form = _AC_FORM.match(line)
+            if ac_form:
+                # AC_FORM = 0 selected the power series in I'(s), today's default.
+                if float(ac_form.group(1).replace("d", "e").replace("D", "e")) != 0.0:
+                    legacy_unsupported = "legacy AC_FORM other than 0"
+                continue
+            for pattern, name in _LEGACY_NAMES:
+                line = pattern.sub(name, line)
             line = line.replace("(:)", "")
             if re.match(r"^\s*/\s*$", line):
                 saw_slash = True
@@ -208,6 +225,11 @@ def prepare(
     destination.write_text("\n".join(lines).rstrip() + "\n")
     if not re.search(r"(?im)^\s*&indata\b", text):
         message = "Unsupported: VMEC INDATA namelist is missing"
+        marker.write_text(message + "\n")
+        print(message, file=sys.stderr)
+        return False
+    if legacy_unsupported:
+        message = f"Unsupported: {legacy_unsupported}"
         marker.write_text(message + "\n")
         print(message, file=sys.stderr)
         return False
