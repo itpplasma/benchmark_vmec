@@ -61,6 +61,15 @@ def _strip_inline_comment(line: str) -> str:
     return line
 
 
+def _free_boundary(text: str) -> bool:
+    lines = [_strip_inline_comment(line) for line in text.splitlines()]
+    body = "\n".join(lines)
+    lfreeb = re.search(r"(?i)\blfreeb\s*=\s*\.?t", body)
+    mgrid = _MGRID.search(body)
+    return bool(lfreeb and mgrid and mgrid.group(3).strip().lower()
+                not in {"", "none", "dummy", "nonef"})
+
+
 def _index_candidates(search_roots: list[Path]) -> dict[str, Path]:
     """Return one existing fixture per basename, preferring the index."""
 
@@ -198,6 +207,11 @@ def prepare(
     destination.write_text("\n".join(lines).rstrip() + "\n")
     if not re.search(r"(?im)^\s*&indata\b", text):
         message = "Unsupported: VMEC INDATA namelist is missing"
+        marker.write_text(message + "\n")
+        print(message, file=sys.stderr)
+        return False
+    if desc_compatible and _free_boundary(text):
+        message = "Unsupported: DESC reads free-boundary VMEC inputs as fixed-boundary"
         marker.write_text(message + "\n")
         print(message, file=sys.stderr)
         return False
