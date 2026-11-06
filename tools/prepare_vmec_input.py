@@ -70,6 +70,15 @@ def _free_boundary(text: str) -> bool:
                 not in {"", "none", "dummy", "nonef"})
 
 
+def _netcdf_mgrid_name(name: str) -> str:
+    """Return the NetCDF fixture name for a legacy binary mgrid name.
+
+    Older decks name MAKEGRID's binary output, for example ``mgrid.tftr``;
+    its fixture is the NetCDF grid ``mgrid.tftr.nc`` built from the same coils.
+    """
+    return name if name.endswith(".nc") else name + ".nc"
+
+
 def _index_candidates(search_roots: list[Path]) -> dict[str, Path]:
     """Return one existing fixture per basename, preferring the index."""
 
@@ -189,11 +198,12 @@ def prepare(
         # Inputs from Windows checkouts occasionally retain backslashes even
         # when they are run on Linux.  Normalize before looking up a fixture.
         basename = Path(requested.replace("\\", "/")).name
-        candidate = candidates.get(basename)
+        candidate = candidates.get(basename) or candidates.get(_netcdf_mgrid_name(basename))
         if candidate is None:
             missing.append(requested)
             continue
         destination.parent.mkdir(parents=True, exist_ok=True)
+        basename = candidate.name
         staged = destination.parent / basename
         if candidate.resolve() != staged.resolve():
             shutil.copy2(candidate, staged)

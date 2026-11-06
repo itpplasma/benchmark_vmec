@@ -1,0 +1,13 @@
+# mgrid fixtures for free-boundary cases whose grid is not in any repository.
+# name	source	MAKEGRID arguments: mode stell_sym rmin rmax zmin zmax kp ir jz
+# Sources are a URL, or a coils file relative to the base directory.  Grid
+# extents come from the coils file's MGRID_NLI namelist or the case's recorded
+# makegrid input; kp equals the NZETA of the decks that use the grid.
+mgrid_d3d_ef.nc	https://raw.githubusercontent.com/PrincetonUniversity/STELLOPT/ea1289e51f1f7d00e6673d52aa66fc1558cd4f76/BENCHMARKS/VMEC_TEST/mgrid_d3d_ef.nc
+mgrid.d3d_ef.nc	https://raw.githubusercontent.com/PrincetonUniversity/STELLOPT/ea1289e51f1f7d00e6673d52aa66fc1558cd4f76/BENCHMARKS/VMEC_TEST/mgrid_d3d_ef.nc
+mgrid.tftr.nc	educational_VMEC/test/coils.tftr	S F 1.0 5.0 -2.0 2.0 1 201 201
+mgrid_c09r00.nc	educational_VMEC/test/from_STELLOPT_Wiki/freeb_NCSX/coils.c09r00	S Y 0.436 2.436 -1.0 1.0 36 201 201
+mgrid.c09r00.nc	educational_VMEC/test/from_STELLOPT_Wiki/freeb_NCSX/coils.c09r00	S Y 0.436 2.436 -1.0 1.0 32 201 201
+mgrid_ncsx_c09r00_small.nc	educational_VMEC/test/from_STELLOPT_Wiki/freeb_NCSX/coils.c09r00	S Y 0.436 2.436 -1.0 1.0 24 121 121
+mgrid_w7x_nv36_hires.nc	vmecpp/src/vmecpp/cpp/vmecpp_large_cpp_tests/test_data/coils.w7x	R Y 4.30 6.70 -1.20 1.20 36 241 241
+mgrid_w7x_v2_10mm_grid.nc	vmecpp/src/vmecpp/cpp/vmecpp_large_cpp_tests/test_data/coils.w7x	R Y 4.30 6.70 -1.20 1.20 36 241 241

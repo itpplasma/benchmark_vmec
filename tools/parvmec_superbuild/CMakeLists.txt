@@ -39,7 +39,7 @@ endforeach()
 
 # Current LIBSTELL and PARVMEC depend on the superproject's source-update
 # targets; the benchmark supplies its own checkouts.
-foreach(pull_target IN ITEMS pull_libstell pull_parvmec)
+foreach(pull_target IN ITEMS pull_libstell pull_parvmec pull_makegrid)
     if(NOT TARGET ${pull_target})
         add_custom_target(${pull_target})
     endif()
@@ -47,6 +47,9 @@ endforeach()
 
 add_subdirectory("${LIBSTELL_SOURCE_DIR}" libstell)
 add_subdirectory("${PARVMEC_SOURCE_DIR}" parvmec)
+if(DEFINED MAKEGRID_SOURCE_DIR)
+    add_subdirectory("${MAKEGRID_SOURCE_DIR}" makegrid)
+endif()
 
 if(TARGET vmec)
     target_compile_options(vmec PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:-cpp>)
