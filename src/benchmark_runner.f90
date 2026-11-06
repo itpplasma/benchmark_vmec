@@ -1,7 +1,8 @@
 module benchmark_runner
     use iso_fortran_env, only: error_unit, output_unit
     use vmec_benchmark_types, only: vmec_result_t, string_t
-    use vmec_implementation_base, only: vmec_implementation_t, temporary_path, read_unsupported_marker
+    use vmec_implementation_base, only: vmec_implementation_t, temporary_path, read_unsupported_marker, &
+        read_run_status
     use educational_vmec_implementation, only: educational_vmec_t
     use jvmec_implementation, only: jvmec_t
     use vmec2000_implementation, only: vmec2000_t
@@ -668,7 +669,7 @@ contains
             if (read_unsupported_marker(output_dir, unsupported_message)) then
                 results%error_message = unsupported_message
             else
-                results%error_message = "Run failed"
+                results%error_message = read_run_status(output_dir)
             end if
             write(output_unit, '(A)') "  ✗ " // trim(this%implementations(impl_idx)%key) // " failed"
         end if

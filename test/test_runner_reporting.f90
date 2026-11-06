@@ -7,6 +7,7 @@ program test_runner_reporting
     use repository_manager, only: repository_manager_t
     use results_comparator, only: results_comparator_t
     use vmec_benchmark_types, only: vmec_result_t
+    use vmec_implementation_base, only: accept_wout_exit, read_run_status
     implicit none
 
     integer :: n_tests, n_passed
@@ -28,6 +29,7 @@ program test_runner_reporting
     call test_report_uses_successful_reference(n_tests, n_passed)
     call test_report_prefers_educational_reference_over_jvmec(n_tests, n_passed)
     call test_report_separates_physical_domains(n_tests, n_passed)
+    call test_wout_exit_and_run_status(n_tests, n_passed)
 
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
 
@@ -456,6 +458,37 @@ contains
         call comparator%finalize()
         call execute_command_line("rm -rf " // output_dir, exitstat=stat)
     end subroutine test_report_separates_physical_domains
+
+    subroutine test_wout_exit_and_run_status(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        character(len=*), parameter :: with_wout = "/tmp/benchmark_vmec_run_status_wout"
+        character(len=*), parameter :: without_wout = "/tmp/benchmark_vmec_run_status_none"
+        integer :: unit, stat, niter_exit, crash_exit, timeout_exit
+
+        n_tests = n_tests + 1
+        call execute_command_line("rm -rf " // with_wout // " " // without_wout // &
+            " && mkdir -p " // with_wout // " " // without_wout, exitstat=stat)
+        open(newunit=unit, file=with_wout // "/wout_case.nc", status='replace', action='write')
+        close(unit)
+
+        niter_exit = 2
+        call accept_wout_exit(with_wout, niter_exit)
+        crash_exit = 139
+        call accept_wout_exit(without_wout, crash_exit)
+        timeout_exit = 124
+        call accept_wout_exit(with_wout, timeout_exit)
+
+        if (niter_exit == 0 .and. crash_exit == 139 .and. timeout_exit == 124 .and. &
+            read_run_status(without_wout) == "Run failed (exit status 139)" .and. &
+            read_run_status(with_wout) == "Run timed out") then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_wout_exit_and_run_status"
+        else
+            write(error_unit, '(A)') "✗ test_wout_exit_and_run_status"
+        end if
+
+        call execute_command_line("rm -rf " // with_wout // " " // without_wout, exitstat=stat)
+    end subroutine test_wout_exit_and_run_status
 
     logical function file_contains(path, needle)
         character(len=*), intent(in) :: path
