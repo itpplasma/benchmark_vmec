@@ -164,10 +164,13 @@ contains
             (trim(lower_name) == 'gvec' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
             (trim(lower_name) == 'spectre' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
             (trim(lower_name) == 'desc' .and. index(lowercase(basename(local_input)), 'input.') == 1 .and. &
-             index(lowercase(basename(local_input)), '_desc') == 0)) then
+            index(lowercase(basename(local_input)), '_desc') == 0)) then
             prepared_input = trim(output_dir) // '/input_prepared.vmec'
             if (trim(lower_name) == 'desc') then
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path, desc_compatible=.true.)) return
+            else if (trim(lower_name) == 'gvec' .or. trim(lower_name) == 'spectre') then
+                if (.not. prepare_vmec_input(input_file, prepared_input, this%path, &
+                    fixed_boundary_only=trim(this%name))) return
             else
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
             end if

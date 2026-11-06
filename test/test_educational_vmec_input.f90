@@ -179,7 +179,10 @@ contains
         success = prepare_vmec_input(input_file, output_file, ".", desc_compatible=.true.)
         if (.not. success .and. file_contains(work_dir // "/out/benchmark_unsupported.txt", &
             "DESC reads free-boundary VMEC inputs as fixed-boundary") .and. &
-            prepare_vmec_input(input_file, output_file, ".")) then
+            prepare_vmec_input(input_file, output_file, ".") .and. &
+            .not. prepare_vmec_input(input_file, output_file, ".", fixed_boundary_only="GVEC") .and. &
+            file_contains(work_dir // "/out/benchmark_unsupported.txt", &
+            "GVEC reads free-boundary VMEC inputs as fixed-boundary")) then
             n_passed = n_passed + 1
             write(output_unit, '(A)') "✓ test_prepare_desc_marks_free_boundary_unsupported"
         else

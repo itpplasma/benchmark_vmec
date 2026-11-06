@@ -75,10 +75,11 @@ contains
     end function temporary_path
 
     logical function prepare_vmec_input(input_file, output_file, implementation_path, &
-            desc_compatible, educational_compatible) result(success)
+            desc_compatible, educational_compatible, fixed_boundary_only) result(success)
         character(len=*), intent(in) :: input_file, output_file, implementation_path
         logical, intent(in), optional :: desc_compatible
         logical, intent(in), optional :: educational_compatible
+        character(len=*), intent(in), optional :: fixed_boundary_only
         character(len=:), allocatable :: benchmark_root, source_dir, python_cmd, cmd
         character(len=1024) :: root_value
         integer :: root_length, root_status, last_slash, stat
@@ -115,6 +116,8 @@ contains
             ' --search-root ' // shell_quote(source_dir)
         if (use_desc) cmd = trim(cmd) // ' --desc'
         if (use_educational) cmd = trim(cmd) // ' --educational'
+        if (present(fixed_boundary_only)) cmd = trim(cmd) // ' --fixed-boundary-only ' // &
+            shell_quote(fixed_boundary_only)
         call execute_command_line(trim(cmd), exitstat=stat)
         success = (stat == 0)
         if (.not. success) then
