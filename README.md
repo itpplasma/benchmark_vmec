@@ -69,6 +69,8 @@ how to interpret them.
 
 - [docs/results.md](docs/results.md): archived results and plots
 - [docs/tools.md](docs/tools.md): format adapters and plotting
+- [docs/support.md](docs/support.md): changes each implementation needs, and
+  what each code's convergence tolerance means
 - [docs/contributing.md](docs/contributing.md): adding implementations, pull
   requests and merging
 
