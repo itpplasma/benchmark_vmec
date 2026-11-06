@@ -19,6 +19,10 @@ enclosed flux and current constraint.
 | all | `plasma_current` and `pressure_axis` are read from `ctor` and `presf`; they were always zero | #18 | merged |
 | DESC, GVEC, SPECTRE | `GAMMA != 0` is reported unsupported: these codes hold the pressure profile fixed | #19 | merged |
 | all except GVEC | GVEC's native test cases on the (R, Z) map run as VMEC inputs in `cases/from_gvec` (14 equilibria for 21 cases; `tools/convert_gvec_to_vmec.py`). The 9 cases on knot, Frenet or cylinder maps have no VMEC equivalent | PR_GVEC_CASES | open |
+| all | Decks without `LFREEB` are free-boundary when they name a grid, as in VMEC; a grid with fewer coil groups than the deck's nonzero `EXTCUR` is reported unsupported (TFTR and W7-X fixtures for 22 STELLOPT and coverage decks) | #25 | merged |
+| GVEC | A run counts as converged only when its force is below `minimize_tol`; native states named after `ProjectName` are found | #22 | merged |
+| VMEC++ | `&indata` in lower case is read as a classic input | [itpplasma/vmecpp#39](https://github.com/itpplasma/vmecpp/pull/39), [proximafusion/vmecpp#1067](https://github.com/proximafusion/vmecpp/pull/1067) | fork merged, upstream draft |
+| VMEC++ | Zero padding of spline knot lists is dropped as in VMEC | [itpplasma/vmecpp#40](https://github.com/itpplasma/vmecpp/pull/40), [proximafusion/vmecpp#1068](https://github.com/proximafusion/vmecpp/pull/1068) | fork merged, upstream draft |
 | VMEX | `PRECON_TYPE` CG, GMRESR and TFQMR run on the GMRES path | [uwplasma/vmex#727](https://github.com/uwplasma/vmex/pull/727) | draft |
 | VMEX | educational_VMEC's `VAC_1_2` is accepted | [uwplasma/vmex#730](https://github.com/uwplasma/vmex/pull/730) | draft |
 | VMEX, VMEC2000, educational VMEC | `sum_atan` takes its limit at the edge for every exponent and sign | [uwplasma/vmex#729](https://github.com/uwplasma/vmex/pull/729), [itpplasma/VMEC2000#5](https://github.com/itpplasma/VMEC2000/pull/5), [itpplasma/educational_VMEC#1](https://github.com/itpplasma/educational_VMEC/pull/1) | VMEX draft, forks merged |
