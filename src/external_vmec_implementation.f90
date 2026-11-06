@@ -170,7 +170,7 @@ contains
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path, desc_compatible=.true.)) return
             else if (trim(lower_name) == 'gvec' .or. trim(lower_name) == 'spectre') then
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path, &
-                    fixed_boundary_only=trim(this%name))) return
+                    fixed_boundary_only=trim(this%name), fixed_pressure_only=trim(this%name))) return
             else
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
             end if

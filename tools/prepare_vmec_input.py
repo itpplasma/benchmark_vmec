@@ -78,6 +78,12 @@ def _free_boundary(text: str) -> bool:
                 not in {"", "none", "dummy", "nonef"})
 
 
+def _adiabatic(text: str) -> bool:
+    body = "\n".join(_strip_inline_comment(line) for line in text.splitlines())
+    match = re.search(r"(?im)^[^\n]*?\bgamma\s*=\s*([-+0-9.eEdD]+)", body)
+    return bool(match) and float(match.group(1).replace("d", "e").replace("D", "e")) != 0.0
+
+
 def _netcdf_mgrid_name(name: str) -> str:
     """Return the NetCDF fixture name for a legacy binary mgrid name.
 
@@ -116,6 +122,7 @@ def prepare(
     desc_compatible: bool = False,
     educational_compatible: bool = False,
     fixed_boundary_only: str = "",
+    fixed_pressure_only: str = "",
 ) -> bool:
     """Write a normalized input and return whether all referenced fixtures exist.
 
@@ -245,6 +252,14 @@ def prepare(
         return False
     if desc_compatible and not fixed_boundary_only:
         fixed_boundary_only = "DESC"
+    if desc_compatible and not fixed_pressure_only:
+        fixed_pressure_only = "DESC"
+    if fixed_pressure_only and _adiabatic(text):
+        message = (f"Unsupported: {fixed_pressure_only} holds the pressure profile fixed, "
+                   "but GAMMA != 0 holds the mass profile fixed")
+        marker.write_text(message + "\n")
+        print(message, file=sys.stderr)
+        return False
     if fixed_boundary_only and _free_boundary(text):
         message = (f"Unsupported: {fixed_boundary_only} reads free-boundary VMEC inputs "
                    "as fixed-boundary")
@@ -282,6 +297,10 @@ def main() -> int:
         "--fixed-boundary-only", default="", metavar="CODE",
         help="mark free-boundary inputs unsupported for CODE",
     )
+    parser.add_argument(
+        "--fixed-pressure-only", default="", metavar="CODE",
+        help="mark inputs with GAMMA != 0 unsupported for CODE",
+    )
     args = parser.parse_args()
     roots = list(args.search_root)
     base_dir = os.environ.get("BENCHMARK_BASE_DIR", "")
@@ -294,6 +313,7 @@ def main() -> int:
         desc_compatible=args.desc,
         educational_compatible=args.educational,
         fixed_boundary_only=args.fixed_boundary_only,
+        fixed_pressure_only=args.fixed_pressure_only,
     ) else 2
 
 
