@@ -18,6 +18,7 @@ enclosed flux and current constraint.
 | all | Legacy INDATA names (`TYPE_PRECON`, `RAXIS_CO`, `ZAXIS_CO`, `AC_FORM = 0`) are renamed before any code reads them | #17 | merged |
 | all | `plasma_current` and `pressure_axis` are read from `ctor` and `presf`; they were always zero | #18 | merged |
 | DESC, GVEC, SPECTRE | `GAMMA != 0` is reported unsupported: these codes hold the pressure profile fixed | #19 | merged |
+| all except GVEC | GVEC's native test cases on the (R, Z) map run as VMEC inputs in `cases/from_gvec` (14 equilibria for 21 cases; `tools/convert_gvec_to_vmec.py`). The 9 cases on knot, Frenet or cylinder maps have no VMEC equivalent | #23 | open |
 | VMEX | `PRECON_TYPE` CG, GMRESR and TFQMR run on the GMRES path | [uwplasma/vmex#727](https://github.com/uwplasma/vmex/pull/727) | draft |
 | VMEX | educational_VMEC's `VAC_1_2` is accepted | [uwplasma/vmex#730](https://github.com/uwplasma/vmex/pull/730) | draft |
 | VMEX, VMEC2000, educational VMEC | `sum_atan` takes its limit at the edge for every exponent and sign | [uwplasma/vmex#729](https://github.com/uwplasma/vmex/pull/729), [itpplasma/VMEC2000#5](https://github.com/itpplasma/VMEC2000/pull/5), [itpplasma/educational_VMEC#1](https://github.com/itpplasma/educational_VMEC/pull/1) | draft |

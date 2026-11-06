@@ -1,0 +1,32 @@
+&INDATA
+! converted from GVEC test-CI/examples/ellipstell_lowres/parameter.ini
+! converted from GVEC test-CI/examples/ellipstell_perturb_cosm/parameter.ini
+! converted from GVEC test-CI/examples/ellipstell_perturb_legacy/parameter.ini
+! converted from GVEC test-CI/examples/ellipstell_reset_minimizer_after_large_timestep/parameter.ini
+! converted from GVEC test-CI/examples/ellipstell_sgrid_custom/parameter.ini
+  LFREEB = F
+  NS_ARRAY = 16 51
+  NITER_ARRAY = 5000 40000
+  FTOL_ARRAY = 1.0E-10 1.0E-14
+  NSTEP = 200
+  DELT = 0.5
+  LASYM = F
+  NFP = 2
+  MPOL = 8
+  NTOR = 2
+  PHIEDGE = 1.5000000000000000E+00
+  PMASS_TYPE = 'power_series'
+  AM = 1.0000000000000000E+00 0.0000000000000000E+00
+  PRES_SCALE = 1.5000000000000000E+03
+  GAMMA = 0.0
+  NCURR = 0
+  PIOTA_TYPE = 'power_series'
+  AI = 9.0000000000000002E-01 0.0000000000000000E+00
+  RAXIS_CC = 4.0999999999999996E+00 2.9999999999999999E-01 0.0000000000000000E+00
+  ZAXIS_CS = 0.0000000000000000E+00 2.0000000000000001E-01 0.0000000000000000E+00
+  RBC(0,0) = 4.0000000000000000E+00
+  RBC(-1,1) = 4.0000000000000002E-01
+  RBC(0,1) = 1.0000000000000000E+00
+  ZBS(-1,1) = -4.0000000000000002E-01
+  ZBS(0,1) = 1.0000000000000000E+00
+/
