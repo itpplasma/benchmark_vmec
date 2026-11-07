@@ -49,6 +49,10 @@ def _dense_vmec_namelist(source: Path) -> dict:
         and not re.fullmatch(r"\s*&END\s*", line, flags=re.IGNORECASE)
     ]
     parse_text = "\n".join(parse_lines)
+    # Only INDATA is read; other groups, such as STELLOPT's OPTIMUM, can trip f90nml.
+    group = re.search(r"(?ims)^\s*&indata\b.*?^\s*/", parse_text)
+    if group:
+        parse_text = group.group(0)
     parsed = f90nml.reads(parse_text)
     try:
         nml = parsed["indata"].todict()
