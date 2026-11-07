@@ -67,13 +67,25 @@ def _boundary(nml: dict) -> dict[str, dict[tuple[int, int], float]]:
     return out
 
 
+def _axis(nml: dict) -> dict[str, list[float]]:
+    """VMEC's initial axis; nonzero legacy RAXIS and ZAXIS entries take precedence, as in VMEC."""
+    def values(key):
+        raw = nml.get(key)
+        return [float(v or 0.0) for v in (raw if isinstance(raw, list) else [raw])] if raw is not None else []
+
+    axis = {key: values(key) for key in ("raxis_cc", "raxis_cs", "zaxis_cc", "zaxis_cs")}
+    for legacy, modern in (("raxis", "raxis_cc"), ("zaxis", "zaxis_cs")):
+        old = values(legacy)
+        merged = axis[modern] + [0.0] * max(0, len(old) - len(axis[modern]))
+        axis[modern] = [o if o else m for o, m in zip(old + merged[len(old):], merged)]
+    return axis
+
+
 def convert(source: Path, destination: Path) -> None:
     try:
         nml = _dense_vmec_namelist(source)
     except ValueError as exc:
         _mark_unsupported(destination, str(exc))
-    if int(nml.get("ncurr", 0)) == 1:
-        _mark_unsupported(destination, "KIN6D prescribes iota; current-constrained inputs (NCURR = 1) are not supported")
     for key, neutral in (("bloat", 1.0), ("spres_ped", 1.0)):
         if abs(float(nml.get(key, neutral))) != neutral:
             _mark_unsupported(destination, f"KIN6D does not take {key.upper()} = {nml[key]}")
@@ -88,6 +100,27 @@ def convert(source: Path, destination: Path) -> None:
     boundary = _boundary(nml)
     if boundary["flipped"]:
         iota = -iota
+    current = None
+    if int(nml.get("ncurr", 0)) == 1:
+        try:
+            # VMEC's AC is dI/ds; I(s) is scaled to CURTOR at the edge
+            slope = _monomials(nml, "pcurr", "ac")
+        except NotImplementedError as exc:
+            _mark_unsupported(destination, str(exc))
+        enclosed = np.concatenate([[0.0], slope / np.arange(1, len(slope) + 1)])
+        total = enclosed.sum()
+        curtor = float(nml.get("curtor", 0.0))
+        enclosed = curtor * enclosed / total if total else np.zeros(1)
+        # KIN6D's current has the sign of its iota for positive flux; VMEC's has
+        # the opposite sign and follows the sign of PHIEDGE and the theta flip
+        sign = -np.sign(float(nml.get("phiedge", 1.0))) * (-1.0 if boundary["flipped"] else 1.0)
+        current = sign * enclosed
+        # VMEC ignores AI here; start with the sign of the total current
+        iota = np.array([0.3 * (np.sign(current.sum()) or 1.0)])
+    if current is None:
+        values = np.polynomial.polynomial.polyval(np.linspace(0.0, 1.0, 201), iota)
+        if np.any(values == 0.0) or np.any(np.sign(values) != np.sign(values[0])):
+            _mark_unsupported(destination, "KIN6D's frozen field needs an iota profile without zeros")
     phiedge = abs(float(nml.get("phiedge", 1.0)))
     mpol = max([m for f in ("rbc", "rbs", "zbc", "zbs") for (_, m) in boundary[f]] + [1])
     ntor = max([abs(n) for f in ("rbc", "rbs", "zbc", "zbs") for (n, _) in boundary[f]] + [0])
@@ -98,7 +131,12 @@ def convert(source: Path, destination: Path) -> None:
     for field in ("rbc", "rbs", "zbc", "zbs"):
         lines += [f"  {field}({n},{m}) = {float(c)!r}," for (n, m), c in sorted(boundary[field].items())]
     lines += [f"  iota({k}) = {float(c)!r}," for k, c in enumerate(iota) if c]
+    lines += [f"  {name}({n}) = {c!r}," for name, values in _axis(nml).items() for n, c in enumerate(values) if c]
     lines += [f"  pressure({k}) = {float(c)!r}," for k, c in enumerate(pressure) if c]
+    if current is not None:
+        # KIN6D's current readback at this resolution is accurate to about 2e-4
+        lines += ["  prescribe_current = .true., current_tolerance = 1e-3,"]
+        lines += [f"  current({k}) = {float(c)!r}," for k, c in enumerate(current) if c]
     # VMEC's boundary angle is not a field-line angle, so the boundary field angle is free
     lines += ["  boundary_nodes = 16, degree = 3, angle_mpol = 4, tolerance = 1e-8, max_iterations = 400,", "/"]
     destination.write_text("\n".join(lines) + "\n")
