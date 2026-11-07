@@ -192,6 +192,12 @@ contains
                 write(error_unit, '(A)') 'Failed to copy GVEC companion files'
                 return
             end if
+            ! GVEC's CI generates the cinquefoil hmap at test time (test-CI/helpers.py)
+            call execute_command_line('cd ' // shell_quote(trim(output_dir)) // &
+                ' && grep -qi "hmap_ncfile *= *cinquefoil.nc" ' // shell_quote(basename(local_input)) // &
+                ' && [ ! -e cinquefoil.nc ] && ' // trim(select_python_command(this%path)) // &
+                ' -c "import sys; sys.path.insert(0, ''' // trim(this%path) // '/test-CI''); ' // &
+                'import helpers; helpers.generate_cinquefoil(''cinquefoil.nc'')"', exitstat=stat)
         end if
 
         select case (trim(lower_name))
