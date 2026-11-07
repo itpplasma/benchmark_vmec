@@ -183,6 +183,16 @@ contains
             write(error_unit, '(A)') 'Failed to copy input for ' // trim(this%name)
             return
         end if
+        if (trim(lower_name) == 'gvec' .and. index(lowercase(basename(local_input)), 'input.') /= 1) then
+            ! Native parameter files name wout, hmap and boundary files beside them
+            call execute_command_line('find ' // shell_quote(parent_dir(input_file)) // &
+                ' -maxdepth 1 ! -type d -exec cp -nL {} ' // shell_quote(trim(output_dir)) // '/ \;', &
+                exitstat=stat)
+            if (stat /= 0) then
+                write(error_unit, '(A)') 'Failed to copy GVEC companion files'
+                return
+            end if
+        end if
 
         select case (trim(lower_name))
         case ('vmex')
