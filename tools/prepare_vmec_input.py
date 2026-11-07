@@ -156,6 +156,9 @@ def _coil_groups(path: Path) -> int | None:
                 if name == "external_coil_groups":
                     return length
         return None
+    if data[:4] != b"\x89HDF":
+        # not a netCDF file; the code reading it reports that
+        return None
     try:
         import netCDF4  # type: ignore
     except ImportError:
