@@ -14,6 +14,7 @@ program test_educational_vmec_input
     call test_clean_input_drops_duplicate_niter_and_renames_axis(n_tests, n_passed)
     call test_clean_input_rewrites_niter_without_niter_array(n_tests, n_passed)
     call test_clean_input_handles_legacy_axis_spelling(n_tests, n_passed)
+    call test_clean_input_keeps_long_lines(n_tests, n_passed)
     call test_prepare_without_optional_flags(n_tests, n_passed)
     call test_prepare_desc_marks_free_boundary_unsupported(n_tests, n_passed)
     call test_prepare_renames_legacy_indata(n_tests, n_passed)
@@ -132,6 +133,44 @@ contains
 
         call execute_command_line("rm -f " // input_file // " " // output_file, exitstat=stat)
     end subroutine test_clean_input_handles_legacy_axis_spelling
+
+    subroutine test_clean_input_keeps_long_lines(n_tests, n_passed)
+        integer, intent(inout) :: n_tests, n_passed
+        type(educational_vmec_t) :: impl
+        character(len=*), parameter :: input_file = "/tmp/benchmark_vmec_edu_input_long.txt"
+        character(len=*), parameter :: output_file = "/tmp/benchmark_vmec_edu_output_long.txt"
+        character(len=:), allocatable :: knots
+        character(len=4096) :: line
+        integer :: unit, stat
+        logical :: found
+
+        n_tests = n_tests + 1
+        knots = "  AI_AUX_S =" // repeat(" 5.0000000000000000E-01", 100)
+        open(newunit=unit, file=input_file, status='replace', action='write', iostat=stat)
+        write(unit, '(A)') "&INDATA"
+        write(unit, '(A)') knots
+        write(unit, '(A)') "/"
+        close(unit)
+
+        found = .false.
+        if (impl%clean_input_for_educational_vmec(input_file, output_file)) then
+            open(newunit=unit, file=output_file, status='old', action='read', iostat=stat)
+            do
+                read(unit, '(A)', iostat=stat) line
+                if (stat /= 0) exit
+                if (trim(line) == knots) found = .true.
+            end do
+            close(unit)
+        end if
+        if (found) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_clean_input_keeps_long_lines"
+        else
+            write(error_unit, '(A)') "✗ test_clean_input_keeps_long_lines"
+        end if
+
+        call execute_command_line("rm -f " // input_file // " " // output_file, exitstat=stat)
+    end subroutine test_clean_input_keeps_long_lines
 
     subroutine test_prepare_without_optional_flags(n_tests, n_passed)
         integer, intent(inout) :: n_tests, n_passed

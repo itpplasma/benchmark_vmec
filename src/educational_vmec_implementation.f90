@@ -427,7 +427,7 @@ contains
         character(len=*), intent(in) :: output_file
         logical :: success
         integer :: input_unit, output_unit, stat
-        character(len=1000) :: line
+        character(len=:), allocatable :: line
         logical :: skip_line, skipping_unsupported_block
         logical :: has_niter_array
         
@@ -443,7 +443,7 @@ contains
         end if
 
         do
-            read(input_unit, '(A)', iostat=stat) line
+            call read_line(input_unit, line, stat)
             if (stat /= 0) exit
             if (index(adjustl(line), 'NITER_ARRAY') == 1) has_niter_array = .true.
         end do
@@ -458,7 +458,7 @@ contains
         
         ! Process each line
         do
-            read(input_unit, '(A)', iostat=stat) line
+            call read_line(input_unit, line, stat)
             if (stat /= 0) exit  ! End of file or error
             
             skip_line = .false.
@@ -550,7 +550,7 @@ contains
     end function educational_vmec_clean_input
 
     logical function replace_axis_assignment(line, source_name, target_name) result(changed)
-        character(len=*), intent(inout) :: line
+        character(len=:), allocatable, intent(inout) :: line
         character(len=*), intent(in) :: source_name, target_name
         character(len=:), allocatable :: lowered, source_lower
         integer :: first, cursor, line_length, index_start, index_end
@@ -600,6 +600,23 @@ contains
         end if
         changed = .true.
     end function replace_axis_assignment
+
+    ! Spline knot lists of 100 values exceed any fixed line buffer
+    subroutine read_line(unit, line, stat)
+        integer, intent(in) :: unit
+        character(len=:), allocatable, intent(out) :: line
+        integer, intent(out) :: stat
+        character(len=1024) :: chunk
+        integer :: n_read
+
+        line = ''
+        do
+            read(unit, '(A)', advance='no', size=n_read, iostat=stat) chunk
+            line = line // chunk(:n_read)
+            if (stat /= 0) exit
+        end do
+        if (is_iostat_eor(stat)) stat = 0
+    end subroutine read_line
 
     function lowercase(text) result(value)
         character(len=*), intent(in) :: text
