@@ -111,9 +111,10 @@ def convert(source: Path, destination: Path) -> None:
         total = enclosed.sum()
         curtor = float(nml.get("curtor", 0.0))
         enclosed = curtor * enclosed / total if total else np.zeros(1)
-        # KIN6D's current has the sign of its iota for positive flux; VMEC's has
-        # the opposite sign and follows the sign of PHIEDGE and the theta flip
-        sign = -np.sign(float(nml.get("phiedge", 1.0))) * (-1.0 if boundary["flipped"] else 1.0)
+        # The current is physical and keeps its sign under the theta flip. With
+        # positive flux KIN6D's has the opposite sign of VMEC's, which also flips
+        # with PHIEDGE.
+        sign = -np.sign(float(nml.get("phiedge", 1.0)))
         current = sign * enclosed
         # VMEC ignores AI here; start with the sign of the total current
         iota = np.array([0.3 * (np.sign(current.sum()) or 1.0)])
