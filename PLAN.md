@@ -1,5 +1,11 @@
 # Benchmark handoff
 
+## Current benchmark work
+
+The KIN6D adapter now passes prescribed current and magnetic-axis inputs and retains the physical sign of current under the coordinate-angle conversion. The corresponding KIN6D changes include the supplied or inferred seed axis, prescribed-current solves, exact fixed-map current slopes, and a bounded treatment of zero-current targets. These source changes do not establish full-corpus convergence or a performance advantage.
+
+The next step is to recheck the current KIN6D prescribed-current and seed-axis sweep, then collect its outputs and classify each unsuccessful case as unsupported input, conversion failure, solver failure or timeout. Compare accuracy and runtime only for physically matched inputs and declared resolution and stopping criteria. The ordinary benchmark evidence below remains a historical result, separate from this new sweep.
+
 ## Scope
 
 This is the ordinary, non-differentiable equilibrium benchmark. The frozen
