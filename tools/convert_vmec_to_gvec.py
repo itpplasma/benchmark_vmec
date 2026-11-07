@@ -85,6 +85,19 @@ def _dense_vmec_namelist(source: Path) -> dict:
     return nml
 
 
+def _iteration_budget(nml: dict) -> int:
+    """Iterations VMEC may spend in total over its multigrid stages."""
+    def as_list(value) -> list:
+        return value if isinstance(value, list) else [value]
+
+    stages = [ns for ns in as_list(nml.get("ns_array", [31])) if ns] or [31]
+    niter = [int(n or 0) for n in as_list(nml.get("niter_array", []))[: len(stages)]]
+    # VMEC uses NITER for every stage only when no NITER_ARRAY entry is given
+    if not any(n > 0 for n in niter):
+        return len(stages) * int(nml.get("niter", 100))
+    return sum(n for n in niter if n > 0)
+
+
 def convert(source: Path, destination: Path) -> None:
     try:
         import gvec.util as gvec_util  # type: ignore
@@ -92,7 +105,8 @@ def convert(source: Path, destination: Path) -> None:
         raise SystemExit("GVEC conversion needs the selected GVEC Python environment") from exc
 
     try:
-        parameters = gvec_util.parameters_from_vmec(_dense_vmec_namelist(source), source.name)
+        nml = _dense_vmec_namelist(source)
+        parameters = gvec_util.parameters_from_vmec(nml, source.name)
     except (KeyError, ValueError) as exc:
         detail = str(exc)
         lowered = detail.lower()
@@ -111,6 +125,8 @@ def convert(source: Path, destination: Path) -> None:
     # iota from I_tor themselves, so leave that path intact.
     if "iota" not in parameters and "I_tor" not in parameters:
         parameters["iota"] = {"type": "polynomial", "coefs": [0.0]}
+    # GVEC's reader caps every run at 10000 iterations; grant VMEC's budget when the deck gives more
+    parameters["totalIter"] = max(int(parameters.get("totalIter", 0)), _iteration_budget(nml))
     # VMEC and GVEC use opposite toroidal-angle conventions.  Apply that
     # conversion first, then correct the poloidal orientation if the resulting
     # cross-section is still left-handed.  Flipping zeta alone cannot change
