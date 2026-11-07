@@ -8,7 +8,7 @@ module external_vmec_implementation
     implicit none
     private
 
-    public :: vmex_t, desc_t, gvec_t, parvmec_t, spec_t, spectre_t, freegs_t, chease_t
+    public :: vmex_t, desc_t, gvec_t, parvmec_t, spec_t, spectre_t, freegs_t, chease_t, kin6d_t
 
     ! The three projects below have independent command-line interfaces, but
     ! they all have a Python package and (where a VMEC wout is available) use
@@ -38,6 +38,9 @@ module external_vmec_implementation
 
     type, extends(external_vmec_base_t) :: spectre_t
     end type spectre_t
+
+    type, extends(external_vmec_base_t) :: kin6d_t
+    end type kin6d_t
 
     type, extends(external_vmec_base_t) :: freegs_t
     end type freegs_t
@@ -101,7 +104,8 @@ contains
         ! artifact exists (or the explicit VMEC_BENCHMARK_* override above was
         ! supplied).
         if (trim(lowercase(this%name)) == 'spec' .or. trim(lowercase(this%name)) == 'spectre' .or. &
-            trim(lowercase(this%name)) == 'parvmec' .or. trim(lowercase(this%name)) == 'chease') then
+            trim(lowercase(this%name)) == 'parvmec' .or. trim(lowercase(this%name)) == 'chease' .or. &
+            trim(lowercase(this%name)) == 'kin6d') then
             call find_native_executable(this%path, lowercase(this%name), this%executable, exists)
             if (exists) then
                 this%available = .true.
@@ -163,12 +167,14 @@ contains
         if (trim(lower_name) == 'vmex' .or. trim(lower_name) == 'parvmec' .or. &
             (trim(lower_name) == 'gvec' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
             (trim(lower_name) == 'spectre' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
+            (trim(lower_name) == 'kin6d' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
             (trim(lower_name) == 'desc' .and. index(lowercase(basename(local_input)), 'input.') == 1 .and. &
             index(lowercase(basename(local_input)), '_desc') == 0)) then
             prepared_input = trim(output_dir) // '/input_prepared.vmec'
             if (trim(lower_name) == 'desc') then
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path, desc_compatible=.true.)) return
-            else if (trim(lower_name) == 'gvec' .or. trim(lower_name) == 'spectre') then
+            else if (trim(lower_name) == 'gvec' .or. trim(lower_name) == 'spectre' .or. &
+                    trim(lower_name) == 'kin6d') then
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path, &
                     fixed_boundary_only=trim(this%name), fixed_pressure_only=trim(this%name))) return
             else
@@ -290,6 +296,20 @@ contains
             end if
         case ('parvmec')
             cmd = trim(this%executable) // ' ' // basename(local_input)
+        case ('kin6d')
+            ! KIN6D reads its own nested_input namelist and writes output/<app>.nc
+            python_cmd = select_python_command(this%path)
+            cmd = trim(python_cmd) // ' ' // trim(benchmark_root) // '/tools/convert_vmec_to_kin6d.py ' // &
+                basename(local_input) // ' kin6d_input.nml'
+            call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
+                ' >> kin6d.log 2>&1', exitstat=stat)
+            if (stat /= 0) then
+                write(error_unit, '(A)') 'KIN6D VMEC-to-namelist conversion failed'
+                return
+            end if
+            cmd = 'mkdir -p output && ' // trim(this%executable) // ' --config kin6d_input.nml && ' // &
+                trim(python_cmd) // ' ' // trim(benchmark_root) // '/tools/convert_kin6d_to_common.py ' // &
+                'output/nested_equilibrium.nc kin6d_result.json'
         case ('chease')
             if (index(lowercase(basename(local_input)), '.geqdsk') > 0 .or. &
                 index(lowercase(basename(local_input)), '.eqdsk') > 0) then
@@ -406,6 +426,13 @@ contains
         end if
         if (trim(lowercase(this%name)) == 'spectre') then
             call extract_spectre_results(output_dir, results)
+            return
+        end if
+        if (trim(lowercase(this%name)) == 'kin6d') then
+            call read_result_sidecar(trim(output_dir) // '/kin6d_result.json', 'KIN6D', results)
+            results%family = 'vmec_family'
+            results%input_format = 'vmec_indata'
+            results%output_format = 'kin6d_netcdf'
             return
         end if
         if (trim(lowercase(this%name)) == 'chease') then
@@ -565,6 +592,8 @@ contains
             if (json_number(line, 'iotaf_edge', value)) results%iotaf_edge = value
             if (json_number(line, 'rmajor_p', value)) results%rmajor_p = value
             if (json_number(line, 'aminor_p', value)) results%aminor_p = value
+            if (json_number(line, 'wb', value)) results%wb = value
+            if (json_number(line, 'betatotal', value)) results%betatotal = value
         end do
         close(unit)
         results%success = success_value
@@ -768,6 +797,8 @@ contains
         case ('chease')
             candidates(1) = trim(path)//'/chease'
             candidates(2) = trim(path)//'/bin/chease'
+        case ('kin6d')
+            candidates(1) = trim(path)//'/build/nested_equilibrium'
         end select
         found = .false.
         executable = ''
@@ -819,6 +850,10 @@ contains
             module_name = 'chease'
             tool_name = 'chease'
             env_name = 'chease'
+        case ('kin6d')
+            module_name = 'kin6d'
+            tool_name = 'nested_equilibrium'
+            env_name = 'kin6d'
         case default
             module_name = trim(name)
             tool_name = trim(name)
