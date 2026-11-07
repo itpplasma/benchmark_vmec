@@ -7,7 +7,8 @@ module benchmark_runner
     use jvmec_implementation, only: jvmec_t
     use vmec2000_implementation, only: vmec2000_t
     use vmecpp_implementation, only: vmecpp_t
-    use external_vmec_implementation, only: vmex_t, desc_t, gvec_t, parvmec_t, spec_t, spectre_t, freegs_t, chease_t
+    use external_vmec_implementation, only: vmex_t, desc_t, gvec_t, parvmec_t, spec_t, spectre_t, freegs_t, chease_t, &
+        kin6d_t
     use repository_manager, only: repository_manager_t
     use results_comparator, only: results_comparator_t
     implicit none
@@ -72,6 +73,7 @@ contains
         type(vmex_t), allocatable :: vmex
         type(desc_t), allocatable :: desc
         type(gvec_t), allocatable :: gvec
+        type(kin6d_t), allocatable :: kin6d
         type(parvmec_t), allocatable :: parvmec
         type(spec_t), allocatable :: spec
         type(spectre_t), allocatable :: spectre
@@ -232,6 +234,23 @@ contains
             else
                 write(error_unit, '(A)') "✗ GVEC setup failed"
                 deallocate(gvec)
+            end if
+        end if
+
+        ! KIN6D
+        if (implementation_selected(implementation_filter, 'kin6d') .and. &
+            this%repo_manager%is_cloned("kin6d")) then
+            repo_path = this%repo_manager%get_repo_path("kin6d")
+            allocate(kin6d)
+            call kin6d%initialize("KIN6D", repo_path)
+            if (kin6d%build()) then
+                this%n_implementations = this%n_implementations + 1
+                this%implementations(this%n_implementations)%key = "kin6d"
+                call move_alloc(kin6d, this%implementations(this%n_implementations)%impl)
+                write(output_unit, '(A)') "✓ KIN6D is ready"
+            else
+                write(error_unit, '(A)') "✗ KIN6D setup failed"
+                deallocate(kin6d)
             end if
         end if
 
@@ -711,11 +730,14 @@ contains
                     call results%clear()
                     results%error_message = 'Unsupported: FreeGS is restricted to 2-D Grad-Shafranov cases'
                     write(output_unit, '(A)') '  - freegs skipped (not a 2-D Grad-Shafranov case)'
-                else if (trim(this%implementations(j)%key) == 'gvec' .and. &
+                else if ((trim(this%implementations(j)%key) == 'gvec' .or. &
+                        trim(this%implementations(j)%key) == 'kin6d') .and. &
                         .not. gvec_case_supported(this%test_cases(i)%str)) then
                     call results%clear()
-                    results%error_message = 'Unsupported: GVEC requires a 2-D or 3-D VMEC input'
-                    write(output_unit, '(A)') '  - gvec skipped (not a 2-D or 3-D VMEC case)'
+                    results%error_message = 'Unsupported: ' // trim(this%implementations(j)%impl%name) // &
+                        ' requires a 2-D or 3-D VMEC input'
+                    write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
+                        ' skipped (not a 2-D or 3-D VMEC case)'
                 else if (trim(this%implementations(j)%key) == 'chease' .and. &
                         .not. chease_case_supported(this%test_cases(i)%str)) then
                     call results%clear()
