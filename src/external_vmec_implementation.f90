@@ -176,11 +176,9 @@ contains
             else if (trim(lower_name) == 'gvec' .or. trim(lower_name) == 'spectre') then
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path, &
                     fixed_boundary_only=trim(this%name), fixed_pressure_only=trim(this%name))) return
-            else if (trim(lower_name) == 'kin6d') then
-                ! KIN6D holds VMEC's mass profile fixed when GAMMA != 0
-                if (.not. prepare_vmec_input(input_file, prepared_input, this%path, &
-                    fixed_boundary_only=trim(this%name))) return
             else
+                ! the VMEC codes, and KIN6D, which holds VMEC's mass profile
+                ! fixed when GAMMA != 0 and solves free-boundary inputs
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
             end if
             cmd = 'cp ' // shell_quote(prepared_input) // ' ' // shell_quote(local_input)
