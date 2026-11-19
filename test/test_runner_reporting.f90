@@ -8,6 +8,7 @@ program test_runner_reporting
     use results_comparator, only: results_comparator_t
     use vmec_benchmark_types, only: vmec_result_t
     use vmec_implementation_base, only: accept_wout_exit, read_run_status
+    use external_vmec_implementation, only: read_result_sidecar
     implicit none
 
     integer :: n_tests, n_passed
@@ -30,6 +31,7 @@ program test_runner_reporting
     call test_report_prefers_educational_reference_over_jvmec(n_tests, n_passed)
     call test_report_separates_physical_domains(n_tests, n_passed)
     call test_wout_exit_and_run_status(n_tests, n_passed)
+    call test_sidecar_failure_reason(n_tests, n_passed)
 
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
 
@@ -512,5 +514,43 @@ contains
 
         close(unit)
     end function file_contains
+
+    subroutine test_sidecar_failure_reason(n_tests, n_passed)
+        ! A failed sidecar carries the code's reason into the error message;
+        ! without one the generic message stays.
+        integer, intent(inout) :: n_tests, n_passed
+        character(len=*), parameter :: with_reason = "/tmp/benchmark_vmec_sidecar_reason.json"
+        character(len=*), parameter :: without_reason = "/tmp/benchmark_vmec_sidecar_plain.json"
+        type(vmec_result_t) :: a, b
+        integer :: unit
+
+        n_tests = n_tests + 1
+        open(newunit=unit, file=with_reason, status='replace', action='write')
+        write(unit, '(A)') '{'
+        write(unit, '(A)') ' "success": false,'
+        write(unit, '(A)') ' "wb": 0.07066,'
+        write(unit, '(A)') ' "failure": "the iota matched to the prescribed current vanishes"'
+        write(unit, '(A)') '}'
+        close(unit)
+        open(newunit=unit, file=without_reason, status='replace', action='write')
+        write(unit, '(A)') '{'
+        write(unit, '(A)') ' "success": false'
+        write(unit, '(A)') '}'
+        close(unit)
+        call read_result_sidecar(with_reason, 'KIN6D', a)
+        call read_result_sidecar(without_reason, 'KIN6D', b)
+        if (.not. a%success .and. trim(a%error_message) == &
+            'KIN6D reports failure: the iota matched to the prescribed current vanishes' .and. &
+            trim(b%error_message) == 'KIN6D sidecar reports failure') then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_sidecar_failure_reason"
+        else
+            write(error_unit, '(A)') "✗ test_sidecar_failure_reason: " // trim(a%error_message)
+        end if
+        open(newunit=unit, file=with_reason, status='old')
+        close(unit, status='delete')
+        open(newunit=unit, file=without_reason, status='old')
+        close(unit, status='delete')
+    end subroutine test_sidecar_failure_reason
 
 end program test_runner_reporting
