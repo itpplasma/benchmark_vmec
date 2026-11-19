@@ -130,20 +130,6 @@ def _boundary(nml: dict) -> dict[str, dict[tuple[int, int], float]]:
     return out
 
 
-def _axis(nml: dict) -> dict[str, list[float]]:
-    """VMEC's initial axis; nonzero legacy RAXIS and ZAXIS entries take precedence, as in VMEC."""
-    def values(key):
-        raw = nml.get(key)
-        return [float(v or 0.0) for v in (raw if isinstance(raw, list) else [raw])] if raw is not None else []
-
-    axis = {key: values(key) for key in ("raxis_cc", "raxis_cs", "zaxis_cc", "zaxis_cs")}
-    for legacy, modern in (("raxis", "raxis_cc"), ("zaxis", "zaxis_cs")):
-        old = values(legacy)
-        merged = axis[modern] + [0.0] * max(0, len(old) - len(axis[modern]))
-        axis[modern] = [o if o else m for o, m in zip(old + merged[len(old):], merged)]
-    return axis
-
-
 def _floats(values) -> str:
     return ", ".join(repr(float(v)) for v in values)
 
@@ -244,7 +230,6 @@ def convert(source: Path, destination: Path) -> None:
         for name, (_, values, slopes) in hermite.items():
             lines += [f"  {name}_type = 'hermite',", f"  {name}_values = " + _floats(values) + ",",
                       f"  {name}_slopes = " + _floats(slopes) + ","]
-    lines += [f"  {name}({n}) = {c!r}," for name, values in _axis(nml).items() for n, c in enumerate(values) if c]
     lines += [f"  pressure({k}) = {float(c)!r}," for k, c in enumerate(pressure) if c]
     if current is not None:
         # KIN6D's current readback at this resolution is accurate to about 2e-4
