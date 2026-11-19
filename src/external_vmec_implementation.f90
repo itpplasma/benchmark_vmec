@@ -161,8 +161,9 @@ contains
         end if
         local_input = trim(output_dir) // '/' // basename(input_file)
         input_basename = basename(local_input)
+        ! the GVEC checkout holding a native GVEC input
         gvec_root = trim(this%path)
-        if (trim(lowercase(this%name)) /= 'gvec') gvec_root = trim(parent_dir(this%path)) // '/gvec'
+        if (index(input_file, '/test-CI/') > 0) gvec_root = input_file(:index(input_file, '/test-CI/') - 1)
         lower_name = lowercase(this%name)
         run_output_dir = trim(output_dir)
         short_gvec_dir = .false.
