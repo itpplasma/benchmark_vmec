@@ -9,6 +9,7 @@ module external_vmec_implementation
     private
 
     public :: vmex_t, desc_t, gvec_t, parvmec_t, spec_t, spectre_t, freegs_t, chease_t, kin6d_t
+    public :: read_result_sidecar
 
     ! The three projects below have independent command-line interfaces, but
     ! they all have a Python package and (where a VMEC wout is available) use
@@ -597,11 +598,13 @@ contains
     subroutine read_result_sidecar(filename, code, results)
         character(len=*), intent(in) :: filename, code
         type(vmec_result_t), intent(inout) :: results
-        character(len=512) :: line
+        character(len=1024) :: line
+        character(len=:), allocatable :: reason
         integer :: unit, stat
         logical :: exists, success_value
         real(real64) :: value
 
+        reason = ''
         results%dimension = 3
         inquire(file=filename, exist=exists)
         if (.not. exists) then
@@ -618,6 +621,7 @@ contains
             read(unit, '(A)', iostat=stat) line
             if (stat /= 0) exit
             if (index(line, '"success"') > 0) success_value = index(line, 'true') > 0
+            if (index(line, '"failure"') > 0) reason = json_text(line)
             if (json_number(line, 'pressure_axis', value)) results%pressure_axis = value
             if (json_number(line, 'plasma_current', value)) results%plasma_current = value
             if (json_number(line, 'betapol', value)) results%betapol = value
@@ -633,7 +637,12 @@ contains
         end do
         close(unit)
         results%success = success_value
-        if (.not. success_value) results%error_message = code // ' sidecar reports failure'
+        if (success_value) return
+        if (len(reason) > 0) then
+            results%error_message = code // ' reports failure: ' // reason
+        else
+            results%error_message = code // ' sidecar reports failure'
+        end if
     end subroutine read_result_sidecar
 
     subroutine extract_chease_results(output_dir, results)
@@ -739,6 +748,23 @@ contains
         close(unit)
         status = 0
     end subroutine write_chease_sidecar
+
+    function json_text(line) result(text)
+        ! string value of a '"key": "value"' line
+        character(len=*), intent(in) :: line
+        character(len=:), allocatable :: text
+        integer :: colon, first, last
+
+        text = ''
+        colon = index(line, ':')
+        if (colon == 0) return
+        first = index(line(colon+1:), '"')
+        if (first == 0) return
+        first = colon + first
+        last = index(line(first+1:), '"', back=.true.)
+        if (last == 0) return
+        text = line(first+1:first+last-1)
+    end function json_text
 
     logical function json_number(line, key, value)
         character(len=*), intent(in) :: line, key

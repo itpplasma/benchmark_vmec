@@ -25,6 +25,8 @@ def main() -> int:
     with netCDF4.Dataset(args.result) as data:
         summary = {"success": str(data.getncattr("converged")).strip() == "true"}
         summary.update({key: float(data[key][()]) for key in _QUANTITIES if key in data.variables})
+        if "failure" in data.ncattrs():
+            summary["failure"] = str(data.getncattr("failure")).strip()
     args.sidecar.write_text(json.dumps(summary, indent=1) + "\n")
     return 0
 
