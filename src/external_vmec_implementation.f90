@@ -9,6 +9,7 @@ module external_vmec_implementation
     private
 
     public :: vmex_t, desc_t, gvec_t, parvmec_t, spec_t, spectre_t, freegs_t, chease_t, kin6d_t
+    public :: kin6d_command
 
     ! The three projects below have independent command-line interfaces, but
     ! they all have a Python package and (where a VMEC wout is available) use
@@ -304,15 +305,13 @@ contains
             python_cmd = select_python_command(this%path)
             cmd = trim(python_cmd) // ' ' // trim(benchmark_root) // '/tools/convert_vmec_to_kin6d.py ' // &
                 basename(local_input) // ' kin6d_input.nml'
-            call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
-                ' >> kin6d.log 2>&1', exitstat=stat)
+            call execute_command_line('cd ' // trim(output_dir) // ' && mkdir -p output && ' // &
+                trim(cmd) // ' >> kin6d.log 2>&1', exitstat=stat)
             if (stat /= 0) then
                 write(error_unit, '(A)') 'KIN6D VMEC-to-namelist conversion failed'
                 return
             end if
-            cmd = 'mkdir -p output && ' // trim(this%executable) // ' --config kin6d_input.nml && ' // &
-                trim(python_cmd) // ' ' // trim(benchmark_root) // '/tools/convert_kin6d_to_common.py ' // &
-                'output/nested_equilibrium.nc kin6d_result.json'
+            cmd = kin6d_command(trim(this%executable), trim(python_cmd), trim(benchmark_root))
         case ('chease')
             if (index(lowercase(basename(local_input)), '.geqdsk') > 0 .or. &
                 index(lowercase(basename(local_input)), '.eqdsk') > 0) then
@@ -863,6 +862,17 @@ contains
             env_name = trim(name)
         end select
     end subroutine external_kind
+
+    function kin6d_command(executable, python_cmd, benchmark_root) result(cmd)
+        ! One shell, so the caller's timeout and log redirection cover the
+        ! solver and the conversion, not only the first command of a chain.
+        character(len=*), intent(in) :: executable, python_cmd, benchmark_root
+        character(len=:), allocatable :: cmd
+
+        cmd = 'sh -c ' // shell_quote(executable // ' --config kin6d_input.nml && ' // &
+            python_cmd // ' ' // benchmark_root // '/tools/convert_kin6d_to_common.py ' // &
+            'output/nested_equilibrium.nc kin6d_result.json')
+    end function kin6d_command
 
     function basename(path) result(name)
         character(len=*), intent(in) :: path

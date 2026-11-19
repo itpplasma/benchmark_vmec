@@ -3,7 +3,7 @@ program test_vmec_types
     use vmec_benchmark_types, only: repository_config_t, vmec_result_t, string_t
     use vmec_implementation_base, only: select_python_command
     use vmecpp_implementation, only: write_vmecpp_runner_script
-    use external_vmec_implementation, only: vmex_t
+    use external_vmec_implementation, only: vmex_t, kin6d_command
     implicit none
     
     integer :: n_tests, n_passed
@@ -19,6 +19,7 @@ program test_vmec_types
     call test_select_python_command_prefers_repo_venv(n_tests, n_passed)
     call test_vmecpp_runner_script_uses_single_thread(n_tests, n_passed)
     call test_vmex_uses_repo_console_script(n_tests, n_passed)
+    call test_kin6d_timeout_stops_solver(n_tests, n_passed)
     
     write(output_unit, '(/,A,I0,A,I0,A)') "Tests passed: ", n_passed, "/", n_tests, " tests"
     
@@ -178,6 +179,37 @@ contains
         call impl%finalize()
         call execute_command_line("rm -rf " // repo_dir, exitstat=stat)
     end subroutine test_vmex_uses_repo_console_script
+
+    subroutine test_kin6d_timeout_stops_solver(n_tests, n_passed)
+        ! The runner prefixes "timeout N" to the run command: it must stop a
+        ! solver that runs longer, not only the command before it.
+        integer, intent(inout) :: n_tests, n_passed
+        character(len=*), parameter :: dir = "/tmp/benchmark_vmec_kin6d_timeout"
+        integer :: stat, unit
+        integer(8) :: start, finish, rate
+
+        n_tests = n_tests + 1
+        call execute_command_line("rm -rf " // dir // " && mkdir -p " // dir, exitstat=stat)
+        open(newunit=unit, file=dir // "/solver", status="replace", action="write")
+        write(unit, '(A)') "#!/bin/sh"
+        write(unit, '(A)') "sleep 20"
+        close(unit)
+        call execute_command_line("chmod +x " // dir // "/solver", exitstat=stat)
+
+        call system_clock(start, rate)
+        call execute_command_line("cd " // dir // " && timeout --kill-after=1s 1 " // &
+            kin6d_command(dir // "/solver", "true", dir) // " > kin6d.log 2>&1", exitstat=stat)
+        call system_clock(finish)
+
+        if (stat /= 0 .and. real(finish - start) / real(rate) < 10.0) then
+            n_passed = n_passed + 1
+            write(output_unit, '(A)') "✓ test_kin6d_timeout_stops_solver"
+        else
+            write(error_unit, '(A)') "✗ test_kin6d_timeout_stops_solver"
+        end if
+
+        call execute_command_line("rm -rf " // dir, exitstat=stat)
+    end subroutine test_kin6d_timeout_stops_solver
 
     logical function file_contains(path, needle)
         character(len=*), intent(in) :: path
