@@ -173,10 +173,13 @@ contains
             prepared_input = trim(output_dir) // '/input_prepared.vmec'
             if (trim(lower_name) == 'desc') then
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path, desc_compatible=.true.)) return
-            else if (trim(lower_name) == 'gvec' .or. trim(lower_name) == 'spectre' .or. &
-                    trim(lower_name) == 'kin6d') then
+            else if (trim(lower_name) == 'gvec' .or. trim(lower_name) == 'spectre') then
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path, &
                     fixed_boundary_only=trim(this%name), fixed_pressure_only=trim(this%name))) return
+            else if (trim(lower_name) == 'kin6d') then
+                ! KIN6D holds VMEC's mass profile fixed when GAMMA != 0
+                if (.not. prepare_vmec_input(input_file, prepared_input, this%path, &
+                    fixed_boundary_only=trim(this%name))) return
             else
                 if (.not. prepare_vmec_input(input_file, prepared_input, this%path)) return
             end if

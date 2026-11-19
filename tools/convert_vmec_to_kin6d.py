@@ -231,6 +231,10 @@ def convert(source: Path, destination: Path) -> None:
             lines += [f"  {name}_type = 'hermite',", f"  {name}_values = " + _floats(values) + ",",
                       f"  {name}_slopes = " + _floats(slopes) + ","]
     lines += [f"  pressure({k}) = {float(c)!r}," for k, c in enumerate(pressure) if c]
+    gamma = float(nml.get("gamma", 0.0))
+    if gamma:
+        # with GAMMA != 0 the pressure profile is VMEC's mass profile
+        lines += [f"  gamma = {gamma!r},"]
     if current is not None:
         lines += ["  prescribe_current = .true.,"]
         lines += [f"  current({k}) = {float(c)!r}," for k, c in enumerate(current) if c]
