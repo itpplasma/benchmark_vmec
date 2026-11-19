@@ -232,11 +232,11 @@ def convert(source: Path, destination: Path) -> None:
                       f"  {name}_slopes = " + _floats(slopes) + ","]
     lines += [f"  pressure({k}) = {float(c)!r}," for k, c in enumerate(pressure) if c]
     if current is not None:
-        # KIN6D's current readback at this resolution is accurate to about 2e-4
-        lines += ["  prescribe_current = .true., current_tolerance = 1e-3,"]
+        lines += ["  prescribe_current = .true.,"]
         lines += [f"  current({k}) = {float(c)!r}," for k, c in enumerate(current) if c]
     # VMEC's boundary angle is not a field-line angle, so the boundary field angle is free
-    lines += ["  boundary_nodes = 16, degree = 3, angle_mpol = 4, tolerance = 1e-8, max_iterations = 400,", "/"]
+    # KIN6D chooses its mesh and toroidal modes by its own truncation estimates
+    lines += ["  angle_mpol = 4, tolerance = 1e-8, max_iterations = 400,", "/"]
     destination.write_text("\n".join(lines) + "\n")
 
 
