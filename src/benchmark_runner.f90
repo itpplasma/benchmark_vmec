@@ -714,13 +714,15 @@ contains
                     write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
                         ' skipped (native GEQDSK fixture is CHEASE-only)'
                 else if (native_gvec_case(this%test_cases(i)%str) .and. &
-                        trim(this%implementations(j)%key) /= 'gvec') then
+                        trim(this%implementations(j)%key) /= 'gvec' .and. &
+                        trim(this%implementations(j)%key) /= 'kin6d') then
                     call results%clear()
                     results%error_message = 'Unsupported: native GVEC parameters are not VMEC inputs'
                     write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
                         ' skipped (native GVEC case)'
                 else if (native_desc_case(this%test_cases(i)%str) .and. &
-                        trim(this%implementations(j)%key) /= 'desc') then
+                        trim(this%implementations(j)%key) /= 'desc' .and. &
+                        trim(this%implementations(j)%key) /= 'kin6d') then
                     call results%clear()
                     results%error_message = 'Unsupported: native DESC fixtures are not VMEC inputs'
                     write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
@@ -730,8 +732,7 @@ contains
                     call results%clear()
                     results%error_message = 'Unsupported: FreeGS is restricted to 2-D Grad-Shafranov cases'
                     write(output_unit, '(A)') '  - freegs skipped (not a 2-D Grad-Shafranov case)'
-                else if ((trim(this%implementations(j)%key) == 'gvec' .or. &
-                        trim(this%implementations(j)%key) == 'kin6d') .and. &
+                else if (trim(this%implementations(j)%key) == 'gvec' .and. &
                         .not. gvec_case_supported(this%test_cases(i)%str)) then
                     call results%clear()
                     results%error_message = 'Unsupported: ' // trim(this%implementations(j)%impl%name) // &
@@ -760,7 +761,8 @@ contains
                     write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &
                         ' skipped (native SPEC case)'
                 else if (native_spectre_case(this%test_cases(i)%str) .and. &
-                        trim(this%implementations(j)%key) /= 'spectre') then
+                        trim(this%implementations(j)%key) /= 'spectre' .and. &
+                        trim(this%implementations(j)%key) /= 'kin6d') then
                     call results%clear()
                     results%error_message = 'Unsupported: native SPECTRE cases are not VMEC inputs'
                     write(output_unit, '(A)') '  - ' // trim(this%implementations(j)%key) // &

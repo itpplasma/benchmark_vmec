@@ -139,7 +139,7 @@ contains
         logical :: success
         character(len=:), allocatable :: local_input, prepared_input, input_basename, cmd, python_cmd
         character(len=:), allocatable :: run_output_dir
-        character(len=:), allocatable :: lower_name
+        character(len=:), allocatable :: lower_name, gvec_root
         character(len=1024) :: benchmark_root
         integer :: stat, timeout_val, root_length, root_status, copy_stat
         logical :: short_gvec_dir
@@ -161,13 +161,15 @@ contains
         end if
         local_input = trim(output_dir) // '/' // basename(input_file)
         input_basename = basename(local_input)
+        gvec_root = trim(this%path)
+        if (trim(lowercase(this%name)) /= 'gvec') gvec_root = trim(parent_dir(this%path)) // '/gvec'
         lower_name = lowercase(this%name)
         run_output_dir = trim(output_dir)
         short_gvec_dir = .false.
         if (trim(lower_name) == 'vmex' .or. trim(lower_name) == 'parvmec' .or. &
             (trim(lower_name) == 'gvec' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
             (trim(lower_name) == 'spectre' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
-            (trim(lower_name) == 'kin6d' .and. index(lowercase(basename(local_input)), 'input.') == 1) .or. &
+            (trim(lower_name) == 'kin6d' .and. has_indata(input_file)) .or. &
             (trim(lower_name) == 'desc' .and. index(lowercase(basename(local_input)), 'input.') == 1 .and. &
             index(lowercase(basename(local_input)), '_desc') == 0)) then
             prepared_input = trim(output_dir) // '/input_prepared.vmec'
@@ -192,20 +194,29 @@ contains
             write(error_unit, '(A)') 'Failed to copy input for ' // trim(this%name)
             return
         end if
-        if (trim(lower_name) == 'gvec' .and. index(lowercase(basename(local_input)), 'input.') /= 1) then
-            ! Native parameter files name wout, hmap and boundary files beside them
-            call execute_command_line('find ' // shell_quote(parent_dir(input_file)) // &
-                ' -maxdepth 1 ! -type d -exec cp -nL {} ' // shell_quote(trim(output_dir)) // '/ \;', &
-                exitstat=stat)
+        if ((trim(lower_name) == 'gvec' .and. index(lowercase(basename(local_input)), 'input.') /= 1) .or. &
+            (trim(lower_name) == 'kin6d' .and. .not. has_indata(input_file))) then
+            ! Native parameter files name wout, hmap and boundary files beside
+            ! them, and VMEC sequence files name their member decks
+            if (trim(lower_name) == 'kin6d') then
+                ! links suffice for reading, and some fixture directories are large
+                call execute_command_line('find ' // shell_quote(parent_dir(input_file)) // &
+                    ' -maxdepth 1 ! -type d ! -name ' // shell_quote(basename(input_file)) // &
+                    ' -exec ln -sf {} ' // shell_quote(trim(output_dir)) // '/ \;', exitstat=stat)
+            else
+                call execute_command_line('find ' // shell_quote(parent_dir(input_file)) // &
+                    ' -maxdepth 1 ! -type d -exec cp -nL {} ' // shell_quote(trim(output_dir)) // '/ \;', &
+                    exitstat=stat)
+            end if
             if (stat /= 0) then
-                write(error_unit, '(A)') 'Failed to copy GVEC companion files'
+                write(error_unit, '(A)') 'Failed to copy the companion files of a native input'
                 return
             end if
             ! GVEC's CI generates the cinquefoil hmap at test time (test-CI/helpers.py)
             call execute_command_line('cd ' // shell_quote(trim(output_dir)) // &
                 ' && grep -qi "hmap_ncfile *= *cinquefoil.nc" ' // shell_quote(basename(local_input)) // &
-                ' && [ ! -e cinquefoil.nc ] && ' // trim(select_python_command(this%path)) // &
-                ' -c "import sys; sys.path.insert(0, ''' // trim(this%path) // '/test-CI''); ' // &
+                ' && [ ! -e cinquefoil.nc ] && ' // trim(select_python_command(gvec_root)) // &
+                ' -c "import sys; sys.path.insert(0, ''' // trim(gvec_root) // '/test-CI''); ' // &
                 'import helpers; helpers.generate_cinquefoil(''cinquefoil.nc'')"', exitstat=stat)
         end if
 
@@ -302,13 +313,34 @@ contains
         case ('kin6d')
             ! KIN6D reads its own nested_input namelist and writes output/<app>.nc
             python_cmd = select_python_command(this%path)
-            cmd = trim(python_cmd) // ' ' // trim(benchmark_root) // '/tools/convert_vmec_to_kin6d.py ' // &
-                basename(local_input) // ' kin6d_input.nml'
-            call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
-                ' >> kin6d.log 2>&1', exitstat=stat)
-            if (stat /= 0) then
-                write(error_unit, '(A)') 'KIN6D VMEC-to-namelist conversion failed'
-                return
+            if (has_indata(input_file)) then
+                cmd = trim(python_cmd) // ' ' // trim(benchmark_root) // '/tools/convert_vmec_to_kin6d.py ' // &
+                    basename(local_input) // ' kin6d_input.nml'
+                call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
+                    ' >> kin6d.log 2>&1', exitstat=stat)
+                if (stat /= 0) then
+                    write(error_unit, '(A)') 'KIN6D VMEC-to-namelist conversion failed'
+                    return
+                end if
+            else
+                ! GVEC, DESC, SPECTRE, VMEC sequence and VMEX inputs go through
+                ! MILCA's importer, whose exit status 3 names physics KIN6D
+                ! does not model
+                cmd = trim(parent_dir(this%executable)) // '/milca_import ' // &
+                    shell_quote(basename(local_input)) // ' kin6d_input.nml'
+                call execute_command_line('cd ' // trim(output_dir) // ' && ' // trim(cmd) // &
+                    ' >> kin6d.log 2> kin6d_import.err', exitstat=stat)
+                if (stat == 3) then
+                    call execute_command_line('cd ' // trim(output_dir) // &
+                        ' && sed -n "s/^unsupported: /Unsupported: /p" kin6d_import.err > ' // &
+                        'benchmark_unsupported.txt')
+                end if
+                if (stat /= 0) then
+                    write(error_unit, '(A)') 'KIN6D import of the native input failed'
+                    call execute_command_line('cat ' // shell_quote(trim(output_dir) // '/kin6d_import.err') // &
+                        ' >&2')
+                    return
+                end if
             end if
             cmd = 'mkdir -p output && ' // trim(this%executable) // ' --config kin6d_input.nml && ' // &
                 trim(python_cmd) // ' ' // trim(benchmark_root) // '/tools/convert_kin6d_to_common.py ' // &
@@ -876,6 +908,29 @@ contains
             name = trim(path)
         end if
     end function basename
+
+    logical function has_indata(path)
+        ! a VMEC INDATA deck, as opposed to the native inputs of other codes
+        ! and VMEC's &VSEQ sequence files
+        character(len=*), intent(in) :: path
+        character(len=4096) :: line
+        integer :: unit, stat
+
+        has_indata = .false.
+        open(newunit=unit, file=trim(path), status='old', action='read', iostat=stat)
+        if (stat /= 0) return
+        do
+            read(unit, '(A)', iostat=stat) line
+            if (stat /= 0) exit
+            line = adjustl(line)
+            if (line(1:1) /= '&' .and. line(1:1) /= '$') cycle
+            if (lowercase(line(2:7)) == 'indata') then
+                has_indata = .true.
+                exit
+            end if
+        end do
+        close(unit)
+    end function has_indata
 
     function parent_dir(path) result(name)
         character(len=*), intent(in) :: path
