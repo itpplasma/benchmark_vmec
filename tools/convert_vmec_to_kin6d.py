@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write KIN6D's ``nested_input`` namelist for a fixed-boundary VMEC input.
+"""Write KIN6D's ``nested_input`` namelist for a VMEC input.
 
 KIN6D's ``nested_equilibrium`` prescribes iota(s), p(s) and I(s) in the
 normalized toroidal flux s, with a positive toroidal flux: power series as
@@ -11,6 +11,11 @@ internally when the boundary runs clockwise in (R, Z) and reverses iota with it;
 the same flip is applied here, so iota keeps its handedness relative to the
 boundary.
 
+A free-boundary input (LFREEB not false and an MGRID_FILE) is passed on with
+its staged MGRID file and EXTCUR. KIN6D's toroidal flux is positive, so with a
+negative PHIEDGE the whole field is reversed: EXTCUR changes sign together
+with the current.
+
 usage: convert_vmec_to_kin6d.py INPUT NAMELIST
 """
 from __future__ import annotations
@@ -18,6 +23,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -29,6 +35,33 @@ _MAX_COEFFICIENTS = 33
 
 
 _UNIFORM_KNOTS = 257
+
+_MGRID = re.compile(r"(?im)^\s*mgrid_file\s*=\s*(['\"])([^'\"]*)\1")
+_NUMBER = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?"
+_EXTCUR_INDEXED = re.compile(rf"(?i)\bextcur\s*\(\s*(\d+)\s*\)\s*=\s*({_NUMBER})")
+_EXTCUR_LIST = re.compile(rf"(?i)\bextcur\s*=\s*((?:{_NUMBER}[\s,]*)+)")
+
+
+def _coils(text: str) -> tuple[str, dict[int, float]] | None:
+    """MGRID file and EXTCUR of a free-boundary input, None for fixed boundary.
+
+    VMEC runs free-boundary whenever LFREEB is not false and a grid is named.
+    """
+    body = "\n".join(line.split("!")[0] for line in text.splitlines())
+    mgrid = _MGRID.search(body)
+    if re.search(r"(?i)\blfreeb\s*=\s*\.?f", body) or not mgrid:
+        return None
+    name = mgrid.group(2).strip()
+    if not name or name.lower() in {"none", "dummy", "nonef"}:
+        return None
+    extcur: dict[int, float] = {}
+    for match in _EXTCUR_LIST.finditer(body):
+        values = re.findall(_NUMBER, match.group(1))
+        for k, value in enumerate(values, start=1):
+            extcur[k] = float(value.replace("d", "e").replace("D", "e"))
+    for index, value in _EXTCUR_INDEXED.findall(body):
+        extcur[int(index)] = float(value.replace("d", "e").replace("D", "e"))
+    return Path(name.replace("\\", "/")).name, extcur
 
 
 def _vmex_profiles():
@@ -215,6 +248,8 @@ def convert(source: Path, destination: Path) -> None:
             samples = np.polynomial.polynomial.polyval(np.linspace(0.0, 1.0, 201), iota)
         if np.any(samples == 0.0) or np.any(np.sign(samples) != np.sign(samples[0])):
             _mark_unsupported(destination, "KIN6D's frozen field needs an iota profile without zeros")
+    coils = _coils(source.read_text(errors="replace"))
+    field_sign = -1.0 if float(nml.get("phiedge", 1.0)) < 0 else 1.0
     phiedge = abs(float(nml.get("phiedge", 1.0)))
     mpol = max([m for f in ("rbc", "rbs", "zbc", "zbs") for (_, m) in boundary[f]] + [1])
     ntor = max([abs(n) for f in ("rbc", "rbs", "zbc", "zbs") for (n, _) in boundary[f]] + [0])
@@ -235,6 +270,10 @@ def convert(source: Path, destination: Path) -> None:
     if gamma:
         # with GAMMA != 0 the pressure profile is VMEC's mass profile
         lines += [f"  gamma = {gamma!r},"]
+    if coils is not None:
+        mgrid, extcur = coils
+        lines += ["  free_boundary = .true.,", f"  mgrid_file = '{mgrid}',"]
+        lines += [f"  extcur({k}) = {field_sign*c!r}," for k, c in sorted(extcur.items()) if c]
     if current is not None:
         lines += ["  prescribe_current = .true.,"]
         lines += [f"  current({k}) = {float(c)!r}," for k, c in enumerate(current) if c]
